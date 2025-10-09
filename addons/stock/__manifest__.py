@@ -9,13 +9,7 @@
     'depends': ['product', 'barcodes_gs1_nomenclature', 'digest'],
     'category': 'Inventory/Inventory',
     'sequence': 25,
-    'demo': [
-        'data/stock_demo_pre.xml',
-        'data/stock_demo.xml',
-        'data/stock_demo2.xml',
-        'data/stock_orderpoint_demo.xml',
-        'data/stock_storage_category_demo.xml',
-    ],
+    'demo': [],
     'data': [
         'security/stock_security.xml',
         'security/ir.model.access.csv',

@@ -19,9 +19,7 @@ It supports:
 If you need to manage your meetings, you should install the CRM module.
     """,
     'category': 'Productivity/Calendar',
-    'demo': [
-        'data/calendar_demo.xml'
-    ],
+    'demo': [],
     'data': [
         'security/ir.model.access.csv',
         'security/calendar_security.xml',

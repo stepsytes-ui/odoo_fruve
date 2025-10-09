@@ -56,10 +56,7 @@
         'wizard/project_project_stage_delete_views.xml',
         'views/project_menus.xml',
     ],
-    'demo': [
-        'data/mail_template_demo.xml',
-        'data/project_demo.xml',
-    ],
+    'demo': [],
     'installable': True,
     'application': True,
     'post_init_hook': '_project_post_init',

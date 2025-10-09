@@ -30,12 +30,7 @@ This module introduces skills and resume management for employees.
         'views/hr_employee_cv_templates.xml',
         'wizard/hr_employee_cv_wizard_views.xml',
     ],
-    'demo': [
-        'data/hr_skill_demo.xml',
-        'data/hr_resume_demo.xml',
-        'data/hr.employee.skill.csv',
-        'data/hr.resume.line.csv',
-    ],
+    'demo': [],
     'installable': True,
     'auto_install': True,
     'application': True,

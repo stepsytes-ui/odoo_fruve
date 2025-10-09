@@ -34,9 +34,7 @@
         'wizard/bill_to_po_wizard_views.xml',
         'data/purchase_tour.xml',
     ],
-    'demo': [
-        'data/purchase_demo.xml',
-    ],
+    'demo': [],
     'installable': True,
     'application': True,
     'assets': {

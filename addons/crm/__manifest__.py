@@ -61,13 +61,7 @@
         'views/crm_menu_views.xml',
         'views/crm_helper_templates.xml',
     ],
-    'demo': [
-        'data/crm_team_demo.xml',
-        'data/mail_template_demo.xml',
-        'data/crm_team_member_demo.xml',
-        'data/mail_activity_type_demo.xml',
-        'data/crm_lead_demo.xml',
-    ],
+    'demo': [],
     'installable': True,
     'application': True,
     'assets': {

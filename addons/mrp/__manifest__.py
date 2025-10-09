@@ -50,9 +50,7 @@
         'report/mrp_zebra_production_templates.xml',
         'report/mrp_workorder_templates.xml',
     ],
-    'demo': [
-        'data/mrp_demo.xml',
-    ],
+    'demo': [],
     'application': True,
     'pre_init_hook': '_pre_init_mrp',
     'post_init_hook': '_create_warehouse_data',

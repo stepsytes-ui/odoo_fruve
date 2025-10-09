@@ -27,9 +27,7 @@ actions(Check in/Check out) performed by them.
         'views/res_config_settings_views.xml',
         'views/hr_attendance_kiosk_templates.xml'
     ],
-    'demo': [
-        'data/hr_attendance_demo.xml'
-    ],
+    'demo': [],
     'installable': True,
     'application': True,
     'assets': {

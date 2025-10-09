@@ -86,9 +86,7 @@ You could use this simplified accounting in case you work with an (external) acc
         'views/report_templates.xml',
         'wizard/account_merge_wizard_views.xml',
     ],
-    'demo': [
-        'demo/account_demo.xml',
-    ],
+    'demo': [],
     'installable': True,
     'application': True,
     'post_init_hook': '_account_post_init',

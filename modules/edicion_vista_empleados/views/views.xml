@@ -1,0 +1,41 @@
+<odoo>
+    <record id="view_upgrade_employee_main_view" model="ir.ui.view">
+        <field name="name">view.upgrade.employee.main.view</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/> 
+        <field name="arch" type="xml">
+            
+            <!-- Probando las diferentes maneras de tratar un campo nuevo -->
+
+            <xpath expr="//field[@name='job_id']" position="after">
+                <field name="mi_campo_nuevo" placeholder="Prueba de campo" required="1"/> 
+            </xpath>
+            
+            <xpath expr="//field[@name='job_id']" position="after">
+                <field name="number1" placeholder="Primer numero" required="0"/> 
+            </xpath>
+
+            <xpath expr="//field[@name='job_id']" position="after">
+                <field name="number2" placeholder="Segundo numero" required="0"/> 
+            </xpath>
+
+            
+            <xpath expr="//field[@name='job_id']" position="after">
+                <field name="result" placeholder="Segundo numero" required="0"/> 
+            </xpath>
+
+
+            <!-- Probando las diferentes maneras de trabajar con un campo existente -->
+            <xpath expr="//field[@name='work_email']" position="attributes">
+                <attribute name="required">True</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='work_email']" position="attributes">
+                <attribute name="required">True</attribute>
+            </xpath>
+        
+        </field>
+
+
+    </record>
+</odoo>

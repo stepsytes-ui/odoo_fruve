@@ -123,10 +123,7 @@ For more specific needs, you may also assign custom-defined actions
         'data/mail_templates_invite.xml',
         'data/web_tour_tour.xml',
     ],
-    'demo': [
-        'demo/discuss_channel_demo.xml',
-        "demo/mail_canned_response_demo.xml",
-    ],
+    'demo': [],
     'installable': True,
     'application': True,
     'post_init_hook': '_mail_post_init',

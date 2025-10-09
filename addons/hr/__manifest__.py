@@ -43,9 +43,7 @@
         'views/hr_templates.xml',
         'data/hr_data.xml',
     ],
-    'demo': [
-        'data/hr_demo.xml'
-    ],
+    'demo': [],
     'installable': True,
     'application': True,
     'post_init_hook': '_install_hr_localization',

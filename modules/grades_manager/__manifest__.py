@@ -1,30 +1,32 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Edicion Vista Empleados",
+    'name': "grades_manager",
 
-    'summary': "Upgrade to employee's module",
+    'summary': "Modulo del curso de Udemy para practicar",
 
     'description': """
-    Modulo para editar vista de empleados basado en los requerimientos de la empresa
+Modulo del curso de Udemy para practicar
     """,
 
-    'author': "NeyiSoek",
-    'website': "N/A",
+    'author': "DCG",
+    'website': "https://www.dcg.com",
 
     # Categories can be used to filter modules in modules listing
     # Check https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
-    'category': 'Human Resources',
+    'category': 'Uncategorized',
     'version': '18.0.0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base','hr'],
+    'depends': ['base'],
 
     # always loaded
     'data': [
-        # 'security/ir.model.access.csv',
+        'security/ir.model.access.csv',
+        'views/res_partner_views.xml',
         'views/views.xml',
         'views/templates.xml',
+        
     ],
     # only loaded in demonstration mode
     'demo': [],

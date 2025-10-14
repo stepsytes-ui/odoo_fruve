@@ -15,12 +15,12 @@
                 <field name="number1" placeholder="Primer numero" required="0"/> 
             </xpath>
 
-            <xpath expr="//field[@name='job_id']" position="after">
+            <xpath expr="//field[@name='number1']" position="after">
                 <field name="number2" placeholder="Segundo numero" required="0"/> 
             </xpath>
 
             
-            <xpath expr="//field[@name='job_id']" position="after">
+            <xpath expr="//field[@name='number2']" position="after">
                 <field name="result" placeholder="Segundo numero" required="0"/> 
             </xpath>
 

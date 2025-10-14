@@ -1,0 +1,64 @@
+<odoo>
+  <data>
+
+    <!-- Ejemplo para configurar un menu -->
+    <menuitem id="grades_manager_menu" name="Grades Manager"/>
+    <menuitem id="grades_course_menu" parent="grades_manager.grades_manager_menu" name="Course" action="grades_course_action"/>
+    <menuitem id="teachers_menu" parent="grades_manager.grades_manager_menu" name="Teacher" action="teachers_action"/>
+    
+    <!-- Ejemplo para configurar las acciones del menu -->
+    <record id="grades_course_action" model="ir.actions.act_window">
+      <field name="name">Courses</field>
+      <field name="res_model">grades.course</field>
+      <field name="view_mode">list,form</field> 
+    </record>
+
+    <!-- Ejemplo para configurar una vista de lista -->
+    <record id="grades_course_list_view" model="ir.ui.view">
+      <field name="name">grades.course.list</field>
+      <field name="model">grades.course</field>
+      <field name="arch" type="xml">
+        <list string="Courses">
+          <field name="name"/>
+          <field name="student_qty"/>
+          <field name="description"/>
+          <field name="is_active"/>
+          <field name="course_start"/>
+          <field name="course_end"/>
+          <field name="last_evaluation_date"/>
+          <field name="course_shift"/>
+        </list>
+      </field>
+    </record>
+    
+    <!-- Ejemplo para configurar un formulario -->
+    <record id="grades_course_form_view" model="ir.ui.view">
+      <field name="name">grades.course.form</field>
+      <field name="model">grades.course</field>
+      <field name="arch" type="xml">
+        <form string="Course">
+          <sheet>
+            <group>
+              <group>
+                <field name="name"/>
+                <field name="student_qty"/>
+                <field name="description"/>
+                <field name="is_active"/>
+              </group>
+
+              <group>
+                <field name="course_image"/>
+                <field name="course_start"/>
+                <field name="course_end"/>
+                <field name="last_evaluation_date"/>
+                <field name="course_shift"/>
+              </group>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+
+  </data>
+</odoo>

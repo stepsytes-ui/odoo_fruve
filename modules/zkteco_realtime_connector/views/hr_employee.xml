@@ -1,0 +1,19 @@
+<odoo>
+    <data>
+
+        <record id="view_employee_form_biometric" model="ir.ui.view">
+            <field name="name">hr.employee.form.upgrade</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_form"/>
+            <field name="arch" type="xml">
+                <!-- <xpath expr="//field[@name='vat']/.." position="inside">
+                    <field name="is_freelance"/>
+                </xpath> -->
+
+                <field name="coach_id" position="after">
+                    <field name="biometric_id"/>
+                </field>
+            </field>
+        </record>
+    </data>
+</odoo>

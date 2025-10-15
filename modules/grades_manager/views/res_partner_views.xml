@@ -14,8 +14,8 @@
                 </xpath>
 
                 <!-- Este metodo nos permite introducir datos personalizados de manera facil
-                pero solo funciona con datos de entrada y puede no ser tan especifico leyendo
-                cual ocasione que falle para intentar introducir datos a grupos o booknotes especificos -->
+                pero solo funciona con datos faciles de encontrar ya que al no ser tan especifico como el xpath puede
+                ocasionar que falle a la hora de intentar introducir datos a grupos o booknotes especificos -->
                 <field name="category_id" position="after">
                     <field name="is_teacher"/>
                 </field>

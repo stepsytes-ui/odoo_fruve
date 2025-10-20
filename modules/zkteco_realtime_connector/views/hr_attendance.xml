@@ -1,0 +1,40 @@
+<odoo>
+    <data>
+        <record id="view_attendance_list_v2" model="ir.ui.view">
+            <field name="name">hr.attendance.list.v2</field>
+            <field name="model">hr.attendance</field>
+            <field name="inherit_id" ref="hr_attendance.view_attendance_tree"/>
+            <field name="arch" type="xml">
+                
+                <field name="check_in" position="replace">
+                    <field name="check_in_time_only"/>
+                </field>
+
+                <field name="check_in_time_only" position="after">
+                    <field name="punctuality_status"/>
+                </field>
+                
+                <field name="check_out" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </field>
+                <field name="worked_hours" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </field>
+            </field>
+        </record>
+        
+        <record id="view_attendance_form_v2" model="ir.ui.view">
+            <field name="name">hr.attendance.form.v2</field>
+            <field name="model">hr.attendance</field>
+            <field name="inherit_id" ref="hr_attendance.hr_attendance_view_form"/>
+            <field name="arch" type="xml">
+                <field name="check_in" position="after">
+                    <field name="punctuality_status" widget="selection"/>
+                </field>
+            </field>
+        </record>
+
+
+
+    </data>
+</odoo>

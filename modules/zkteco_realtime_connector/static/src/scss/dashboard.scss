@@ -1,0 +1,37 @@
+/* Estilos simples para el Dashboard de Asistencia */
+
+.o_attendance_dashboard {
+    .kpi_card {
+        background-color: white;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+
+        .kpi_title {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .kpi_value {
+            font-weight: 700;
+        }
+
+        .kpi_icon {
+            font-size: 24px;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        /* Efecto al pasar el mouse (si tiene t-on-click) */
+        &[t-on-click] {
+            cursor: pointer;
+            &:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important;
+            }
+        }
+    }
+}

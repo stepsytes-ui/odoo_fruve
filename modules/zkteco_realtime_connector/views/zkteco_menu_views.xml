@@ -1,0 +1,17 @@
+<odoo>
+    <data>
+        <menuitem 
+            id="menu_hr_attendance_view_shift_management" 
+            name="Gestión de Turnos" 
+            parent="hr_attendance.menu_hr_attendance_root" 
+            groups="hr_attendance.group_hr_attendance_officer" 
+            action="zkteco_realtime_connector.shift_action"/>
+
+        <menuitem
+            id="menu_hr_attendance_punctuality_report"
+            name="Reporte de Faltas y Retardos"
+            parent="hr_attendance.menu_hr_attendance_root"
+            action="action_punctuality_lates_report"
+            sequence="20"/>
+    </data>
+</odoo>

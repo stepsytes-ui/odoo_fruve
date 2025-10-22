@@ -11,6 +11,15 @@ class ShiftManagement(models.Model):
     hora_entrada = fields.Datetime(string='Hora de Entrada')
     hora_salida = fields.Datetime(string='Hora de Salida')
 
+    work_monday = fields.Boolean(string='Lunes', default=True)
+    work_tuesday = fields.Boolean(string='Martes', default=True)
+    work_wednesday = fields.Boolean(string='Miércoles', default=True)
+    work_thursday = fields.Boolean(string='Jueves', default=True)
+    work_friday = fields.Boolean(string='Viernes', default=True)
+    work_saturday = fields.Boolean(string='Sábado', default=False)
+    work_sunday = fields.Boolean(string='Domingo', default=False)
+
+
     # Campo relacionado para ver qué empleados usan este turno
     employee_ids = fields.One2many(
         comodel_name='hr.employee',
@@ -29,6 +38,7 @@ class ShiftManagement(models.Model):
         compute='_compute_hora_str',  
         store=False
     )
+
 
     # MÉTODO CALCULADO
     @api.depends('hora_entrada', 'hora_salida')

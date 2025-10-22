@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+
+<t t-name="zkteco_realtime_connector.AttendanceDashboard" owl="1">
+    <div class="o_attendance_dashboard container-fluid p-4">
+        
+        <div class="row mb-4">
+            
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="kpi_card h-100 p-3 shadow-sm" t-on-click="openEmployees">
+                    <div class="d-flex align-items-center">
+                        <div class="kpi_icon me-3 bg-primary text-white">
+                            <i class="fa fa-users"/>
+                        </div>
+                        <div>
+                            <div class="kpi_title text-muted">Total Empleados</div>
+                            <div class="kpi_value display-4" t-esc="state.kpis.total_employees"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="kpi_card h-100 p-3 shadow-sm" t-on-click="openPresent">
+                    <div class="d-flex align-items-center">
+                        <div class="kpi_icon me-3 bg-success text-white">
+                            <i class="fa fa-check"/>
+                        </div>
+                        <div>
+                            <div class="kpi_title text-muted">Presentes Hoy</div>
+                            <div class="kpi_value display-4" t-esc="state.kpis.total_present"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="kpi_card h-100 p-3 shadow-sm" t-on-click="openAbsent">
+                    <div class="d-flex align-items-center">
+                        <div class="kpi_icon me-3 bg-danger text-white">
+                            <i class="fa fa-times"/>
+                        </div>
+                        <div>
+                            <div class="kpi_title text-muted">Ausentes Hoy</div>
+                            <div class="kpi_value display-4" t-esc="state.kpis.total_absent"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="row">
+            
+            <div class="col-lg-7 mb-3">
+                <div class="h-100 p-3 shadow-sm">
+                    <h5>Ausencias por Departamento</h5>
+                    <div class="chart-container" style="position: relative; height:40vh;">
+                        <canvas t-ref="chartCanvas"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5 mb-3">
+                <div class="p-3 shadow-sm mb-3">
+                    <h5>Últimos 5 Registros</h5>
+                    <ul class="list-group list-group-flush">
+                        <t t-if="state.lists.last_5_records.length === 0">
+                            <li class="list-group-item text-muted">No hay registros hoy.</li>
+                        </t>
+                        <t t-foreach="state.lists.last_5_records" t-as="rec" t-key="rec.time">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i t-if="rec.status == 'on_time'" class="fa fa-circle text-success me-2" title="A Tiempo"/>
+                                    <i t-if="rec.status == 'late'" class="fa fa-circle text-warning me-2" title="Retardo"/>
+                                    <t t-esc="rec.employee"/>
+                                </span>
+                                <span class="badge bg-secondary rounded-pill" t-esc="rec.time"/>
+                            </li>
+                        </t>
+                    </ul>
+                </div>
+
+                <div class="p-3 shadow-sm">
+                    <h5>Retardos de Hoy</h5>
+                    <ul class="list-group list-group-flush">
+                        <t t-if="state.lists.lates_today.length === 0">
+                            <li class="list-group-item text-muted">¡Sin retardos hoy!</li>
+                        </t>
+                        <t t-foreach="state.lists.lates_today" t-as="late_rec" t-key="late_rec.time">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="fa fa-circle text-warning me-2"/>
+                                    <t t-esc="late_rec.employee"/>
+                                </span>
+                                <span class="badge bg-warning text-dark rounded-pill" t-esc="late_rec.time"/>
+                            </li>
+                        </t>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</t>
+
+</templates>

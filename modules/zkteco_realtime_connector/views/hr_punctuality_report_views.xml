@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+    <record id="view_hr_attendance_search_lates" model="ir.ui.view">
+        <field name="name">hr.attendance.search.lates</field>
+        <field name="model">hr.attendance</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Retardos">
+                <field name="employee_id"/>
+                
+                <filter string="Fecha de Checada" name="check_in_date_filter" date="check_in"/>
+                
+                <separator/>
+                <group expand="1" string="Agrupar por">
+                    <filter string="Empleado" name="group_by_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Fecha (Día)" name="group_by_date" context="{'group_by': 'check_in:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+        <record id="action_punctuality_lates_report" model="ir.actions.act_window">
+            <field name="name">Reporte de Faltas y Retardos</field>
+            <field name="res_model">hr.attendance</field>
+            <field name="view_mode">list,form</field>
+            
+            <field name="view_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {'view_mode': 'list', 'view_id': ref('hr_attendance.view_attendance_tree')}),
+                (0, 0, {'view_mode': 'form', 'view_id': ref('hr_attendance.hr_attendance_view_form')})
+            ]"/>
+            
+            <field name="search_view_id" ref="view_hr_attendance_search_lates"/>
+            
+            <field name="domain">[('punctuality_status', 'in', ['late', 'absence'])]</field>
+            
+            <field name="context">{
+                'search_default_group_by_employee': 1
+            }</field>
+            
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    ¡Excelente! No se encontraron faltas ni retardos.
+                </p>
+                <p>
+                    Este reporte muestra todos los registros de asistencia
+                    marcados como "Retardo" o "Falta".
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

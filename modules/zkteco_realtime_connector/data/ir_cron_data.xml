@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <?python from datetime import datetime, timedelta ?>
+
+    <data noupdate="1">
+        <record id="cron_generate_employee_absences" model="ir.cron">
+            <field name="name">Asistencia: Generar Faltas (Ausencias) Diarias</field>
+            <field name="model_id" ref="hr_attendance.model_hr_attendance"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_generate_absences()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="nextcall" eval="(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d 03:00:00')" />
+        </record>
+    </data>
+</odoo>

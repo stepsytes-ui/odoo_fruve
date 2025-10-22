@@ -8,6 +8,13 @@
                     <field name="turno_name"/>
                     <field name="hora_entrada_str"/>
                     <field name="hora_salida_str"/>
+                    <field name="work_monday"/>
+                    <field name="work_tuesday"/>
+                    <field name="work_wednesday"/>
+                    <field name="work_thursday"/>
+                    <field name="work_friday"/>
+                    <field name="work_saturday"/>
+                    <field name="work_sunday"/>
                 </list>
             </field>
         </record>
@@ -24,6 +31,18 @@
                             <field name="hora_salida"/>
                         </group>
                     </sheet>
+                        <h1>Dias Laborales</h1>
+                    <sheet>
+                        <group>
+                            <field name="work_monday"/>
+                            <field name="work_tuesday"/>
+                            <field name="work_wednesday"/>
+                            <field name="work_thursday"/>
+                            <field name="work_friday"/>
+                            <field name="work_saturday"/>
+                            <field name="work_sunday"/>
+                        </group>
+                    </sheet>
                 </form>
             </field>
         </record>
@@ -38,8 +57,6 @@
                     (0, 0, {'view_mode': 'form', 'view_id': ref('shift_form_view')})]"/>
         </record> 
         
-        <menuitem id="menu_hr_attendance_view_shift_management" name="Gestión de Turnos" parent="hr_attendance.menu_hr_attendance_root" 
-        groups="hr_attendance.group_hr_attendance_officer" action="zkteco_realtime_connector.shift_action"/>
             
     </data>
 </odoo>

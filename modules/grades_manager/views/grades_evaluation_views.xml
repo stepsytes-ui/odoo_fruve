@@ -1,0 +1,12 @@
+<odoo>
+    <data>
+        <record id="grades_evaluation_action" model="ir.actions.act_window">
+            <field name="name">Evaluation</field>
+            <field name="res_model">grades.evaluation</field>
+            <field name="view_mode">list,form</field>
+        
+        </record>
+
+
+    </data>
+</odoo>

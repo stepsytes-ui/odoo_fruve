@@ -16,7 +16,7 @@ class HrAttendance(models.Model):
     ], string='Estatus de Puntualidad', default='n/a')
 
     check_in_time_only = fields.Char(
-            string='Hora de Entrada',
+            string='Hora de Checada',
             compute='_compute_check_in_time_only',
             store=False # No se almacena en la base de datos
         )

@@ -8,6 +8,17 @@ _logger = logging.getLogger(__name__)
 
 FIXED_DEVICE_TIMEZONE_NAME = 'America/Tijuana'
 
+NEW_LEAVE_STATUSES = [
+    ('leave_unpaid', 'Permiso sin goce de sueldo'),
+    ('leave_paid', 'Permiso con goce de sueldo'),
+    ('leave_sickness', 'Incapacidad'),
+    ('leave_vacation', 'Vacaciones'),
+    ('leave_maternity', 'Maternidad'),
+    ('leave_paternity', 'Paternidad'),
+    ('leave_suspension', 'Suspensión'),
+    ('leave_other', 'Ausencia Justificada (Otro)')
+]
+
 class HrAttendance(models.Model):
 
     _inherit = 'hr.attendance'
@@ -20,16 +31,15 @@ class HrAttendance(models.Model):
         ('LunchE','Regreso a Planta'),
         ('end','Fin de turno'),
         ('n/a','No aplica'),
-    ], string='Estatus de Puntualidad', default='n/a')
+    ] + NEW_LEAVE_STATUSES, string='Estatus de Puntualidad', default='n/a')
 
     check_in_time_only = fields.Char(
             string='Hora de Checada',
             compute='_compute_check_in_time_only',
-            store=False # No se almacena en la base de datos
+            store=False
         )
 
     def _compute_check_in_time_only(self):
-        # Obtener la zona horaria del usuario logueado para mostrar la hora correcta
         user_tz = self.env.user.tz or pytz.utc
         local_tz = pytz.timezone(user_tz)
         
@@ -109,6 +119,21 @@ class HrAttendance(models.Model):
 
         # 5. Iterar y verificar
         Attendance = self.env['hr.attendance']
+
+        # Accedemos al modelo hr.leave (Time Off)
+        Leave = self.env['hr.leave'].sudo()
+
+        leave_status_map = {
+            'Permiso sin goce de sueldo': 'leave_unpaid',
+            'Permiso con goce de sueldo': 'leave_paid',
+            'Incapacidad': 'leave_sickness',
+            'Vacaciones': 'leave_vacation',
+            'Maternidad': 'leave_maternity',
+            'Paternidad': 'leave_paternity',
+            'Suspension': 'leave_suspension',
+            # Nota: 'Permison' se corrigió a 'Permiso'
+        }
+
         for employee in employees_to_check:
             # Buscar una asistencia de ENTRADA (on_time o late) para ese empleado en ese día
             attendance_exists = Attendance.search([
@@ -120,18 +145,40 @@ class HrAttendance(models.Model):
 
             # 6. Si NO existe, crear el registro de FALTA
             if not attendance_exists:
-                _logger.info(f"Generando FALTA para {employee.name} (ID: {employee.biometric_id}) en {check_date}")
+
+                approved_leave = Leave.search([
+                    ('employee_id', '=', employee.id),
+                    ('state', '=', 'validate'),          # Solo permisos aprobados
+                    ('date_from', '<=', end_utc_str),   # Que el permiso haya iniciado antes de que termine el día
+                    ('date_to', '>=', start_utc_str)    # Y que el permiso termine después de que inicie el día
+                ], limit=1)
                 
                 # Creamos un registro de "Falta" al inicio del día.
                 # Dura 1 segundo para que no compute horas trabajadas.
                 check_out_time = start_of_day_utc + timedelta(seconds=1)
                 
-                Attendance.create({
-                    'employee_id': employee.id,
-                    'check_in': start_utc_str,
-                    'check_out': fields.Datetime.to_string(check_out_time),
-                    'punctuality_status': 'absence',
-                })
+                if approved_leave:
+                    leave_name = approved_leave.holiday_status_id.name
+                    new_status = leave_status_map.get(leave_name, 'leave_other')
+
+                    _logger.info(f"Generando AUSENCIA JUSTIFICADA ({new_status}) para {employee.name} (Permiso: {leave_name}) en {check_date}")
+                    
+                    Attendance.create({
+                        'employee_id': employee.id,
+                        'check_in': start_utc_str,
+                        'check_out': fields.Datetime.to_string(check_out_time),
+                        'punctuality_status': new_status,
+                    })
+                else:
+                    # 6c. No se encontró permiso. Generar FALTA (lógica original).
+                    _logger.info(f"Generando FALTA para {employee.name} (ID: {employee.biometric_id}) en {check_date}")
+                    
+                    Attendance.create({
+                        'employee_id': employee.id,
+                        'check_in': start_utc_str,
+                        'check_out': fields.Datetime.to_string(check_out_time),
+                        'punctuality_status': 'absence',
+                    })
 
         _logger.info("CRON para generar faltas completado.")
         return True

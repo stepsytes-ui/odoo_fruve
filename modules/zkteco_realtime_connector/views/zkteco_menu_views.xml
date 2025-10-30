@@ -13,5 +13,12 @@
             parent="hr_attendance.menu_hr_attendance_root"
             action="action_punctuality_lates_report"
             sequence="20"/>
+
+        <menuitem 
+            id="menu_zkteco_device_config"
+            name="Dispositivos Checadores"
+            parent="hr_attendance.menu_hr_attendance_root" 
+            action="action_zkteco_device"
+            sequence="100"/>
     </data>
 </odoo>

@@ -88,6 +88,7 @@ class ZkTecoAttendanceLog(models.Model):
         
         Attendance = self.env['hr.attendance'].sudo()
         Employee = self.env['hr.employee'].sudo()
+        Device = self.env['zkteco.device'].sudo()
 
         if not records_to_process:
             return
@@ -102,11 +103,32 @@ class ZkTecoAttendanceLog(models.Model):
             
         # 1. PROCESAMIENTO DE CHECADAS
         for log in records_to_process:
-            search_id = str(log.user_id)
-            employee = Employee.search([('biometric_id', '=', search_id)], limit=1)
 
+            attendance_record = False
+            device_serial = log.device_id
+            if not device_serial:
+                _logger.warning("El log Id: %s no tiene número de serie (Device ID). Log Marcado como error.", log.id)
+                log.state = 'error'
+                continue
+
+            device = Device.search([('serial_number', '=', device_serial)], limit=1)
+
+            if not device:
+                _logger.warning("Dispositivo con S/N: %s No encontrado en Odoo. El Log ID: %s se marca como error.", device_serial, log.id)
+                log.state = 'error'
+                continue
+
+            company_id = device.company_id.id
+
+            search_id = str(log.user_id)
+            employee = Employee.search([
+                ('biometric_id', '=', search_id),
+                ('company_id', '=', company_id)    
+            ], limit=1)
+            
             if not employee:
-                _logger.warning("Employee NOT FOUND in Odoo for Biometric ID: %s. Log marked as error.", search_id)
+                _logger.warning("Empleado NO ENCONTRADO con ID Biométrico: %s Y Compañía: %s (Device: %s). Log ID: %s marcado como error.", 
+                                search_id, device.company_id.name, device_serial, log.id)
                 log.state = 'error'
                 continue
 

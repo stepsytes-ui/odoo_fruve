@@ -34,7 +34,6 @@ class ZkTecoAttendanceLog(models.Model):
         if not shift or not shift.hora_entrada or not shift.hora_salida:
             return None, None
         
-        # 1. Preparación de Zonas Horarias
         try:
             FIXED_TIMEZONE = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
         except pytz.UnknownTimeZoneError:
@@ -44,20 +43,17 @@ class ZkTecoAttendanceLog(models.Model):
         entrada_naive = fields.Datetime.from_string(shift.hora_entrada)
         salida_naive = fields.Datetime.from_string(shift.hora_salida)
         
-        # 2.2 Localizar a UTC y luego a FIXED_TIMEZONE
         shift_in_local_dt = pytz.utc.localize(entrada_naive).astimezone(FIXED_TIMEZONE)
         shift_out_local_dt = pytz.utc.localize(salida_naive).astimezone(FIXED_TIMEZONE)
 
         shift_in_time = shift_in_local_dt.time()
         shift_out_time = shift_out_local_dt.time()
 
-        # Combinar el time del turno con la date local de la checada
         shift_date = check_datetime_local.date()
         
         shift_in_datetime_local = FIXED_TIMEZONE.localize(datetime.combine(shift_date, shift_in_time))
         shift_out_datetime_local = FIXED_TIMEZONE.localize(datetime.combine(shift_date, shift_out_time))
 
-        # Manejar turnos nocturnos: si la hora de salida es anterior a la de entrada,
         if shift_out_time <= shift_in_time:
              shift_out_datetime_local += timedelta(days=1)
         
@@ -101,7 +97,6 @@ class ZkTecoAttendanceLog(models.Model):
             records_to_process.write({'state': 'error'})
             return
             
-        # 1. PROCESAMIENTO DE CHECADAS
         for log in records_to_process:
 
             attendance_record = False
@@ -132,13 +127,10 @@ class ZkTecoAttendanceLog(models.Model):
                 log.state = 'error'
                 continue
 
-            # Obtener y Localizar la hora de la checada
             try:
                 naive_datetime = fields.Datetime.from_string(log.timestamp) 
                 check_datetime_local = FIXED_TIMEZONE.localize(naive_datetime, is_dst=None)
-                # Mantener el objeto datetime localizado a UTC para comparaciones
                 check_datetime_utc_dt = check_datetime_local.astimezone(UTC_TIMEZONE) 
-                # Usar fields.Datetime.to_string() (o strftime) solo para el ORM de Odoo
                 check_datetime_utc = fields.Datetime.to_string(check_datetime_utc_dt)
                 
             except Exception as e:
@@ -148,7 +140,6 @@ class ZkTecoAttendanceLog(models.Model):
 
             last_attendance = employee.last_attendance_id.sudo()
             
-            # Obtener horas del turno
             shift_in_utc_dt, shift_out_utc_dt = self._get_shift_times(employee, check_datetime_local)
 
             if not last_attendance or last_attendance.check_out:
@@ -186,7 +177,6 @@ class ZkTecoAttendanceLog(models.Model):
                     _logger.info("CHECK-OUT y Nuevo CHECK-IN Intermedio processed for %s at %s. Status: %s", employee.name, log.timestamp, new_status)
 
                 else:
-                    # last_attendance.write({'punctuality_status': 'end'})
                     check_in_end = check_datetime_utc_dt 
                     check_out_end = check_datetime_utc_dt + timedelta(seconds=SECOND_DIFFERENCE)
                     

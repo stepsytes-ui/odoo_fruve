@@ -21,6 +21,8 @@ NEW_LEAVE_STATUSES = [
 
 LEAVE_STATUS_KEYS = [key for key, label in NEW_LEAVE_STATUSES]
 
+AUTO_CLOSE_DELAY_HOURS = 5
+
 class HrAttendance(models.Model):
 
     _inherit = 'hr.attendance'
@@ -47,11 +49,9 @@ class HrAttendance(models.Model):
         
         for record in self:
             if record.check_in:
-                # 1. Localizar el datetime UTC (check_in) a la zona horaria del usuario
                 utc_datetime = pytz.utc.localize(record.check_in)
                 local_datetime = utc_datetime.astimezone(local_tz)
-                
-                # 2. Formatear para mostrar solo la hora (HH:MM)
+
                 record.check_in_time_only = local_datetime.strftime("%H:%M:%S")
             else:
                     record.check_in_time_only = False
@@ -66,12 +66,9 @@ class HrAttendance(models.Model):
             _logger.error(f"Error de Cron: Zona horaria '{FIXED_DEVICE_TIMEZONE_NAME}' es inválida.")
             return
 
-        # 1. Definir el día que vamos a revisar (AYER)
-        # Usamos la fecha "actual" en la zona horaria de la compañía
         today_local = datetime.now(COMPANY_TZ).date()
         check_date = today_local - timedelta(days=1)
         
-        # 2. Mapeo de día de la semana (0=Lunes, 6=Domingo) a los campos del turno
         day_mapping = {
             0: 'work_monday',
             1: 'work_tuesday',
@@ -88,25 +85,20 @@ class HrAttendance(models.Model):
             _logger.warning(f"Error de Cron: No se pudo determinar el día de la semana para {check_date}.")
             return
 
-        # 3. Buscar todos los empleados activos que DEBÍAN trabajar ayer
         Employee = self.env['hr.employee']
         employees_to_check = Employee.search([
             ('employee_status', '=', 'active'),
             ('turno_id', '!=', False),
-            (f'turno_id.{field_to_check}', '=', True) # Filtra por el día de la semana
+            (f'turno_id.{field_to_check}', '=', True)
         ])
 
         if not employees_to_check:
             _logger.info(f"Cron Faltas: No se encontraron empleados programados para trabajar en {check_date}.")
             return
 
-        # 4. Definir el rango de tiempo (todo el día de AYER) en UTC
-        # Inicio del día (00:00:00) en la zona local
         start_of_day_local = COMPANY_TZ.localize(datetime.combine(check_date, time.min))
-        # Fin del día (23:59:59) en la zona local
         end_of_day_local = COMPANY_TZ.localize(datetime.combine(check_date, time.max))
 
-        # Convertir a UTC para la base de datos
         start_of_day_utc = start_of_day_local.astimezone(pytz.utc)
         end_of_day_utc = end_of_day_local.astimezone(pytz.utc)
         
@@ -114,11 +106,7 @@ class HrAttendance(models.Model):
         end_utc_str = fields.Datetime.to_string(end_of_day_utc)
 
         _logger.info(f"Revisando faltas para {len(employees_to_check)} empleados en el rango UTC: {start_utc_str} a {end_utc_str}")
-
-        # 5. Iterar y verificar
         Attendance = self.env['hr.attendance']
-
-        # Accedemos al modelo hr.leave (Time Off)
         Leave = self.env['hr.leave'].sudo()
 
         leave_status_map = {
@@ -129,11 +117,9 @@ class HrAttendance(models.Model):
             'Maternidad': 'leave_maternity',
             'Paternidad': 'leave_paternity',
             'Suspension': 'leave_suspension',
-            # Nota: 'Permison' se corrigió a 'Permiso'
         }
 
         for employee in employees_to_check:
-            # Buscar una asistencia de ENTRADA (on_time o late) para ese empleado en ese día
             attendance_exists = Attendance.search([
                 ('employee_id', '=', employee.id),
                 ('check_in', '>=', start_utc_str),
@@ -141,18 +127,15 @@ class HrAttendance(models.Model):
                 ('punctuality_status', 'in', ['on_time', 'late'])
             ], limit=1)
 
-            # 6. Si NO existe, crear el registro de FALTA
             if not attendance_exists:
 
                 approved_leave = Leave.search([
                     ('employee_id', '=', employee.id),
-                    ('state', '=', 'validate'),          # Solo permisos aprobados
-                    ('date_from', '<=', end_utc_str),   # Que el permiso haya iniciado antes de que termine el día
-                    ('date_to', '>=', start_utc_str)    # Y que el permiso termine después de que inicie el día
+                    ('state', '=', 'validate'),
+                    ('date_from', '<=', end_utc_str), 
+                    ('date_to', '>=', start_utc_str)   
                 ], limit=1)
                 
-                # Creamos un registro de "Falta" al inicio del día.
-                # Dura 1 segundo para que no compute horas trabajadas.
                 check_out_time = start_of_day_utc + timedelta(seconds=1)
                 
                 if approved_leave:
@@ -168,7 +151,6 @@ class HrAttendance(models.Model):
                         'punctuality_status': new_status,
                     })
                 else:
-                    # 6c. No se encontró permiso. Generar FALTA (lógica original).
                     _logger.info(f"Generando FALTA para {employee.name} (ID: {employee.biometric_id}) en {check_date}")
                     
                     Attendance.create({
@@ -224,3 +206,93 @@ class HrAttendance(models.Model):
             'excused_count': excused_count,
             'unexcused_count': unexcused_count,
         }
+    
+    @api.model
+    def _get_shift_out_for_check_in(self, employee, check_in_dt_utc):
+        """
+        Calcula la hora de salida del turno para una hora de entrada específica.
+        Reutiliza la lógica de turno (día y hora) basada en la fecha de check-in.
+        """
+        if not employee.turno_id:
+            return None
+            
+        try:
+            COMPANY_TZ = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+        except pytz.UnknownTimeZoneError:
+            _logger.error(f"Error: Zona horaria '{FIXED_DEVICE_TIMEZONE_NAME}' es inválida.")
+            return None
+
+        # 1. Convertir check_in_dt_utc a la zona horaria local de la compañía/dispositivo
+        check_in_local_dt = check_in_dt_utc.astimezone(COMPANY_TZ)
+        check_date = check_in_local_dt.date()
+        
+        # 2. Obtener los tiempos de turno (esto es simplificado, solo usa la hora)
+        shift = employee.turno_id
+        if not shift or not shift.hora_entrada or not shift.hora_salida:
+            return None
+
+        # 3. Reutilizar lógica de turno de ZkTecoAttendanceLog (ajustada)
+        entrada_naive = fields.Datetime.from_string(shift.hora_entrada)
+        salida_naive = fields.Datetime.from_string(shift.hora_salida)
+        
+        shift_out_local_dt = pytz.utc.localize(salida_naive).astimezone(COMPANY_TZ)
+        shift_out_time = shift_out_local_dt.time()
+        
+        # Combinar la fecha del check-in con la hora de salida del turno
+        shift_out_datetime_local = COMPANY_TZ.localize(datetime.combine(check_date, shift_out_time))
+        
+        # Manejo de turnos nocturnos
+        entrada_local_dt = pytz.utc.localize(entrada_naive).astimezone(COMPANY_TZ)
+        shift_in_time = entrada_local_dt.time()
+        if shift_out_time <= shift_in_time:
+            shift_out_datetime_local += timedelta(days=1)
+            
+        # 4. Convertir la hora de salida calculada a UTC
+        shift_out_utc = shift_out_datetime_local.astimezone(pytz.utc)
+        return shift_out_utc
+
+
+    @api.model
+    def _cron_auto_close_open_attendances(self):
+        _logger.info("Iniciando CRON para cerrar asistencias abiertas (olvido de salida)...")
+
+        now_utc = pytz.utc.localize(datetime.now())
+        
+        # 1. Buscar asistencias abiertas (check_out = False)
+        open_attendances = self.search([
+            ('check_out', '=', False),
+            ('employee_id.employee_status', '=', 'active'),
+            ('employee_id.turno_id', '!=', False)
+        ])
+
+        if not open_attendances:
+            _logger.info("CRON Cierre: No se encontraron asistencias abiertas elegibles.")
+            return
+
+        attendances_to_close = self.env['hr.attendance']
+        
+        for attendance in open_attendances:
+            employee = attendance.employee_id
+            check_in_dt_utc = pytz.utc.localize(attendance.check_in)
+            
+            # 2. Obtener la hora de salida (check_out) programada para el día del check-in
+            shift_out_dt_utc = self._get_shift_out_for_check_in(employee, check_in_dt_utc)
+
+            if shift_out_dt_utc:
+                # 3. Calcular la hora límite: Fin de turno + 5 horas de gracia
+                close_limit_dt = shift_out_dt_utc + timedelta(hours=AUTO_CLOSE_DELAY_HOURS)
+                
+                # 4. Comprobar si ya se pasó el límite
+                if now_utc >= close_limit_dt:
+                    attendances_to_close += attendance
+
+        if attendances_to_close:
+            _logger.info(f"CRON Cierre: Cerrando {len(attendances_to_close)} asistencias abiertas.")
+            for attendance in attendances_to_close:
+                check_out_time = attendance.check_in + timedelta(minutes=1) 
+                attendance.write({
+                    'check_out': fields.Datetime.to_string(check_out_time), 
+                })
+                _logger.info(f"Cerrada asistencia de {attendance.employee_id.name}. Check-in: {fields.Datetime.to_string(attendance.check_in)}. Check-out: {fields.Datetime.to_string(check_out_time)}")
+        else:
+            _logger.info("CRON Cierre: No hay asistencias que necesiten ser cerradas automáticamente.")

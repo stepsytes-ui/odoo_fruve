@@ -58,10 +58,6 @@ class HrAttendance(models.Model):
 
     @api.model
     def _cron_generate_absences(self):
-        """
-        Este Cron se ejecuta diariamente (ej. 3:00 AM) para revisar las asistencias
-        del DÍA ANTERIOR y generar "Faltas" si un empleado no checó.
-        """
         _logger.info("Iniciando CRON para generar faltas...")
         
         try:
@@ -184,10 +180,6 @@ class HrAttendance(models.Model):
 
     @api.model
     def get_attendance_dashboard_stats(self, start_date=None, end_date=None):
-        """
-        Calcula las estadísticas del dashboard entre dos fechas dadas.
-        Si no se envían fechas, usa la fecha actual.
-        """
         user_tz_name = self.env.user.tz or 'UTC'
         try:
             user_tz = pytz.timezone(user_tz_name)

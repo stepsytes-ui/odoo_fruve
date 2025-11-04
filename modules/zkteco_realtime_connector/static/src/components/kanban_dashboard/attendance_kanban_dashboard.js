@@ -6,24 +6,28 @@ import { registry } from "@web/core/registry";
 import { session } from "@web/session";
 
 export class AttendanceKanbanDashboard extends Component {
-    // Apunta a la plantilla XML que crearemos en el siguiente paso
     static template = "zkteco_realtime_connector.AttendanceKanbanDashboard";
 
     setup() {
         this.orm = useService("orm");
 
-        const today = new Date().toISOString().split("T")[0]; // formato YYYY-MM-DD
+        const today = new Date();
+        const localToday = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
+            .toISOString()
+            .split("T")[0];
+
 
         this.state = useState({
             loading: true,
-            start_date: today,  // fecha inicial por defecto = hoy
-            end_date: today,    // fecha final por defecto = hoy
+            start_date: localToday,
+            end_date: localToday,
             stats: {
                 present_count: 0,
                 excused_count: 0,
                 unexcused_count: 0,
             },
         });
+
 
         onWillStart(async () => {
             await this.loadStats();

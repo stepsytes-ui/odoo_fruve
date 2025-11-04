@@ -19,6 +19,8 @@ NEW_LEAVE_STATUSES = [
     ('leave_other', 'Ausencia Justificada (Otro)')
 ]
 
+LEAVE_STATUS_KEYS = [key for key, label in NEW_LEAVE_STATUSES]
+
 class HrAttendance(models.Model):
 
     _inherit = 'hr.attendance'
@@ -180,5 +182,53 @@ class HrAttendance(models.Model):
                         'punctuality_status': 'absence',
                     })
 
-        _logger.info("CRON para generar faltas completado.")
-        return True
+    @api.model
+    def get_attendance_dashboard_stats(self, start_date=None, end_date=None):
+        """
+        Calcula las estadísticas del dashboard entre dos fechas dadas.
+        Si no se envían fechas, usa la fecha actual.
+        """
+        user_tz_name = self.env.user.tz or 'UTC'
+        try:
+            user_tz = pytz.timezone(user_tz_name)
+        except pytz.UnknownTimeZoneError:
+            user_tz = pytz.utc
+
+        # Convertir fechas desde el frontend (formato YYYY-MM-DD)
+        if start_date and end_date:
+            start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+            end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+        else:
+            today_local = datetime.now(user_tz).date()
+            start_date_obj = today_local
+            end_date_obj = today_local
+
+        # Definir rangos de tiempo (inicio del primer día y fin del último día)
+        start_of_day_local = user_tz.localize(datetime.combine(start_date_obj, time.min))
+        end_of_day_local = user_tz.localize(datetime.combine(end_date_obj, time.max))
+
+        start_utc = start_of_day_local.astimezone(pytz.utc)
+        end_utc = end_of_day_local.astimezone(pytz.utc)
+
+        start_utc_str = fields.Datetime.to_string(start_utc)
+        end_utc_str = fields.Datetime.to_string(end_utc)
+
+        # Dominios base y específicos
+        base_domain = [('check_in', '>=', start_utc_str), ('check_in', '<=', end_utc_str)]
+        present_domain = base_domain + [('punctuality_status', 'in', ['on_time', 'late'])]
+        excused_domain = base_domain + [('punctuality_status', 'in', LEAVE_STATUS_KEYS)]
+        unexcused_domain = base_domain + [('punctuality_status', '=', 'absence')]
+
+        present_employees = self.search_read(present_domain, ['employee_id'])
+        excused_employees = self.search_read(excused_domain, ['employee_id'])
+        unexcused_employees = self.search_read(unexcused_domain, ['employee_id'])
+
+        present_count = len(set(rec['employee_id'][0] for rec in present_employees if rec['employee_id']))
+        excused_count = len(set(rec['employee_id'][0] for rec in excused_employees if rec['employee_id']))
+        unexcused_count = len(set(rec['employee_id'][0] for rec in unexcused_employees if rec['employee_id']))
+
+        return {
+            'present_count': present_count,
+            'excused_count': excused_count,
+            'unexcused_count': unexcused_count,
+        }

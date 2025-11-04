@@ -1,0 +1,30 @@
+/* Solo afecta a la vista de dashboard de asistencias */
+.o_attendance_dashboard_wrapper {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Dashboard superior */
+.o_attendance_dashboard_wrapper .o_dashboard_header {
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+/* Contenedor principal que crece */
+.o_attendance_dashboard_wrapper .o_dashboard_content {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Zona con scroll dentro del dashboard */
+.o_attendance_dashboard_wrapper .o_dashboard_scroll_area {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    max-height: 100%;
+}
+

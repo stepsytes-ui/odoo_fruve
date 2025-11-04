@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="zkteco_realtime_connector.AttendanceDashboardWrapper" owl="1">
+        <div class="o_attendance_dashboard_wrapper d-flex flex-column h-100" role="region">
+
+            <!-- Parte superior fija (dashboard) -->
+            <div class="o_dashboard_header flex-shrink-0">
+                <AttendanceKanbanDashboard/>
+            </div>
+
+            <!-- Parte con scroll -->
+            <div class="o_dashboard_content flex-grow-1 position-relative">
+                <div class="o_dashboard_scroll_area h-100 overflow-auto">
+                    <DynamicView t-props="dynamicViewProps"/>
+                </div>
+            </div>
+
+        </div>
+    </t>
+</templates>

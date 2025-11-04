@@ -26,23 +26,27 @@ Modulo para integración de ZKTeco en odoo
         'views/hr_attendance.xml',
         'views/res_company_views.xml',
         'views/zkteco_device_views.xml',
-        # 'views/attendance_dashboard_views.xml',
         'views/zkteco_menu_views.xml',
     ],
 
-    # 'assets': {
-    #     'web.assets_backend': [
-    #         # SCSS
-    #         'zkteco_realtime_connector/static/src/scss/dashboard.scss',
-            
-    #         # JS (¡El más importante para tu error!)
-    #         'zkteco_realtime_connector/static/src/js/dashboard_service.js',
-    #         'zkteco_realtime_connector/static/src/js/attendance_dashboard.js', # <-- ESTE ARCHIVO ES EL QUE FALLA
+    'assets': {
+            'web.assets_backend': [
+                'zkteco_realtime_connector/static/src/css/attendance_dashboard.css',
+                'zkteco_realtime_connector/static/src/components/kanban_dashboard/attendance_kanban_dashboard.js',
+                'zkteco_realtime_connector/static/src/components/kanban_dashboard/attendance_kanban_dashboard.xml',
+        
 
-    #         # XML (Plantilla QWeb)
-    #         'zkteco_realtime_connector/static/src/xml/attendance_dashboard.xml',
-    #     ],
-    # },
+                'zkteco_realtime_connector/static/src/views/attendance_dashboard_wrapper.xml',
+                'zkteco_realtime_connector/static/src/views/attendance_dashboard_wrapper.js',
+        
+                # 3. El archivo de registro, que DEBE cargarse DESPUÉS del JS de asistencia de Odoo
+                (
+                    'after',
+                    'hr_attendance/static/src/views/attendance_list_view.js',
+                    'zkteco_realtime_connector/static/src/views/attendance_view_registry.js'
+                ),
+            ],
+        },
 
     # only loaded in demonstration mode
     'demo': [],

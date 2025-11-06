@@ -13,10 +13,15 @@
                 <field name="check_in_time_only" position="after">
                     <field name="punctuality_status"/>
                 </field>
+
+                <field name="check_out" position="replace">
+                    <field name="check_out_time_only"/>
+                </field>
                 
-                <field name="check_out" position="attributes">
+                <field name="check_out_time_only" position="attributes">
                     <attribute name="invisible">1</attribute>
                 </field>
+                
                 <field name="worked_hours" position="attributes">
                     <attribute name="invisible">1</attribute>
                 </field>
@@ -31,6 +36,17 @@
                 <field name="check_in" position="after">
                     <field name="punctuality_status" widget="selection"/>
                 </field>
+            </field>
+        </record>
+
+        <record id="attendance_view_filter_employee_number" model="ir.ui.view">
+            <field name="name">hr.attendance.filter.employee.number</field>
+            <field name="model">hr.attendance</field>
+            <field name="inherit_id" ref="hr_attendance.hr_attendance_view_filter"/> 
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='employee_id']" position="before">
+                    <field name="biometric_id"/>
+                </xpath>
             </field>
         </record>
 

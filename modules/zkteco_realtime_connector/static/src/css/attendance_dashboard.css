@@ -28,3 +28,11 @@
     max-height: 100%;
 }
 
+/* ... código CSS existente ... */
+
+/* Regla para ocultar el mensaje de "Sin Registros" cuando el dashboard está activo */
+.o_attendance_dashboard_wrapper .o_view_nocontent {
+    /* Oculta completamente el elemento de "No Content" */
+    display: none !important; 
+}
+

@@ -20,9 +20,36 @@
                 <field name="turno_id" position="after">
                     <field name="employee_status"/>
                 </field>
-            </field>
-
-            
+            </field> 
         </record>
+
+        <record id="view_employee_searchview_employee_number" model="ir.ui.view">
+            <field name="name">hr.employee.search.employee.number</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_filter"/> 
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='name']" position="before">
+                    <field name="biometric_id"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_employee_kanban_edit" model="ir.ui.view">
+            <field name="name">hr.employee.kanban.edit</field>
+            <field name="model">hr.employee</field> <field name="inherit_id" ref="hr.hr_kanban_view_employees"/>
+            <field name="arch" type="xml">
+                <xpath expr="//kanban" position="inside">
+                    <field name="biometric_id"/>
+                </xpath>
+
+                <xpath expr="//main/div[2]" position="after"> 
+                    <div t-if="record.biometric_id.raw_value">
+                        <i class="fa fa-fw me-2 fa-id-badge text-muted" title="Número Biométrico"/>
+                        <field name="biometric_id" />
+                    </div>
+                </xpath>
+                </field>
+        </record>
+
     </data>
 </odoo>

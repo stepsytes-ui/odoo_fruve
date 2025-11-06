@@ -21,7 +21,7 @@ NEW_LEAVE_STATUSES = [
 
 LEAVE_STATUS_KEYS = [key for key, label in NEW_LEAVE_STATUSES]
 
-AUTO_CLOSE_DELAY_HOURS = 5
+AUTO_CLOSE_DELAY_HOURS = 5 
 
 class HrAttendance(models.Model):
 
@@ -42,6 +42,19 @@ class HrAttendance(models.Model):
             compute='_compute_check_in_time_only',
             store=False
         )
+    
+    check_out_time_only = fields.Char(
+            string=' ',
+            compute='_compute_check_out_time_only',
+            store=False
+        )
+    
+    biometric_id = fields.Char(
+        string='Número de Empleado',
+        related='employee_id.biometric_id',
+        store=True, # Importante para poder buscar y filtrar eficientemente
+        readonly=True
+    )
 
     def _compute_check_in_time_only(self):
         user_tz = self.env.user.tz or pytz.utc
@@ -52,9 +65,22 @@ class HrAttendance(models.Model):
                 utc_datetime = pytz.utc.localize(record.check_in)
                 local_datetime = utc_datetime.astimezone(local_tz)
 
-                record.check_in_time_only = local_datetime.strftime("%H:%M:%S")
+                record.check_in_time_only = local_datetime.strftime("%d/%m/%Y, %H:%M:%S")
             else:
                     record.check_in_time_only = False
+
+    def _compute_check_out_time_only(self):
+        user_tz = self.env.user.tz or pytz.utc
+        local_tz = pytz.timezone(user_tz)
+        
+        for record in self:
+            if record.check_in:
+                utc_datetime = pytz.utc.localize(record.check_in)
+                local_datetime = utc_datetime.astimezone(local_tz)
+
+                record.check_out_time_only = local_datetime.strftime("%d/%m/%Y, %H:%M:%S")
+            else:
+                    record.check_out_time_only = False
 
     @api.model
     def _cron_generate_absences(self):

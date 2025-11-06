@@ -13,6 +13,8 @@ export class AttendanceDashboardWrapper extends Component {
     };
 
     get dynamicViewProps() {
-        return { ...this.props };
+        return { ...this.props,
+            
+         };
     }
 }

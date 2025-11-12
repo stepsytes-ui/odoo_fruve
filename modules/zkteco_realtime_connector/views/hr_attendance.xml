@@ -47,9 +47,16 @@
                 <xpath expr="//field[@name='employee_id']" position="before">
                     <field name="biometric_id"/>
                 </xpath>
+                
+                <xpath expr="//field[@name='employee_id']" position="before">
+                    <field name="turno_id"/>
+                </xpath>
+                
+                <xpath expr="//field[@name='biometric_id']" position="after">
+                    <filter string="Turno" name="filter_by_turno" domain="[]" context="{'group_by':'turno_id'}"/>
+                </xpath>
             </field>
         </record>
-
 
 
     </data>

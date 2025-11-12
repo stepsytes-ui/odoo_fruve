@@ -20,6 +20,12 @@
                 <field name="turno_id" position="after">
                     <field name="employee_status"/>
                 </field>
+
+                <field name="parent_id" position="attributes">
+                    <attribute name="string">Jefe Inmediato</attribute>
+                </field>
+
+
             </field> 
         </record>
 
@@ -31,8 +37,18 @@
                 <xpath expr="//field[@name='name']" position="before">
                     <field name="biometric_id"/>
                 </xpath>
+
+                <xpath expr="//field[@name='biometric_id']" position="after">
+                    <field name="turno_id"/>
+                </xpath>
+
+                <xpath expr="//field[@name='biometric_id']" position="after">
+                    <filter string="Turno" name="filter_by_turno" domain="[]" context="{'group_by':'turno_id'}"/>
+                </xpath>
             </field>
         </record>
+
+        
 
         <record id="view_employee_kanban_edit" model="ir.ui.view">
             <field name="name">hr.employee.kanban.edit</field>

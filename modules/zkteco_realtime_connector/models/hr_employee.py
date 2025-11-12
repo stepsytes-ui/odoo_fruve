@@ -10,7 +10,7 @@ class hr_employee(models.Model):
     employee_status = fields.Selection([
         ('active', 'Activo'),
         ('inactive', 'Inactivo')
-    ], string='Estado del Empleado', default='active', required=True)
+    ], string='Estado del Empleado', default='active', required=True, readonly=True)
 
     turno_id = fields.Many2one(
         comodel_name='shift.management',

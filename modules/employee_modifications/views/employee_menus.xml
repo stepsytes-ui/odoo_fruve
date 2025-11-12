@@ -1,0 +1,12 @@
+<odoo>
+    <data>
+        <menuitem 
+            id="menu_hr_employee_view_expedient" 
+            name="Expedientes" 
+            parent="hr.menu_hr_root" 
+            sequence="20"
+            groups="hr.group_hr_manager" 
+            action="employee_modifications.employee_expedient_action"/> 
+    
+    </data>
+</odoo>

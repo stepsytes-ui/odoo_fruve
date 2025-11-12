@@ -9,6 +9,7 @@ _logger = logging.getLogger(__name__)
 FIXED_DEVICE_TIMEZONE_NAME = 'America/Tijuana'
 
 NEW_LEAVE_STATUSES = [
+    # Permiso por cumpleaños- Permiso de matrimonio -  
     ('leave_unpaid', 'Permiso sin goce de sueldo'),
     ('leave_paid', 'Permiso con goce de sueldo'),
     ('leave_sickness', 'Incapacidad'),
@@ -34,6 +35,7 @@ class HrAttendance(models.Model):
         ('LunchS','Salida de Planta'),
         ('LunchE','Regreso a Planta'),
         ('end','Fin de turno'),
+        ('forgot_checkout', 'Olvido Checar Salida'),
         ('n/a','No aplica'),
     ] + NEW_LEAVE_STATUSES, string='Estatus de Puntualidad', default='n/a')
 
@@ -53,6 +55,14 @@ class HrAttendance(models.Model):
         string='Número de Empleado',
         related='employee_id.biometric_id',
         store=True, # Importante para poder buscar y filtrar eficientemente
+        readonly=True
+    )
+
+    turno_id = fields.Many2one(
+        comodel_name='shift.management',
+        string='Turno Asignado',
+        related='employee_id.turno_id',
+        store=True, 
         readonly=True
     )
 
@@ -219,19 +229,19 @@ class HrAttendance(models.Model):
         excused_domain = base_domain + [('punctuality_status', 'in', LEAVE_STATUS_KEYS)]
         unexcused_domain = base_domain + [('punctuality_status', '=', 'absence')]
 
-        present_employees = self.search_read(present_domain, ['employee_id'])
         excused_employees = self.search_read(excused_domain, ['employee_id'])
-        unexcused_employees = self.search_read(unexcused_domain, ['employee_id'])
 
-        present_count = len(set(rec['employee_id'][0] for rec in present_employees if rec['employee_id']))
+        # Contar directamente los registros, sin usar set()
+        present_count = self.search_count(present_domain)
         excused_count = len(set(rec['employee_id'][0] for rec in excused_employees if rec['employee_id']))
-        unexcused_count = len(set(rec['employee_id'][0] for rec in unexcused_employees if rec['employee_id']))
+        unexcused_count = self.search_count(unexcused_domain)
 
         return {
             'present_count': present_count,
             'excused_count': excused_count,
             'unexcused_count': unexcused_count,
         }
+
     
     @api.model
     def _get_shift_out_for_check_in(self, employee, check_in_dt_utc):
@@ -317,7 +327,8 @@ class HrAttendance(models.Model):
             for attendance in attendances_to_close:
                 check_out_time = attendance.check_in + timedelta(minutes=1) 
                 attendance.write({
-                    'check_out': fields.Datetime.to_string(check_out_time), 
+                    'check_out': fields.Datetime.to_string(check_out_time),
+                    'punctuality_status': 'forgot_checkout', 
                 })
                 _logger.info(f"Cerrada asistencia de {attendance.employee_id.name}. Check-in: {fields.Datetime.to_string(attendance.check_in)}. Check-out: {fields.Datetime.to_string(check_out_time)}")
         else:

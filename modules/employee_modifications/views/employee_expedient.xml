@@ -1,0 +1,115 @@
+<odoo>
+    <data>
+        <record id="view_employee_expedient_tree" model="ir.ui.view">
+            <field name="name">employee.expedient.list</field>
+            <field name="model">employee.expedient</field>
+            <field name="arch" type="xml">
+                <list string="Expedientes de Empleados" default_order="fecha_movimiento desc">
+                    <field name="numero_empleado"/> 
+                    <field name="employee_id"/>
+                    <field name="employee_status"/>
+                    <field name="tipo_registro"/>
+                    <field name="fecha_movimiento"/>
+                    <field name="antiguedad"/> 
+                    <field name="dias_vacaciones_ley"/>
+                    <field name="recontratable" widget="toggle_button" options="{'positive': 'si', 'negative': 'no', 'default': 'n/a'}"/>
+                    <field name='genero'/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_employee_expedient_form" model="ir.ui.view">
+            <field name="name">employee.expedient.form</field>
+            <field name="model">employee.expedient</field>
+            <field name="arch" type="xml">
+                <form string="Registro de Movimiento">
+                    <sheet>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="numero_empleado"/>
+                            <field name="employee_status"/>
+                            <field name="tipo_registro"/>
+                            <field name="fecha_movimiento"/>
+                            <field name="recontratable" widget="radio"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+        
+        <record id="employee_expedient_action" model="ir.actions.act_window">
+            <field name="name">Expedientes de Movimiento</field>
+            <field name="res_model">employee.expedient</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Crea un nuevo registro de alta, baja o reingreso.
+                </p>
+            </field>
+        </record>
+        
+        <record id="view_hr_employee_form_inherit_expedient" model="ir.ui.view">
+                    <field name="name">hr.employee.form.inherit.expedient</field>
+                    <field name="model">hr.employee</field>
+                    <field name="inherit_id" ref="hr.view_employee_form"/>
+                    <field name="arch" type="xml">
+                        
+                        <xpath expr="//notebook" position="inside">
+                            <page string="Historial de Movimientos">
+                                <field name="expedient_ids">
+                                    <list editable="bottom">
+                                        <field name="tipo_registro"/>
+                                        <field name="fecha_movimiento"/>
+                                        <field name="recontratable" widget="toggle_button" options="{'positive': 'si', 'negative': 'no', 'default': 'n/a'}"/>
+                                    </list>
+                                    <form>
+                                        <group>
+                                            <field name="employee_id" invisible="1"/>
+                                            <field name="tipo_registro"/>
+                                            <field name="fecha_movimiento"/>
+                                            <field name="recontratable"/>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                        </xpath>
+                    </field>
+                </record>
+
+            <record id="view_employee_form_inherit_baja_button" model="ir.ui.view">
+                <field name="name">hr.employee.form.inherit.baja.button</field>
+                <field name="model">hr.employee</field>
+                <field name="inherit_id" ref="hr.view_employee_form"/>
+                <field name="arch" type="xml">
+
+                    <xpath expr="//header" position="inside">
+                        <button name="action_open_expedient_baja_wizard"
+                                type="object"
+                                string="Registrar Baja"
+                                class="btn-primary"
+                                invisible="employee_status == 'inactive'"/>
+                    </xpath>
+
+                </field>
+            </record>
+
+            <record id="view_employee_form_inherit_reingreso_button" model="ir.ui.view">
+                <field name="name">hr.employee.form.inherit.reingreso.button</field>
+                <field name="model">hr.employee</field>
+                <field name="inherit_id" ref="hr.view_employee_form"/>
+                <field name="arch" type="xml">
+
+                    <xpath expr="//header" position="inside">
+                        <button name="action_open_expedient_reingreso_wizard"
+                                type="object"
+                                string="Registrar Reingreso"
+                                class="btn-primary"
+                                invisible="employee_status == 'active'"/>
+                    </xpath>
+
+                </field>
+            </record>
+
+
+    </data>
+</odoo>

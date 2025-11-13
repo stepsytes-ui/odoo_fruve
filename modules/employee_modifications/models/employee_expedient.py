@@ -76,7 +76,7 @@ class EmployeeExpedient(models.Model):
     antiguedad = fields.Char(
         string='Antiguedad',
         compute='_compute_antiguedad_vacaciones',
-        store='False'
+        store=False
     )
 
     dias_vacaciones_ley = fields.Integer(

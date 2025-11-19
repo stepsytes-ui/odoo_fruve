@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_attendance_production_attendance_production,attendance_production.attendance_production,model_attendance_production_attendance_production,base.group_user,1,1,1,1

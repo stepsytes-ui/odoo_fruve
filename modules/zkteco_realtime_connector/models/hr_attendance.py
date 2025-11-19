@@ -189,12 +189,14 @@ class HrAttendance(models.Model):
                 else:
                     _logger.info(f"Generando FALTA para {employee.name} (ID: {employee.biometric_id}) en {check_date}")
                     
-                    Attendance.create({
+                    new_attendance = Attendance.create({
                         'employee_id': employee.id,
                         'check_in': start_utc_str,
                         'check_out': fields.Datetime.to_string(check_out_time),
                         'punctuality_status': 'absence',
                     })
+
+                    self._check_and_alert_four_absences(employee, new_attendance)
 
     @api.model
     def get_attendance_dashboard_stats(self, start_date=None, end_date=None):
@@ -333,3 +335,84 @@ class HrAttendance(models.Model):
                 _logger.info(f"Cerrada asistencia de {attendance.employee_id.name}. Check-in: {fields.Datetime.to_string(attendance.check_in)}. Check-out: {fields.Datetime.to_string(check_out_time)}")
         else:
             _logger.info("CRON Cierre: No hay asistencias que necesiten ser cerradas automáticamente.")
+
+    def _check_and_alert_four_absences(self, employee, new_attendance):
+            """Verifica si el empleado tiene 4 faltas no justificadas y notifica al grupo de RRHH."""
+            
+            # Dominio para contar solo las faltas (absence)
+            absence_count = self.search_count([
+                ('employee_id', '=', employee.id),
+                ('punctuality_status', '=', 'absence')
+            ])
+            
+            if absence_count == 4:
+                        hr_group = self.env.ref('zkteco_realtime_connector.group_hr_manager_custom', raise_if_not_found=False)
+
+                        recipient_partner_ids = []
+                        
+                        if not hr_group:
+                            _logger.warning("No se encontró el grupo de Recursos Humanos.")
+                            return
+
+                        recipient_partner_ids = [user.partner_id.id for user in hr_group.users if user.partner_id and user.partner_id.email]
+                        
+                        if not recipient_partner_ids:
+                            _logger.warning("ALERTA: El grupo de RRHH existe, pero ninguno de sus usuarios tiene un correo electrónico configurado.")
+                            return
+                        
+                        recipient_user_ids = [user.id for user in hr_group.users]
+                        # Convertir los IDs a un formato para 'recipient_ids' [(4, id), (4, id), ...]
+                        recipients_tuple_list = [(4, pid) for pid in recipient_partner_ids]
+
+                        # Construir la URL y el cuerpo (body, url, subject, etc.)
+                        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+                        employee_url = f"{base_url}/web#id={employee.id}&view_type=form&model=hr.employee"
+                        subject = _("🚨 ALERTA: Cuarta Falta de Asistencia - %s") % employee.name
+                        body = _("""
+                            El empleado **%s** (%s) ha acumulado su **CUARTA FALTA** no justificada...
+                            <a href="%s" style="padding: 10px 20px; text-decoration: none; background-color: #007bff; color: white; border-radius: 5px;">Ir al Perfil del Empleado</a>
+                        """) % (employee.name, employee.biometric_id or 'N/A', employee_url)
+                        
+                        # --- CREAR Y ENVIAR UN ÚNICO CORREO A MÚLTIPLES DESTINATARIOS ---
+                        self.env['mail.mail'].sudo().create({
+                            'subject': subject,
+                            'body_html': body,
+                            # Usar 'recipient_ids' para enviar a varios partners de una vez
+                            'recipient_ids': recipients_tuple_list, 
+                            # Establecer 'email_from' a la dirección del servidor para evitar rechazos
+                            'email_from': self.env['ir.config_parameter'].sudo().get_param('mail.catchall.domain') or 'odooia@fruvemex.com',
+                            'auto_delete': True,
+                        }).send()
+
+                        activity_type = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+
+                        if not activity_type:
+                            # Fallback si la referencia externa falló (por si cambiaron el xmlid o la DB está corrupta)
+                            _logger.warning("Fallo al encontrar la actividad por ID XML. Buscando por nombre 'To Do' o 'Para hacer'.")
+                            activity_type = self.env['mail.activity.type'].search([('name', 'in', ['To Do', 'Para hacer'])], limit=1)
+
+                        if activity_type:
+                            # El ID del modelo para hr.employee
+                            hr_employee_model_id = self.env['ir.model']._get('hr.employee').id
+                            
+                            # Datos base para la actividad
+                            activity_data = {
+                                'res_id': employee.id,
+                                'res_model_id': hr_employee_model_id,
+                                'activity_type_id': activity_type.id,
+                                'summary': _("🚨 Revisar: 4ta Falta de Asistencia"),
+                                'note': _("El empleado **%s** ha acumulado la cuarta falta sin justificar. Debe aplicarse el protocolo de RH.") % employee.name,
+                                'date_deadline': fields.Date.today(),
+                            }
+
+                            # Crear UNA actividad por CADA usuario de RRHH
+                            for user_id in recipient_user_ids:
+                                activity_data['user_id'] = user_id # Asigna un solo usuario por actividad
+                                self.env['mail.activity'].sudo().create(activity_data)
+                                
+                            _logger.info(f"ACTIVIDAD CREADA: Notificación in-app creada para {employee.name} para {len(recipient_user_ids)} usuarios.")
+
+                        else:
+                            _logger.warning("No se encontró NINGÚN tipo de actividad adecuado. No se pudo crear la notificación in-app.")
+            return      
+

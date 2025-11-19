@@ -1,0 +1,12 @@
+<odoo>
+    <data>
+        <record id="attendance_production_rule" model="ir.rule">
+            <field name="name">Asistencia: Solo Producción para Admin. de Producción</field>
+            <field name="model_id" ref="hr_attendance.model_hr_attendance"/>
+            <field name="groups" eval="[(4, ref('attendance_production.group_production_admin'))]"/> 
+            <field name="domain_force">
+                [('employee_id.department_id.name', '=', 'Produccion')]
+            </field>
+        </record>
+    </data>
+</odoo>

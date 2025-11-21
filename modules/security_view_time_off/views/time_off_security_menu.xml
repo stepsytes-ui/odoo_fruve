@@ -1,0 +1,33 @@
+<odoo>
+    <record id="action_hr_leave_security" model="ir.actions.act_window">
+        <field name="name">Permisos Aprobados (Seguridad)</field>
+        <field name="res_model">hr.leave</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('hr_leave_security_list_view'), 'sequence': 1}),
+            (0, 0, {'view_mode': 'form', 'sequence': 2}),
+        ]"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay permisos aprobados para mostrar hoy.
+            </p>
+        </field>
+    </record>
+
+    <menuitem 
+        id="menu_security_time_off_root" 
+        name="Control de Permisos" 
+        groups="security_view_time_off.group_time_off_security" 
+        sequence="100"/>
+    
+    <menuitem 
+        id="menu_hr_leave_security_view" 
+        name="Permisos Aprobados Hoy" 
+        parent="menu_security_time_off_root" 
+        action="action_hr_leave_security" 
+        groups="security_view_time_off.group_time_off_security" 
+        sequence="10"/>
+
+</odoo>

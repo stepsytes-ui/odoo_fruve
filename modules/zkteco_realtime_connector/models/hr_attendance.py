@@ -9,7 +9,8 @@ _logger = logging.getLogger(__name__)
 FIXED_DEVICE_TIMEZONE_NAME = 'America/Tijuana'
 
 NEW_LEAVE_STATUSES = [
-    # Permiso por cumpleaños- Permiso de matrimonio -  
+    ('leave_birthday', 'Permiso por cumpleaños'),
+    ('leave_marriage', 'Permiso por matrimonio'),   
     ('leave_unpaid', 'Permiso sin goce de sueldo'),
     ('leave_paid', 'Permiso con goce de sueldo'),
     ('leave_sickness', 'Incapacidad'),

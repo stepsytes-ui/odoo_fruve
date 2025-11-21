@@ -11,7 +11,8 @@
                     <field name="tipo_registro"/>
                     <field name="fecha_movimiento"/>
                     <field name="antiguedad"/> 
-                    <field name="dias_vacaciones_ley"/>
+                    <!-- <field name="dias_vacaciones_ley"/> -->
+                    <field name="dias_vacaciones_disponibles"/>
                     <field name="recontratable" widget="toggle_button" options="{'positive': 'si', 'negative': 'no', 'default': 'n/a'}"/>
                     <field name='genero'/>
                 </list>

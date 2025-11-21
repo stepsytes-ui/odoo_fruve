@@ -1,5 +1,5 @@
 
-from odoo import models, fields, api
+from odoo import models, fields, api, exceptions, _
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
@@ -76,12 +76,24 @@ class EmployeeExpedient(models.Model):
     antiguedad = fields.Char(
         string='Antiguedad',
         compute='_compute_antiguedad_vacaciones',
-        store=False
+        store=True
     )
 
     dias_vacaciones_ley = fields.Integer(
         string='Días de vacaciones',
         compute='_compute_antiguedad_vacaciones',
+        store=True
+    )
+
+    dias_vacaciones_utilizados = fields.Float(
+        string='Días de Vacaciones Utilizados',
+        default=0.0,
+        tracking=True
+    )
+
+    dias_vacaciones_disponibles = fields.Float(
+        string='Días de Vacaciones disponibles',
+        compute='_compute_dias_disponibles',
         store=False
     )
 
@@ -94,6 +106,11 @@ class EmployeeExpedient(models.Model):
             mov_type = dict(record._fields['tipo_registro'].selection).get(record.tipo_registro, '')
             date_str = record.fecha_movimiento.strftime('%Y-%m-%d') if record.fecha_movimiento else ''
             record.name = f"{employee_name} - {mov_type} ({date_str})"
+
+    @api.depends('dias_vacaciones_ley', 'dias_vacaciones_utilizados')
+    def _compute_dias_disponibles(self):
+        for record in self:
+            record.dias_vacaciones_disponibles = record.dias_vacaciones_ley - record.dias_vacaciones_utilizados
             
 
     #Función de calculo de antiguedad y días de vacaciones
@@ -101,7 +118,7 @@ class EmployeeExpedient(models.Model):
     def _compute_antiguedad_vacaciones(self):
         for record in self:
             fecha_movimiento = record.fecha_movimiento
-            if fecha_movimiento:
+            if fecha_movimiento and record.employee_id.active:
                 hoy = date.today()
 
                 diff = relativedelta(hoy, fecha_movimiento)

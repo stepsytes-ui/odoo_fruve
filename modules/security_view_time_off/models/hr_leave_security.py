@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime, time, date
 from odoo import models, fields, api
 
 
@@ -19,15 +20,49 @@ class security_view(models.Model):
         readonly=True
     )
 
-    @api.depends('name')
-    def _compute_description_security(self):
-        """ Copia el valor del campo 'name' usando sudo para evadir FLS. """
+    # Campo relacionado para la imagen del empleado
+    employee_image = fields.Image(
+        related='employee_id.image_1920',
+        string='Foto',
+        readonly=True,
+        store=False, # No es necesario almacenar ya que es related
+    )
+
+    request_datetime_from = fields.Datetime(
+        string='Inicio (Fecha y Hora)',
+        compute='_compute_request_datetime',
+        store=True  # Almacenar el resultado para que sea más rápido y se pueda ordenar
+    )
+
+    request_datetime_to = fields.Datetime(
+        string='Fin (Fecha y Hora)',
+        compute='_compute_request_datetime',
+        store=True
+    )
+                
+    @api.depends('request_date_from', 'request_hour_from', 'request_date_to', 'request_hour_to')
+    def _compute_request_datetime(self):
         for record in self:
-            # USAMOS SUDO() para asegurarnos de que el código puede leer el campo 'name' 
-            # antes de asignarlo al campo 'description_security' visible.
-            if record.name:
-                record.description_security = record.sudo().name
+            # Combinar Fecha de Inicio y Hora de Inicio
+            if record.request_date_from and record.request_hour_from is not False:
+                # Convertir request_hour_from (float) a objeto time()
+                hours = int(record.request_hour_from)
+                minutes = int((record.request_hour_from - hours) * 60)
+                time_from = time(hours, minutes, 0)
+                
+                # Combinar fecha y hora
+                record.request_datetime_from = datetime.combine(record.request_date_from, time_from)
             else:
-                record.description_security = False
+                record.request_datetime_from = False
 
-
+            # Combinar Fecha de Fin y Hora de Fin
+            if record.request_date_to and record.request_hour_to is not False:
+                # Convertir request_hour_to (float) a objeto time()
+                hours = int(record.request_hour_to)
+                minutes = int((record.request_hour_to - hours) * 60)
+                time_to = time(hours, minutes, 0)
+                
+                # Combinar fecha y hora
+                record.request_datetime_to = datetime.combine(record.request_date_to, time_to)
+            else:
+                record.request_datetime_to = False

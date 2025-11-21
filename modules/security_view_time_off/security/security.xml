@@ -11,12 +11,11 @@
 
             <field name="domain_force" eval="[
                 ('state', 'in', ['validate', 'validate1']), 
-                ('date_from', '&lt;=', datetime.now().strftime('%Y-%m-%d 23:59:59')),
-                ('date_to', '&gt;=', datetime.now().strftime('%Y-%m-%d 00:00:00'))
+                ('request_date_from', '&lt;=', time.strftime('%Y-%m-%d')),
+                ('request_date_to', '&gt;=', time.strftime('%Y-%m-%d'))
             ]"/>
 
             <field name="groups" eval="[(4, ref('security_view_time_off.group_time_off_security'))]"/>
-
             <field name="perm_read" eval="True"/>
         </record>
 

@@ -2,10 +2,12 @@
 from odoo import models, fields, api, exceptions, _
 from datetime import date
 from dateutil.relativedelta import relativedelta
+from odoo.osv import expression
 
 class EmployeeExpedient(models.Model):
     _name = 'employee.expedient'
     _description = 'Expediente de Movimientos de Empleados'
+    _inherit = ['mail.thread']
     _order = 'fecha_movimiento desc'
 
     # Campo de relación con el empleado
@@ -15,7 +17,17 @@ class EmployeeExpedient(models.Model):
         required=True, 
         ondelete='cascade'
     )
-    # Copia del número de empleado (si existe en hr.employee) para visualización rápida
+
+    company_id = fields.Many2one(
+        'res.company', 
+        string='Compañía', 
+        related='employee_id.company_id', 
+        store=True, 
+        readonly=True, 
+        index=True, 
+        groups="base.group_multi_company", 
+    )
+
     numero_empleado = fields.Char(
         related='employee_id.biometric_id', 
         string='Número de Empleado', 
@@ -149,3 +161,25 @@ class EmployeeExpedient(models.Model):
             else:
                 record.antiguedad = "N/A"
                 record.dias_vacaciones_ley = 0
+    
+    @api.model
+    def _search(self, args, offset=0, limit=None, order=None): 
+        domain = args or []
+
+        active_company_ids = self.env.context.get('allowed_company_ids', False)
+        
+        if active_company_ids:
+            
+            company_domain = expression.OR([
+                [('company_id', 'in', active_company_ids)],
+                [('company_id', '=', False)] 
+            ])
+            
+            domain = expression.AND([domain, company_domain])
+
+        return super(EmployeeExpedient, self)._search(
+            domain, 
+            offset=offset, 
+            limit=limit, 
+            order=order
+        )

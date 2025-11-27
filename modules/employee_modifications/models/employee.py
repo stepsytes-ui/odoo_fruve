@@ -23,6 +23,7 @@ class HrEmployeeExtension(models.Model):
                     'tipo_registro': 'alta',
                     'fecha_movimiento': fields.Date.today(),
                     'recontratable': 'n/a',
+                    'company_id': employee.company_id.id,
                 })
         return employees
     

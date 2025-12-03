@@ -21,8 +21,8 @@
                         
                         <separator string="Documentación Opcional"/>
                         <group>
-                            <field name="acta_disciplinaria" filename="nombre_acta_disciplinaria"/>
-                            <field name="nombre_acta_disciplinaria" invisible="1"/>
+                            <field name="encuesta" filename="nombre_encuesta"/>
+                            <field name="nombre_encuesta" invisible="1"/>
                         </group>
                         
                     </sheet>

@@ -24,9 +24,9 @@ Fruvemex requests for employee's module
     'data': [
             'security/ir.model.access.csv',
             'views/employee_expedient.xml', 
-            'views/employee_menus.xml', 
+            'views/employee_menus.xml',
+            'views/employee_disciplinary.xml', 
             'wizard/employee_expedient_wizard_views.xml',
-
         ],
     # only loaded in demonstration mode
     'demo': [

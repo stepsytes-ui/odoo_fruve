@@ -79,11 +79,11 @@ class EmployeeExpedient(models.Model):
         required=False,
     )
     nombre_hoja_renuncia = fields.Char(string='Nombre Archivo Renuncia')
-    acta_disciplinaria = fields.Binary(
-        string='Acta Disciplinaria',
+    encuesta= fields.Binary(
+        string='Encuesta',
         attachment= True,
     )
-    nombre_acta_disciplinaria = fields.Char(string='Nombre Acta Disciplinaria')
+    nombre_encuesta = fields.Char(string='Nombre Encuesta')
 
     antiguedad = fields.Char(
         string='Antiguedad',
@@ -97,6 +97,12 @@ class EmployeeExpedient(models.Model):
         store=True
     )
 
+    dias_vacaciones_ajuste = fields.Float(
+        string='Ajuste de Días de Vacaciones',
+        default=0.0,
+        tracking=True,
+    )
+
     dias_vacaciones_utilizados = fields.Float(
         string='Días de Vacaciones Utilizados',
         default=0.0,
@@ -106,11 +112,15 @@ class EmployeeExpedient(models.Model):
     dias_vacaciones_disponibles = fields.Float(
         string='Días de Vacaciones disponibles',
         compute='_compute_dias_disponibles',
-        store=False
+        store=True
     )
 
+    dias_vacaciones_saldo_inicial = fields.Float( 
+        string='Días de Vacaciones (Saldo Inicial)',
+        compute='_compute_dias_inicial_calculado',
+        store=True
+    )
 
-    # Nombre descriptivo para el registro
     @api.depends('employee_id', 'tipo_registro', 'fecha_movimiento')
     def _compute_name(self):
         for record in self:
@@ -118,21 +128,40 @@ class EmployeeExpedient(models.Model):
             mov_type = dict(record._fields['tipo_registro'].selection).get(record.tipo_registro, '')
             date_str = record.fecha_movimiento.strftime('%Y-%m-%d') if record.fecha_movimiento else ''
             record.name = f"{employee_name} - {mov_type} ({date_str})"
-
-    @api.depends('dias_vacaciones_ley', 'dias_vacaciones_utilizados')
+    
+    @api.depends('dias_vacaciones_saldo_inicial', 'dias_vacaciones_utilizados')
     def _compute_dias_disponibles(self):
         for record in self:
-            record.dias_vacaciones_disponibles = record.dias_vacaciones_ley - record.dias_vacaciones_utilizados
-            
+            record.dias_vacaciones_disponibles = record.dias_vacaciones_saldo_inicial - record.dias_vacaciones_utilizados
+
+    @api.depends('dias_vacaciones_ley', 'dias_vacaciones_ajuste')
+    def _compute_dias_inicial_calculado(self):
+        for record in self:
+            record.dias_vacaciones_saldo_inicial = record.dias_vacaciones_ley + record.dias_vacaciones_ajuste     
 
     #Función de calculo de antiguedad y días de vacaciones
     @api.depends('employee_id', 'fecha_movimiento')
     def _compute_antiguedad_vacaciones(self):
+        TABLA_VACACIONES = [
+            (1, 1, 12),
+            (2, 2, 14),
+            (3, 3, 16),
+            (4, 4, 18),
+            (5, 5, 20),
+            (6, 10, 22),
+            (11, 15, 24),
+            (16, 20, 26),
+            (21, 25, 28),
+            (26, 30, 30),
+            (31, 35, 32),
+        ]
+
         for record in self:
             fecha_movimiento = record.fecha_movimiento
-            if fecha_movimiento and record.employee_id.active:
-                hoy = date.today()
 
+            if fecha_movimiento and record.employee_id.active:
+
+                hoy = date.today()
                 diff = relativedelta(hoy, fecha_movimiento)
                 years = diff.years
                 months = diff.months
@@ -140,27 +169,17 @@ class EmployeeExpedient(models.Model):
 
                 record.antiguedad = f"{years} años, {months} meses y {days} días"
 
-                dias_vacaciones = 0
-                if years == 1:
-                    dias_vacaciones = 12
-                elif years == 2:
-                    dias_vacaciones = 14
-                elif years == 3:
-                    dias_vacaciones = 16
-                elif years == 5:
-                    dias_vacaciones = 18
-                elif years == 5:
-                    if years == 5:
-                            dias_vacaciones:20
-                    else:
-                        dias_adicionales = (years - 5) // 5*2
-                        dias_vacaciones = 20 + dias_adicionales
-                
+                dias_vacaciones = next(
+                    (dias for ini, fin, dias in TABLA_VACACIONES if ini <= years <= fin),
+                    0
+                )
+
                 record.dias_vacaciones_ley = dias_vacaciones
-            
+
             else:
                 record.antiguedad = "N/A"
                 record.dias_vacaciones_ley = 0
+
     
     @api.model
     def _search(self, args, offset=0, limit=None, order=None): 
@@ -180,6 +199,18 @@ class EmployeeExpedient(models.Model):
         return super(EmployeeExpedient, self)._search(
             domain, 
             offset=offset, 
-            limit=limit, 
+            limit=limit,  
             order=order
         )
+    
+    def action_view_disciplinary_records(self):
+        self.ensure_one()
+
+        return {
+            'name': "Actas Disciplinarias de %s" % self.employee_id.name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'employee.disciplinary.record',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.employee_id.id)],
+            'context': {'default_employee_id': self.employee_id.id},
+        }

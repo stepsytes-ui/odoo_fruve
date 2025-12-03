@@ -3,3 +3,4 @@
 from . import employee_expedient
 from . import employee
 from . import hr_leave_expendient_link
+from . import employee_disciplinary_record

@@ -14,8 +14,8 @@ class EmployeeExpedientBajaWizard(models.TransientModel):
         attachment=True
     )
     nombre_hoja_renuncia = fields.Char(string='Nombre Archivo Renuncia', default='Renuncia_o_Convenio.pdf')
-    acta_disciplinaria = fields.Binary(string='Acta Disciplinaria (Opcional)', attachment=True)
-    nombre_acta_disciplinaria = fields.Char(string='Nombre Acta Disciplinaria', default='Acta_Disciplinaria.pdf')
+    encuesta = fields.Binary(string='Encuesta (Opcional)', attachment=True)
+    nombre_encuesta = fields.Char(string='Nombre Encuesta', default='Encuesta.pdf')
     recontratable = fields.Selection([
         ('si', 'Sí'),
         ('no', 'No'),
@@ -34,8 +34,8 @@ class EmployeeExpedientBajaWizard(models.TransientModel):
             'motivo_baja': self.motivo_baja,
             'hoja_renuncia_convenio': self.hoja_renuncia_convenio,
             'nombre_hoja_renuncia': self.nombre_hoja_renuncia,
-            'acta_disciplinaria': self.acta_disciplinaria,
-            'nombre_acta_disciplinaria': self.nombre_acta_disciplinaria,
+            'encuesta': self.encuesta,
+            'nombre_encuesta': self.nombre_encuesta,
             'recontratable': self.recontratable,
 
         })

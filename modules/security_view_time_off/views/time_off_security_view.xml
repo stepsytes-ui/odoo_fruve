@@ -10,7 +10,7 @@
         <field name="holiday_status_id" string="Tipo de Ausencia"/>
         <field name="request_datetime_from" string="Fecha Inicio"/>
         <field name="request_datetime_to" string="Fecha Fin"/>
-        <field name="number_of_days" string="Días"/>
+        <field name="display_duration" string="Duración"/>
         <field name="state"/>
       </list>
     </field>

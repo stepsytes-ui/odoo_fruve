@@ -1,10 +1,10 @@
 <odoo>
     <data>
-        <record id="view_employee_expedient_tree" model="ir.ui.view">
+        <record id="view_employee_expedient_list" model="ir.ui.view">
             <field name="name">employee.expedient.list</field>
             <field name="model">employee.expedient</field>
             <field name="arch" type="xml">
-                <list string="Expedientes de Empleados" default_order="fecha_movimiento desc">
+                <list string="Expedientes de Empleados" default_order="fecha_movimiento desc" editable="bottom" create="0" edit="0">
                     <field name="numero_empleado"/> 
                     <field name="employee_id"/>
                     <field name="employee_status"/>
@@ -13,7 +13,11 @@
                     <field name="antiguedad"/> 
                     <field name="dias_vacaciones_disponibles"/>
                     <field name="recontratable" widget="toggle_button" options="{'positive': 'si', 'negative': 'no', 'default': 'n/a'}"/>
-                    <field name='genero'/>
+                    <field name='genero'/>  
+                    <field name="hoja_renuncia_convenio" filename="nombre_hoja_renuncia" string="Renuncia/Convenio" widget="attachment" class="oe_no_link"/>
+                    <field name="encuesta" filename="nombre_encuesta" string="Encuesta" widget="attachment" class="oe_no_link"/>
+                    <field name="nombre_hoja_renuncia" string=" " invisible="1"/>
+                    <field name="nombre_encuesta" string=" " invisible="1"/>
                 </list>
             </field>
         </record>
@@ -32,7 +36,15 @@
                             <field name="fecha_movimiento"/>
                             <field name="recontratable" widget="radio"/>
                         </group>
-                    </sheet>
+                        
+                        <group string="Cálculo de Vacaciones">
+                            <field name="antiguedad" readonly="1"/>
+                            <field name="dias_vacaciones_ley" readonly="1"/>
+                            <field name="dias_vacaciones_ajuste"/> <field name="dias_vacaciones_saldo_inicial" readonly="1"/>
+                            <field name="dias_vacaciones_utilizados" readonly="1"/>
+                            <field name="dias_vacaciones_disponibles" readonly="1" decoration-info="True"/>
+                        </group>
+                        </sheet>
                 </form>
             </field>
         </record>
@@ -110,6 +122,7 @@
 
                 </field>
             </record>
+
 
 
     </data>

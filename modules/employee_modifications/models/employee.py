@@ -14,6 +14,12 @@ class HrEmployeeExtension(models.Model):
         string='Historial de Movimientos'
     )
 
+    disciplinary_record_ids = fields.One2many(
+        'employee.disciplinary.record',
+        'employee_id',
+        string='Actas Disciplinarias'
+    )
+
     @api.model_create_multi
     def create(self, vals_list):
         employees = super().create(vals_list)
@@ -52,4 +58,3 @@ class HrEmployeeExtension(models.Model):
             'target': 'new',
             'context': {'default_employee_id': self.id},
         }
-

@@ -5,14 +5,14 @@
             <field name="model">hr.department</field>
             <field name="inherit_id" ref="hr.view_department_form"/>
             <field name="arch" type="xml">
-                <xpath expr="//field[@name='message_ids']" position="before">
+                <xpath expr="//sheet" position="after">
                     <notebook>
                         <page string="Áreas y Empleados" name="department_areas_employees">
                             <field name="area_ids">
-                                <tree editable="bottom">
+                                <list editable="bottom">
                                     <field name="name"/>
                                     <field name="employee_count"/>
-                                </tree>
+                                </list>
                                 <form>
                                     <group>
                                         <field name="name"/>
@@ -21,11 +21,9 @@
                                     <notebook>
                                         <page string="Empleados del Área">
                                             <field name="employee_ids" readonly="1">
-                                                <tree>
+                                                <list>
                                                     <field name="name"/>
-                                                    <field name="work_phone"/>
-                                                    <field name="work_email"/>
-                                                </tree>
+                                                </list>
                                             </field>
                                         </page>
                                     </notebook>

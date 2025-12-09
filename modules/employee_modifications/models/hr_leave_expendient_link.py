@@ -14,7 +14,6 @@ class HrLeave(models.Model):
     def _check_vacation_availibility_and_update(self):
         
         for leave in self:
-            # Solo aplica si es una solicitud de 'Vacaciones'
             if leave.holiday_status_id.name == 'Vacaciones':
                 
                 expedient = self.env['employee.expedient'].search([
@@ -26,7 +25,6 @@ class HrLeave(models.Model):
 
                 days_requested = leave.number_of_days
                 
-                # --- LÓGICA DE VALIDACIÓN (Descontar Días) ---
                 if leave.state == 'validate' and not leave.vacation_days_subtracted:
                     days_available = expedient.dias_vacaciones_disponibles
 
@@ -38,9 +36,8 @@ class HrLeave(models.Model):
                     else:
                         new_used_days = expedient.dias_vacaciones_utilizados + days_requested
                         expedient.write({'dias_vacaciones_utilizados': new_used_days})
-                        leave.vacation_days_subtracted = True # Marca como descontado
+                        leave.vacation_days_subtracted = True
                         
-                        # Mensaje de notificación
                         self.env['mail.message'].create({
                             'model': 'employee.expedient',
                             'res_id': expedient.id,
@@ -53,12 +50,10 @@ class HrLeave(models.Model):
 
                 # --- LÓGICA DE RECHAZO (Devolver Días) ---
                 elif leave.state == 'refuse' and leave.vacation_days_subtracted:
-                    # Si se rechaza Y se habían descontado previamente, se revierten
                     new_used_days = expedient.dias_vacaciones_utilizados - days_requested
                     expedient.write({'dias_vacaciones_utilizados': new_used_days})
-                    leave.vacation_days_subtracted = False # Marca como devuelto
+                    leave.vacation_days_subtracted = False
 
-                    # Mensaje de notificación
                     self.env['mail.message'].create({
                         'model': 'employee.expedient',
                         'res_id': expedient.id,

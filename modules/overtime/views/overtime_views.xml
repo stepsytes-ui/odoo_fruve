@@ -1,0 +1,128 @@
+<odoo>
+    <data>
+        <record id="overtime_request_view_form" model="ir.ui.view">
+            <field name="name">overtime.form</field>
+            <field name="model">overtime</field>
+            <field name="arch" type="xml">
+                <form string="Solicitud de Tiempo Extra">
+                    <header>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,pending,approved"/>
+                        <button name="action_submit_and_split" 
+                                type="object" 
+                                string="Enviar Solicitud" 
+                                class="oe_highlight"
+                                invisible="state != 'draft'"
+                        />
+                        <button name="action_approve"
+                                type="object"
+                                string="Aprobar"
+                                class="oe_highlight"
+                                invisible="state != 'pending'"
+                        />
+                        </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+
+                        <group>
+                            <group string="Información General">
+                                <field name="department_id"/>
+                                <field name="area_id"/>
+                                <field name="supervisor_id"/>
+                            </group>
+                            <group string="Detalles">
+                                <field name="requested_date" string="Fecha solicitada"/>
+                                <field name="create_date" string="Fecha de elaboración" readonly="1"/>
+                                <field name="authorized_by_id" invisible="state in ('draft', 'pending')" />
+                            </group>
+                        </group>
+                        <group>
+                            <group>
+                                <separator string="Horas Solicitadas" invisible="state == 'draft'"/>
+                                    <field name="time_from" widget="float_time" invisible="state == 'draft'"/>
+                                    <field name="time_to" widget="float_time" invisible="state == 'draft'"/>
+                                    <field name="hours_taken" invisible="state == 'draft'"/> 
+                            </group>
+                            <group>
+                                <separator string="Explicación"/>
+                                <field name="justification" nolabel="1"/>
+                            </group>
+                        </group>
+
+                        <group>
+                                <group>
+                                    <separator string="Datos del empleado" invisible="state == 'draft'"/>
+                                    <field name="biometric_id" invisible="state == 'draft'"/>
+                                    <field name="employee_id" invisible="state == 'draft'"/>
+                                    <field name="activity" invisible="state == 'draft'"/> 
+                                </group>
+                                <group>
+                                    <separator string="Información de asistencia" invisible="state == 'draft'"/>
+                                    <field name="attendance_log" nolabel="1" invisible="state == 'draft'"/>
+                                </group>
+                        </group>
+
+                        <group invisible="state != 'draft' or not department_id or not area_id or not requested_date or not justification">
+                            <separator string="Datos de Empleado/s (Captura Múltiple)"/>
+                            <field name="employee_line_ids">
+                                <list editable="bottom">
+                                    <field name="biometric_id"/>
+                                    <field name="employee_id"/> 
+                                    <field name="time_from" widget="float_time"/>
+                                    <field name="time_to" widget="float_time"/>
+                                    <field name="hours_taken"/> 
+                                    <field name="activity"/>
+                                </list>
+                            </field>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="overtime_request_view_list" model="ir.ui.view">
+            <field name="name">overtime.list</field>
+            <field name="model">overtime</field>
+            <field name="arch" type="xml">
+                <list string="Solicitudes de Tiempo Extra">
+                    <field name="name"/>
+                    <field name="requested_date" width="120"/>
+                    <!-- <field name="create_date"/> -->
+                    <field name="department_id"/>
+                    <field name="area_id"/>
+                    <field name="supervisor_id"/>
+                    <field name="justification"/>
+                    <field name="biometric_id"  width="140"/>
+                    <field name="employee_id"/>
+                    <field name="state" widget="badge"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="overtime_request_action" model="ir.actions.act_window">
+            <field name="name">Solicitudes de Tiempo Extra</field>
+            <field name="res_model">overtime</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('state', 'in', ['draft', 'pending'])]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Crea tu primera solicitud de tiempo extra
+                </p>
+            </field>
+        </record>
+
+        <record id="overtime_request_approved_action" model="ir.actions.act_window">
+            <field name="name">Tiempo Extra Autorizado</field>
+            <field name="res_model">overtime</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('state', '=', 'approved')]</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No hay solicitudes de tiempo extra autorizadas.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

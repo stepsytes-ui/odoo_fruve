@@ -1,0 +1,21 @@
+<odoo>
+    <data>
+        <menuitem id="menu_overtime_root" 
+                  name="Tiempo Extra"
+                  action="overtime_request_action" 
+                  web_icon="overtime,static/description/icon.png"
+                  sequence="10"/>
+
+        <menuitem id="menu_overtime_requests" 
+                  name="Solicitudes" 
+                  parent="menu_overtime_root" 
+                  action="overtime_request_action" 
+                  sequence="10"/>
+                  
+        <menuitem id="menu_overtime_approved" 
+                  name="Autorizados" 
+                  parent="menu_overtime_root" 
+                  action="overtime_request_approved_action" 
+                  sequence="20"/>
+    </data>
+</odoo>

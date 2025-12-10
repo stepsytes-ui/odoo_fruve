@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="overtime.OvertimeDashboardWrapper" owl="1"> 
+        <div class="o_overtime_dashboard_wrapper d-flex flex-column h-100">
+            <div t-if="shouldRenderDashboard" class="o_dashboard_header flex-shrink-0">
+                <OvertimeDashboard onChangeDates="onDatesUpdated"/> 
+            </div>
+            <div class="o_dashboard_content flex-grow-1 position-relative">
+                <DynamicView t-props="dynamicViewProps"/>
+            </div>
+        </div>
+    </t>
+</templates>

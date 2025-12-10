@@ -36,6 +36,95 @@ class Overtime(models.Model):
         tracking=True
     )
 
+    @api.model
+    def get_overtime_dashboard_stats(self, start_date, end_date):
+        """
+        Calcula las estadísticas del dashboard de tiempo extra
+        """
+        domain = [
+            ('requested_date', '>=', start_date),
+            ('requested_date', '<=', end_date),
+            ('state', '=', 'approved'),
+        ]
+        
+        overtimes = self.search(domain)
+        
+        # Calcular estadísticas
+        total_employees = len(overtimes.mapped('employee_id'))
+        total_hours = sum(overtimes.mapped('hours_taken')) or 0
+        
+        # Calcular el costo total (salario diario * horas / 8)
+        total_pay = 0
+        for overtime in overtimes:
+            if overtime.employee_id.daily_rate and overtime.hours_taken:
+                hourly_rate = overtime.employee_id.daily_rate / 8
+                total_pay += hourly_rate * overtime.hours_taken
+        
+        return {
+            'total_employees': total_employees,
+            'total_hours': total_hours,
+            'total_play': total_pay,
+        }
+
+    @api.model
+    def get_overtime_table_data(self, start_date, end_date):
+        """
+        Retorna los datos para la tabla dinámica del dashboard
+        Columnas: employee_number, daily_rate, employee_name, days_worked, hours_taken, total_cost
+        """
+        domain = [
+            ('requested_date', '>=', start_date),
+            ('requested_date', '<=', end_date),
+            ('state', '=', 'approved'),
+        ]
+        
+        overtimes = self.search(domain, order='employee_id')
+        
+        # Agrupar por empleado para calcular días y horas trabajadas
+        employees_data = {}
+        
+        for overtime in overtimes:
+            emp_id = overtime.employee_id.id
+            emp_name = overtime.employee_id.name
+            emp_biometric = overtime.employee_id.biometric_id or 'N/A'
+            emp_daily_rate = overtime.employee_id.daily_rate or 0.0
+            
+            if emp_id not in employees_data:
+                employees_data[emp_id] = {
+                    'employee_number': emp_biometric,
+                    'employee_name': emp_name,
+                    'daily_rate': emp_daily_rate,
+                    'days_worked': set(),  # Usar set para días únicos
+                    'total_hours': 0.0,
+                }
+            
+            # Agregar el día (agrupar por fecha de solicitud)
+            employees_data[emp_id]['days_worked'].add(str(overtime.requested_date))
+            # Sumar horas
+            employees_data[emp_id]['total_hours'] += overtime.hours_taken or 0.0
+        
+        # Construir la lista final con cálculos
+        table_data = []
+        for emp_id, data in employees_data.items():
+            days_count = len(data['days_worked'])
+            total_hours = data['total_hours']
+            daily_rate = data['daily_rate']
+            
+            # Cálculo del total: (salario_diario / 8) * 2 * horas_extras
+            # Usamos /8 para mantener compatibilidad con el sistema antiguo
+            # donde la hora ordinaria = daily_rate / 8 y la hora extra se paga al doble.
+            total_cost = (daily_rate / 8) * 2 * total_hours if daily_rate > 0 else 0.0
+            
+            table_data.append({
+                'employee_number': data['employee_number'],
+                'daily_rate': daily_rate,
+                'employee_name': data['employee_name'],
+                'days_worked': days_count,
+                'hours_taken': total_hours,
+                'total': total_cost,
+            })
+        
+        return table_data
 
     @api.model_create_multi
     def create(self, vals_list):

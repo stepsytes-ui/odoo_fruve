@@ -1,0 +1,14 @@
+/* Estilos básicos para el dashboard de overtime */
+.o_overtime_dashboard {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.o_overtime_dashboard .card {
+    border: none;
+}
+
+.o_overtime_dashboard .card-title {
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+}

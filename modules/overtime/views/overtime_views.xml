@@ -100,13 +100,15 @@
             </field>
         </record>
 
+
         <record id="overtime_request_action" model="ir.actions.act_window">
             <field name="name">Solicitudes de Tiempo Extra</field>
             <field name="res_model">overtime</field>
             <field name="view_mode">list,form</field>
             <field name="domain">[('state', 'in', ['draft', 'pending'])]</field>
+            <field name="context">{'search_default_requested_date_filter': 1}</field>
             <field name="help" type="html">
-                <p class="o_view_nocontent_smiling_face">
+                <p class="o_view_nocontent_smiling_face" padding="3">
                     Crea tu primera solicitud de tiempo extra
                 </p>
             </field>
@@ -121,6 +123,66 @@
                 <p class="o_view_nocontent_smiling_face">
                     No hay solicitudes de tiempo extra autorizadas.
                 </p>
+            </field>
+        </record>
+
+        <record id="overtime_request_view_search" model="ir.ui.view">
+            <field name="name">overtime.search</field>
+            <field name="model">overtime</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Solicitudes de Tiempo Extra">
+                    <field name="name" string="Folio" filter_domain="[('name', 'ilike', self)]"/>
+                    <field name="employee_id" string="Empleado" filter_domain="[('employee_id', '=', self)]"/>
+                    <field name="department_id" string="Departamento" filter_domain="[('department_id', '=', self)]"/>
+                    <field name="area_id" string="Área" filter_domain="[('area_id', '=', self)]"/>
+                    <field name="requested_date" string="Fecha Solicitada" filter_domain="[('requested_date', '=', self)]"/>
+                    
+                    <separator/>
+                    
+                    <filter name="filter_today" 
+                            string="Hoy" 
+                            domain="[('requested_date', '=', context_today())]"/>
+                    
+                    <filter name="filter_this_week" 
+                            string="Esta Semana" 
+                            domain="[('requested_date', '&gt;=', (context_today() - relativedelta(days=context_today().weekday())).strftime('%Y-%m-%d')), ('requested_date', '&lt;=', (context_today() + relativedelta(days=6-context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+                    
+                    <filter name="filter_this_month" 
+                            string="Este Mes" 
+                            domain="[('requested_date', '&gt;=', context_today().replace(day=1)), ('requested_date', '&lt;', (context_today().replace(day=1) + relativedelta(months=1)))]"/>
+                    
+                    <filter name="filter_draft" 
+                            string="Borradores" 
+                            domain="[('state', '=', 'draft')]"/>
+                    
+                    <filter name="filter_pending" 
+                            string="Pendientes" 
+                            domain="[('state', '=', 'pending')]"/>
+                    
+                    <filter name="filter_approved" 
+                            string="Aprobadas" 
+                            domain="[('state', '=', 'approved')]"/>
+                    
+                    <separator/>
+                    
+                    <group string="Agrupar por" expand="0">
+                        <filter name="group_by_employee" 
+                                string="Empleado" 
+                                context="{'group_by': 'employee_id'}"/>
+                        
+                        <filter name="group_by_department" 
+                                string="Departamento" 
+                                context="{'group_by': 'department_id'}"/>
+                        
+                        <filter name="group_by_state" 
+                                string="Estado" 
+                                context="{'group_by': 'state'}"/>
+                        
+                        <filter name="group_by_date" 
+                                string="Fecha Solicitada" 
+                                context="{'group_by': 'requested_date'}"/>
+                    </group>
+                </search>
             </field>
         </record>
 

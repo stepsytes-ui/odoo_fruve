@@ -32,6 +32,19 @@ Modulo con los formularios para solicitar,autorizar y calcular pagos de tiempo e
         'views/overtime_menu.xml',
     ],
     'assets': {
+        'web.assets_backend': [
+            'overtime/static/src/css/overtime_dashboard.css',
+            'overtime/static/src/views/overtime_dashboard_wrapper.xml',
+            'overtime/static/src/views/overtime_dashboard_wrapper.js',
+            'overtime/static/src/components/overtime_dashboard/overtime_dashboard.js',
+            'overtime/static/src/components/overtime_dashboard/overtime_dashboard.xml',
+            # Cargar el registro DESPUÉS del JS que define la vista de lista original
+            (
+                'after',
+                'web/static/src/views/list/list_view.js',
+                'overtime/static/src/views/overtime_view_registry.js'
+            ),
+        ],
     },
     'demo': [],
     'installable': True,

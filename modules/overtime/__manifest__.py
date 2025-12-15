@@ -24,11 +24,13 @@ Modulo con los formularios para solicitar,autorizar y calcular pagos de tiempo e
 
     # always loaded
     'data': [
+        'security/groups.xml',
         'security/ir.model.access.csv',
         'data/overtime_sequence.xml',
         'views/employee_extension_daily_rate.xml',
         'views/deparment_area_upgrade.xml',
         'views/overtime_views.xml',
+        'views/overtime_rejection_wizard.xml',
         'views/overtime_menu.xml',
     ],
     'assets': {

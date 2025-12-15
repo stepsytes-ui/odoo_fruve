@@ -6,7 +6,9 @@
                 <OvertimeDashboard onChangeDates="onDatesUpdated"/> 
             </div>
             <div class="o_dashboard_content flex-grow-1 position-relative">
-                <DynamicView t-props="dynamicViewProps"/>
+                <div class="o_dashboard_scroll_area h-100 overflow-auto">
+                    <DynamicView t-props="dynamicViewProps"/>
+                </div>
             </div>
         </div>
     </t>

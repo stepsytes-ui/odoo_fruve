@@ -4,18 +4,21 @@
                   name="Tiempo Extra"
                   action="overtime_request_action" 
                   web_icon="overtime,static/description/icon.png"
-                  sequence="10"/>
+                  sequence="10"
+                  groups="overtime.group_overtime_supervisor,overtime.group_overtime_hr"/>
 
         <menuitem id="menu_overtime_requests" 
                   name="Solicitudes" 
                   parent="menu_overtime_root" 
                   action="overtime_request_action" 
-                  sequence="10"/>
+                  sequence="10"
+                  groups="overtime.group_overtime_supervisor,overtime.group_overtime_hr"/>
                   
         <menuitem id="menu_overtime_approved" 
                   name="Autorizados" 
                   parent="menu_overtime_root" 
                   action="overtime_request_approved_action" 
-                  sequence="20"/>
+                  sequence="20"
+                  groups="overtime.group_overtime_hr"/>
     </data>
 </odoo>

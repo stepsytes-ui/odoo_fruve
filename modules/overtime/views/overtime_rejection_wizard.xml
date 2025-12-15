@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="overtime_rejection_wizard_form" model="ir.ui.view">
+        <field name="name">overtime.rejection.wizard.form</field>
+        <field name="model">overtime.rejection.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Rechazar Solicitud de Tiempo Extra">
+                <group>
+                    <field name="overtime_id" readonly="1"/>
+                    <field name="rejection_reason" widget="text"/>
+                </group>
+                <footer>
+                    <button string="Confirmar Rechazo" type="object" name="action_confirm_rejection" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_overtime_rejection_wizard" model="ir.actions.act_window">
+        <field name="name">Rechazar Solicitud</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">overtime.rejection.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_overtime_id': active_id}</field>
+    </record>
+</odoo>

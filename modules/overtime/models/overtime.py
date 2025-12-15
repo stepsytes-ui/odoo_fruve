@@ -24,6 +24,7 @@ class Overtime(models.Model):
     biometric_id = fields.Char(string='Numero de empleado',related='employee_id.biometric_id', store=True)
     attendance_log = fields.Text(string='Registro de checadas del día', compute='_compute_attendance_log', store=False, readonly=True)
     authorized_by_id = fields.Many2one('res.users', string='Autorizado por', readonly=True)
+    rejection_reason = fields.Text(string='Motivo de Rechazo', readonly=True)
 
     state = fields.Selection([
         ('draft', 'Borrador'),
@@ -129,10 +130,44 @@ class Overtime(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('name', _('Nuevo')) == _('Nuevo'):
-                vals['name'] = self.env['ir.sequence'].next_by_code('overtime') or _('Nuevo') 
+            # Asignar folio solo cuando el estado es pending
+            if vals.get('state') == 'pending':
+                # Asegurarse de que la secuencia existe
+                sequence = self.env['ir.sequence'].search([('code', '=', 'overtime')], limit=1)
+                if not sequence:
+                    # Crear la secuencia si no existe
+                    sequence = self.env['ir.sequence'].create({
+                        'name': 'Solicitud de Tiempo Extra',
+                        'code': 'overtime',
+                        'prefix': 'OT/%(y)s/%(month)s/',
+                        'padding': 4,
+                    })
+                vals['name'] = sequence.next_by_code('overtime') or _('Nuevo')
         return super().create(vals_list)
-    
+
+    def _assign_folio_if_pending(self):
+        """Método para asignar folio cuando el registro está en estado pending"""
+        for record in self:
+            if record.state == 'pending' and (not record.name or record.name == _('Nuevo')):
+                # Asegurarse de que la secuencia existe
+                sequence = self.env['ir.sequence'].search([('code', '=', 'overtime')], limit=1)
+                if not sequence:
+                    # Crear la secuencia si no existe
+                    sequence = self.env['ir.sequence'].create({
+                        'name': 'Solicitud de Tiempo Extra',
+                        'code': 'overtime',
+                        'prefix': 'OT/%(y)s/%(month)s/',
+                        'padding': 4,
+                    })
+                record.name = sequence.next_by_code('overtime') or _('Nuevo')
+
+    def write(self, vals):
+        result = super().write(vals)
+        # Asignar folio después del write si el estado cambió a pending
+        if vals.get('state') == 'pending':
+            self._assign_folio_if_pending()
+        return result
+
     def action_submit_and_split(self):
         self.ensure_one()
         new_requests = self.env['overtime']
@@ -150,16 +185,19 @@ class Overtime(models.Model):
                 'justification': self.justification,
                 'state': 'pending',
                 'employee_id': line.employee_id.id,
-                'time_from': line.time_from, 
+                'time_from': line.time_from,
                 'time_to': line.time_to,
                 'hours_taken': line.hours_taken,
                 'activity': line.activity,
             }
-            
+
             new_request = new_requests.create(new_vals)
             new_requests |= new_request
-            
-        # 1. Eliminar la solicitud original (la que tiene las líneas)
+
+        # Asegurar que todos los registros tengan folio asignado
+        new_requests._assign_folio_if_pending()
+
+        # Eliminar la solicitud original (la que tiene las líneas)
         self.unlink()
 
         return {
@@ -175,6 +213,17 @@ class Overtime(models.Model):
         self.ensure_one()
         self.authorized_by_id = self.env.user.id
         self.state = 'approved'
+
+    def action_reject(self):
+        self.ensure_one()
+        return {
+            'name': 'Motivo de Rechazo',
+            'type': 'ir.actions.act_window',
+            'res_model': 'overtime.rejection.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_overtime_id': self.id}
+        }
     
     @api.depends('employee_id', 'requested_date')
     def _compute_attendance_log(self):

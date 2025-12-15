@@ -1,10 +1,9 @@
 /** @odoo-module */
 import { Component, useState } from "@odoo/owl";
 import { OvertimeDashboard } from "../components/overtime_dashboard/overtime_dashboard";
+import { registry } from "@web/core/registry";
 
-// No importar del registry aquí para evitar dependencia circular
 // El controlador original será pasado dinámicamente
-
 let originalListController = null;
 
 export class OvertimeDashboardWrapper extends Component{
@@ -13,16 +12,16 @@ export class OvertimeDashboardWrapper extends Component{
     static components = {};
 
     setup() {
-        console.log("🔔 OvertimeDashboardWrapper.setup() - props:", this.props);
-        console.log("🔔 Model:", this.props.model);
-        
         // Inicializar componentes dinámicamente
         if (!originalListController) {
-            // En caso de que no esté disponible, obtenerlo del registry aquí
-            const { registry } = owl.core;
-            const listView = registry.category("views").get("list");
-            originalListController = listView.Controller;
-            console.log("⚠️ originalListController obtenido dinámicamente");
+            // En caso de que no esté disponible, obtenerlo del registry importado
+            try {
+                const listView = registry.category("views").get("list");
+                originalListController = listView.Controller;
+                console.log("⚠️ originalListController obtenido dinámicamente");
+            } catch (e) {
+                console.warn("No se pudo obtener originalListController desde registry aún:", e);
+            }
         }
         
         OvertimeDashboardWrapper.components = {
@@ -35,28 +34,90 @@ export class OvertimeDashboardWrapper extends Component{
             endDate: new Date().toISOString().split("T")[0],
         });
 
+        // Restaurar fechas persistidas (si el usuario navegó fuera/volvió)
+        try {
+            const saved = window.localStorage.getItem('overtime_dashboard_dates');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed.start_date) this.state.startDate = parsed.start_date;
+                if (parsed.end_date) this.state.endDate = parsed.end_date;
+            }
+        } catch (e) {
+            // ignore
+        }
+
         this.onDatesUpdated = this.onDatesUpdated.bind(this);
     }
 
     onDatesUpdated(startDate, endDate) {
         this.state.startDate = startDate;
         this.state.endDate = endDate;
+        // Persistir fechas para mantener estado entre navegaciones
+        try{
+            window.localStorage.setItem('overtime_dashboard_dates', JSON.stringify({
+                start_date: startDate,
+                end_date: endDate,
+            }));
+        } catch (e) {}
+
+        try {
+            if (this.shouldRenderDashboard) {
+                const baseContext = (this.props && this.props.context) || (this.props && this.props.action && this.props.action.context) || {};
+                const newContext = {
+                    ...baseContext,
+                    list_start_date: startDate,
+                    list_end_date: endDate,
+                    search_default_dashboard_date: 1,
+                };
+                if (this.props && this.props.model && typeof this.props.model.load === 'function') {
+                    this.props.model.load({ context: newContext });
+                }
+            }
+        } catch (e) {
+        
+        }
     }
 
     get dynamicViewProps() {
-        return { 
+        const baseProps = {
             ...this.props,
+        };
+
+        // Resolver el dominio base desde props o action
+        let baseDomain = baseProps.domain ?? (baseProps.action && baseProps.action.domain) ?? [];
+        if (!Array.isArray(baseDomain)) {
+            baseDomain = [baseDomain];
+        } else {
+            // copiar para no mutar
+            baseDomain = baseDomain.slice();
+        }
+
+        // Solo añadir filtro de fechas si estamos en la vista de dashboard (approved)
+        if (this.shouldRenderDashboard && this.state.startDate && this.state.endDate) {
+            baseDomain = baseDomain.concat([
+                ['requested_date', '>=', this.state.startDate],
+                ['requested_date', '<=', this.state.endDate],
+            ]);
+        }
+
+        const newContext = {
+            ...(baseProps.context || {}),
+            list_start_date: this.state.startDate,
+            list_end_date: this.state.endDate,
+        };
+
+        return {
+            ...baseProps,
+            domain: baseDomain,
+            context: newContext,
         };
     }
 
     get shouldRenderDashboard() {
         const resolvedModel = this.props.model ?? this.props.resModel ?? this.props.res_model ?? (this.props.view && this.props.view.model) ?? null;
-        console.log("🔔 shouldRenderDashboard - resolvedModel:", resolvedModel, "propsKeys:", Object.keys(this.props));
             // Buscar domain en varias fuentes
             const domain = this.props.domain ?? (this.props.action && this.props.action.domain) ?? (this.props.view && this.props.view.arch && this.props.view.arch.attrs && this.props.view.arch.attrs.domain) ?? null;
             const context = this.props.context ?? (this.props.action && this.props.action.context) ?? null;
-
-            console.log("🔔 shouldRenderDashboard - resolvedModel:", resolvedModel, "domain:", domain, "context:", context);
 
             const domainHasApproved = (dom) => {
                 if (!dom) return false;
@@ -93,8 +154,6 @@ export class OvertimeDashboardWrapper extends Component{
             };
 
             const isApproved = domainHasApproved(domain) || contextHasApproved(context);
-            console.log('🔔 shouldRenderDashboard - isApproved:', isApproved);
-
             return resolvedModel === 'overtime' && isApproved;
     }
 }
@@ -106,5 +165,4 @@ export function setOriginalListController(controller) {
         OvertimeDashboard,
         DynamicView: originalListController,
     };
-    console.log("✅ setOriginalListController llamado");
 }

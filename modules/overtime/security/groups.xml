@@ -1,0 +1,15 @@
+<odoo>
+    <data>
+        <!-- Grupo Supervisores Tiempo Extra -->
+        <record id="group_overtime_supervisor" model="res.groups">
+            <field name="name">Supervisores Tiempo Extra</field>
+            <field name="comment">Grupo para supervisores que pueden crear y enviar solicitudes de tiempo extra</field>
+        </record>
+
+        <!-- Grupo RH Tiempo Extra -->
+        <record id="group_overtime_hr" model="res.groups">
+            <field name="name">RH Tiempo Extra</field>
+            <field name="comment">Grupo para recursos humanos que pueden aprobar solicitudes de tiempo extra</field>
+        </record>
+    </data>
+</odoo>

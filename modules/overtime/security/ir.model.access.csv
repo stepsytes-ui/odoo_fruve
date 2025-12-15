@@ -2,3 +2,4 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_overtime,overtime.overtime,model_overtime,base.group_user,1,1,1,1
 access_hr_area,hr_area.hr_area,model_hr_area,base.group_user,1,1,1,1
 access_overtime_employee_line,overtime.employee.line.overtime.employee.line,model_overtime_employee_line,base.group_user,1,1,1,1
+access_overtime_rejection_wizard,overtime.rejection.wizard,model_overtime_rejection_wizard,base.group_user,1,1,1,1

@@ -32,6 +32,18 @@ export class OvertimeDashboard extends Component {
             tableData: [],
         });
 
+        // Restaurar fechas desde localStorage si existen
+        try{
+            const saved = window.localStorage.getItem('overtime_dashboard_dates');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed.start_date) this.state.start_date = parsed.start_date;
+                if (parsed.end_date) this.state.end_date = parsed.end_date;
+            }
+        } catch (e) {
+            // ignore
+        }
+
         onWillStart(async () => {
             await this.loadStats();
         });
@@ -41,6 +53,15 @@ export class OvertimeDashboard extends Component {
         await this.loadStats();
         if (this.props.onChangeDates) {
             this.props.onChangeDates(this.state.start_date, this.state.end_date);
+        }
+        // Persistir fechas para mantenerlas al navegar fuera/volver
+        try{
+            window.localStorage.setItem('overtime_dashboard_dates', JSON.stringify({
+                start_date: this.state.start_date,
+                end_date: this.state.end_date,
+            }));
+        } catch (e) {
+            // ignore
         }
     }
 

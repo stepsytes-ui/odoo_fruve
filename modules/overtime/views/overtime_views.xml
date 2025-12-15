@@ -6,18 +6,27 @@
             <field name="arch" type="xml">
                 <form string="Solicitud de Tiempo Extra">
                     <header>
-                        <field name="state" widget="statusbar" statusbar_visible="draft,pending,approved"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,pending,approved,rejected"/>
                         <button name="action_submit_and_split" 
                                 type="object" 
                                 string="Enviar Solicitud" 
                                 class="oe_highlight"
                                 invisible="state != 'draft'"
+                                groups="overtime.group_overtime_supervisor,overtime.group_overtime_hr"
                         />
                         <button name="action_approve"
                                 type="object"
                                 string="Aprobar"
                                 class="oe_highlight"
                                 invisible="state != 'pending'"
+                                groups="overtime.group_overtime_hr"
+                        />
+                        <button name="action_reject"
+                                type="object"
+                                string="Rechazar"
+                                class="btn-secondary"
+                                invisible="state != 'pending'"
+                                groups="overtime.group_overtime_hr"
                         />
                         </header>
                     <sheet>
@@ -35,6 +44,7 @@
                                 <field name="requested_date" string="Fecha solicitada"/>
                                 <field name="create_date" string="Fecha de elaboración" readonly="1"/>
                                 <field name="authorized_by_id" invisible="state in ('draft', 'pending')" />
+                                <field name="rejection_reason" invisible="state != 'rejected'" readonly="1"/>
                             </group>
                         </group>
                         <group>
@@ -88,7 +98,6 @@
                 <list string="Solicitudes de Tiempo Extra">
                     <field name="name"/>
                     <field name="requested_date" width="120"/>
-                    <!-- <field name="create_date"/> -->
                     <field name="department_id"/>
                     <field name="area_id"/>
                     <field name="supervisor_id"/>
@@ -105,10 +114,11 @@
             <field name="name">Solicitudes de Tiempo Extra</field>
             <field name="res_model">overtime</field>
             <field name="view_mode">list,form</field>
-            <field name="domain">[('state', 'in', ['draft', 'pending'])]</field>
-            <field name="context">{'search_default_requested_date_filter': 1}</field>
+            <field name="domain">[('state', 'in', ['draft', 'pending','rejected'])]</field>
+            <field name="context">{'search_default_requested_date_filter': 1, 'search_default_my_requests': 1}</field>
+            <field name="groups_id" eval="[(4, ref('overtime.group_overtime_supervisor')), (4, ref('overtime.group_overtime_hr'))]"/>
             <field name="help" type="html">
-                <p class="o_view_nocontent_smiling_face" padding="3">
+                <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
                     Crea tu primera solicitud de tiempo extra
                 </p>
             </field>
@@ -119,9 +129,10 @@
             <field name="res_model">overtime</field>
             <field name="view_mode">list,form</field>
             <field name="domain">[('state', '=', 'approved')]</field>
+            <field name="groups_id" eval="[(4, ref('overtime.group_overtime_hr'))]"/>
             <field name="help" type="html">
-                <p class="o_view_nocontent_smiling_face">
-                    No hay solicitudes de tiempo extra autorizadas.
+                <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
+                    No hay solicitudes de tiempo extra autorizadas en este rango de fechas.
                 </p>
             </field>
         </record>
@@ -131,6 +142,7 @@
             <field name="model">overtime</field>
             <field name="arch" type="xml">
                 <search string="Buscar Solicitudes de Tiempo Extra">
+                    <field name="biometric_id" string="No. Empleado" filter_domain="[('biometric_id', 'ilike', self)]"/>
                     <field name="name" string="Folio" filter_domain="[('name', 'ilike', self)]"/>
                     <field name="employee_id" string="Empleado" filter_domain="[('employee_id', '=', self)]"/>
                     <field name="department_id" string="Departamento" filter_domain="[('department_id', '=', self)]"/>
@@ -162,6 +174,16 @@
                     <filter name="filter_approved" 
                             string="Aprobadas" 
                             domain="[('state', '=', 'approved')]"/>
+                    
+                    <filter name="filter_rejected" 
+                            string="Rechazadas" 
+                            domain="[('state', '=', 'rejected')]"/>
+                    
+                    <!-- Filtro para mostrar solo las solicitudes del supervisor actual -->
+                    <filter name="my_requests"
+                            string="Mis Solicitudes"
+                            domain="[('supervisor_id', '=', uid)]"
+                            groups="overtime.group_overtime_supervisor"/>
                     
                     <separator/>
                     

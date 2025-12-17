@@ -5,6 +5,7 @@
             <field name="model">shift.management</field>
             <field name="arch" type="xml">
                 <list>
+                    <field name="company_id" groups="base.group_multi_company"/>
                     <field name="turno_name"/>
                     <field name="hora_entrada_str"/>
                     <field name="hora_salida_str"/>
@@ -27,6 +28,7 @@
                     <sheet>
                         <group>
                             <field name="turno_name"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                             <field name="hora_entrada"/>
                             <field name="hora_salida"/>
                         </group>

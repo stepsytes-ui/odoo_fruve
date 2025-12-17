@@ -40,7 +40,6 @@ Modulo para integración de ZKTeco en odoo
                 'zkteco_realtime_connector/static/src/views/attendance_dashboard_wrapper.xml',
                 'zkteco_realtime_connector/static/src/views/attendance_dashboard_wrapper.js',
         
-                # 3. El archivo de registro, que DEBE cargarse DESPUÉS del JS de asistencia de Odoo
                 (
                     'after',
                     'hr_attendance/static/src/views/attendance_list_view.js',
@@ -48,8 +47,6 @@ Modulo para integración de ZKTeco en odoo
                 ),
             ],
         },
-
-    # only loaded in demonstration mode
     'demo': [],
     'installable': True,
     'application': False,

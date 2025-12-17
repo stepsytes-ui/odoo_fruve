@@ -26,6 +26,13 @@ class ShiftManagement(models.Model):
         inverse_name='turno_id',
         string='Empleados Asignados'
     )
+    
+    company_id = fields.Many2one(
+        'res.company', 
+        string='Compañía', 
+        default=lambda self: self.env.company,
+        required=True
+    )
 
     hora_entrada_str = fields.Char(
         string='Hora de Entrada:',

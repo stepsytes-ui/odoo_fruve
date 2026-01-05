@@ -123,7 +123,18 @@
                 </field>
             </record>
 
+            <record id="view_hr_employee_form_inherit_expedient" model="ir.ui.view">
+                <field name="name">hr.employee.form.inherit.expedient</field>
+                <field name="model">hr.employee</field>
+                <field name="inherit_id" ref="hr.view_employee_form"/>
+                <field name="arch" type="xml">
+                    
+                    <xpath expr="//field[@name='parent_id']" position="after">
+                        <field name="fecha_ingreso_manual" invisible="context.get('active_id')"/>
+                    </xpath>
 
+                    </field>
+            </record>
 
     </data>
 </odoo>

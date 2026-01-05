@@ -314,14 +314,11 @@ class HrAttendance(models.Model):
             employee = attendance.employee_id
             check_in_dt_utc = pytz.utc.localize(attendance.check_in)
             
-            # 2. Obtener la hora de salida (check_out) programada para el día del check-in
             shift_out_dt_utc = self._get_shift_out_for_check_in(employee, check_in_dt_utc)
 
             if shift_out_dt_utc:
-                # 3. Calcular la hora límite: Fin de turno + 5 horas de gracia
                 close_limit_dt = shift_out_dt_utc + timedelta(hours=AUTO_CLOSE_DELAY_HOURS)
                 
-                # 4. Comprobar si ya se pasó el límite
                 if now_utc >= close_limit_dt:
                     attendances_to_close += attendance
 
@@ -388,15 +385,12 @@ class HrAttendance(models.Model):
                         activity_type = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
 
                         if not activity_type:
-                            # Fallback si la referencia externa falló (por si cambiaron el xmlid o la DB está corrupta)
                             _logger.warning("Fallo al encontrar la actividad por ID XML. Buscando por nombre 'To Do' o 'Para hacer'.")
                             activity_type = self.env['mail.activity.type'].search([('name', 'in', ['To Do', 'Para hacer'])], limit=1)
 
                         if activity_type:
-                            # El ID del modelo para hr.employee
                             hr_employee_model_id = self.env['ir.model']._get('hr.employee').id
                             
-                            # Datos base para la actividad
                             activity_data = {
                                 'res_id': employee.id,
                                 'res_model_id': hr_employee_model_id,

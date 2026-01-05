@@ -7,6 +7,11 @@ _logger = logging.getLogger(__name__)
 
 class HrEmployeeExtension(models.Model):
     _inherit = 'hr.employee'
+
+    fecha_ingreso_manual = fields.Date(
+        string='Fecha de Ingreso',
+        help="Campo para ingresar la fecha de ingreso del empleado si deja vacio tomara la fecha actual por default"
+    )
     
     expedient_ids = fields.One2many(
         'employee.expedient', 
@@ -23,11 +28,12 @@ class HrEmployeeExtension(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         employees = super().create(vals_list)
-        for employee in employees:
+        for employee, vals in zip(employees, vals_list):
+            fecha_alta = vals.get('fecha_ingreso_manual') or fields.Date.today()
             self.env['employee.expedient'].create({
                     'employee_id': employee.id,
                     'tipo_registro': 'alta',
-                    'fecha_movimiento': fields.Date.today(),
+                    'fecha_movimiento': fecha_alta,
                     'recontratable': 'n/a',
                     'company_id': employee.company_id.id,
                 })

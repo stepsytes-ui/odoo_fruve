@@ -14,10 +14,6 @@
                 </field>
 
                 <field name="biometric_id" position="after">
-                    <field name="turno_id"/>
-                </field>
-
-                <field name="biometric_id" position="after">
                     <field name="turno_id" domain="[('company_id', '=', company_id)]"/>
                 </field>
 

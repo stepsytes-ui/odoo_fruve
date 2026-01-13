@@ -5,17 +5,12 @@
             <field name="model">shift.management</field>
             <field name="arch" type="xml">
                 <list>
-                    <field name="company_id" groups="base.group_multi_company"/>
                     <field name="turno_name"/>
-                    <field name="hora_entrada_str"/>
-                    <field name="hora_salida_str"/>
-                    <field name="work_monday"/>
-                    <field name="work_tuesday"/>
-                    <field name="work_wednesday"/>
-                    <field name="work_thursday"/>
-                    <field name="work_friday"/>
-                    <field name="work_saturday"/>
-                    <field name="work_sunday"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="hora_entrada_str" string="Entrada Gral."/>
+                    <field name="hora_salida_str" string="Salida Gral."/>
+                    <field name="special_monday" string="L-Esp." widget="boolean_toggle"/>
+                    <field name="special_saturday" string="S-Esp." widget="boolean_toggle"/>
                 </list>
             </field>
         </record>
@@ -26,24 +21,78 @@
             <field name="arch" type="xml">
                 <form>
                     <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="turno_name" placeholder="Ej. Turno Matutino"/>
+                            </h1>
+                        </div>
                         <group>
-                            <field name="turno_name"/>
-                            <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="hora_entrada"/>
-                            <field name="hora_salida"/>
+                            <group string="Horario General (Base)">
+                                <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="hora_entrada"/>
+                                <field name="hora_salida"/>
+                            </group>
                         </group>
-                    </sheet>
-                        <h1>Dias Laborales</h1>
-                    <sheet>
-                        <group>
-                            <field name="work_monday"/>
-                            <field name="work_tuesday"/>
-                            <field name="work_wednesday"/>
-                            <field name="work_thursday"/>
-                            <field name="work_friday"/>
-                            <field name="work_saturday"/>
-                            <field name="work_sunday"/>
-                        </group>
+
+                        <notebook>
+                            <page string="Configuración de Días" name="days_config">
+                                <p class="text-muted">Marque "Especial" para definir un horario distinto al general para ese día.</p>
+                                <group>
+                                    <group string="Lunes">
+                                        <field name="work_monday"/>
+                                        <field name="special_monday" invisible="not work_monday"/>
+                                        <field name="in_monday" invisible="not special_monday" required="special_monday"/>
+                                        <field name="out_monday" invisible="not special_monday" required="special_monday"/>
+                                    </group>
+                                    <group string="Martes">
+                                        <field name="work_tuesday"/>
+                                        <field name="special_tuesday" invisible="not work_tuesday"/>
+                                        <field name="in_tuesday" invisible="not special_tuesday" required="special_tuesday"/>
+                                        <field name="out_tuesday" invisible="not special_tuesday" required="special_tuesday"/>
+                                    </group>
+                                    <group string="Miércoles">
+                                        <field name="work_wednesday"/>
+                                        <field name="special_wednesday" invisible="not work_wednesday"/>
+                                        <field name="in_wednesday" invisible="not special_wednesday" required="special_wednesday"/>
+                                        <field name="out_wednesday" invisible="not special_wednesday" required="special_wednesday"/>
+                                    </group>
+                                    <group string="Jueves">
+                                        <field name="work_thursday"/>
+                                        <field name="special_thursday" invisible="not work_thursday"/>
+                                        <field name="in_thursday" invisible="not special_thursday" required="special_thursday"/>
+                                        <field name="out_thursday" invisible="not special_thursday" required="special_thursday"/>
+                                    </group>
+                                    <group string="Viernes">
+                                        <field name="work_friday"/>
+                                        <field name="special_friday" invisible="not work_friday"/>
+                                        <field name="in_friday" invisible="not special_friday" required="special_friday"/>
+                                        <field name="out_friday" invisible="not special_friday" required="special_friday"/>
+                                    </group>
+                                    <group string="Sábado">
+                                        <field name="work_saturday"/>
+                                        <field name="special_saturday" invisible="not work_saturday"/>
+                                        <field name="in_saturday" invisible="not special_saturday" required="special_saturday"/>
+                                        <field name="out_saturday" invisible="not special_saturday" required="special_saturday"/>
+                                    </group>
+                                    <group string="Domingo">
+                                        <field name="work_sunday"/>
+                                        <field name="special_sunday" invisible="not work_sunday"/>
+                                        <field name="in_sunday" invisible="not special_sunday" required="special_sunday"/>
+                                        <field name="out_sunday" invisible="not special_sunday" required="special_sunday"/>
+                                    </group>
+                                </group>
+                            </page>
+                            
+                            <page string="Empleados Asignados" name="employees">
+                                <field name="employee_ids">
+                                    <list>
+                                        <field name="name"/>
+                                        <field name="department_id"/>
+                                        <field name="job_id"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
                     </sheet>
                 </form>
             </field>
@@ -58,7 +107,5 @@
                     (0, 0, {'view_mode': 'list', 'view_id': ref('shift_list_view')}),
                     (0, 0, {'view_mode': 'form', 'view_id': ref('shift_form_view')})]"/>
         </record> 
-        
-            
     </data>
 </odoo>

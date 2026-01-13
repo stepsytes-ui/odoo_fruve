@@ -10,7 +10,7 @@ class EmployeeExpedientBajaWizard(models.TransientModel):
     fecha_movimiento = fields.Date(string='Fecha de Movimiento', required=True, default=fields.Date.today)
     hoja_renuncia_convenio = fields.Binary(
         string='Hoja de Renuncia/Convenio (PDF)', 
-        required=True, 
+        required=False, 
         attachment=True
     )
     nombre_hoja_renuncia = fields.Char(string='Nombre Archivo Renuncia', default='Renuncia_o_Convenio.pdf')

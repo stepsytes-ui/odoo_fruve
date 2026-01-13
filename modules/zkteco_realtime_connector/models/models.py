@@ -31,37 +31,40 @@ class ZkTecoAttendanceLog(models.Model):
 
     def _get_shift_times(self, employee, check_datetime_local):
         shift = employee.turno_id
-        if not shift or not shift.hora_entrada or not shift.hora_salida:
+        if not shift:
             return None, None
         
+        # Obtenemos las horas correctas para ese día específico
+        entrada_config, salida_config = shift.get_times_for_date(check_datetime_local.date())
+
+        if not entrada_config or not salida_config:
+            return None, None
+            
         try:
             FIXED_TIMEZONE = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
-        except pytz.UnknownTimeZoneError:
-            _logger.error("Error de configuración: Zona horaria '%s' es inválida.", FIXED_DEVICE_TIMEZONE_NAME)
+        except pytz.UnknownTimeZoneError: 
             return None, None
 
-        entrada_naive = fields.Datetime.from_string(shift.hora_entrada)
-        salida_naive = fields.Datetime.from_string(shift.hora_salida)
+        # Convertir de la base de datos (UTC) a la zona local del dispositivo
+        entrada_naive = fields.Datetime.from_string(entrada_config)
+        salida_naive = fields.Datetime.from_string(salida_config)
         
         shift_in_local_dt = pytz.utc.localize(entrada_naive).astimezone(FIXED_TIMEZONE)
         shift_out_local_dt = pytz.utc.localize(salida_naive).astimezone(FIXED_TIMEZONE)
 
+        # Usar solo la hora y aplicarla a la fecha de la checada
         shift_in_time = shift_in_local_dt.time()
         shift_out_time = shift_out_local_dt.time()
-
         shift_date = check_datetime_local.date()
         
         shift_in_datetime_local = FIXED_TIMEZONE.localize(datetime.combine(shift_date, shift_in_time))
         shift_out_datetime_local = FIXED_TIMEZONE.localize(datetime.combine(shift_date, shift_out_time))
 
+        # Manejo de cruce de medianoche (turno nocturno)
         if shift_out_time <= shift_in_time:
              shift_out_datetime_local += timedelta(days=1)
         
-        shift_in_utc = shift_in_datetime_local.astimezone(pytz.utc)
-        shift_out_utc = shift_out_datetime_local.astimezone(pytz.utc)
-        
-        return shift_in_utc, shift_out_utc
-
+        return shift_in_datetime_local.astimezone(pytz.utc), shift_out_datetime_local.astimezone(pytz.utc)
 
     def _create_attendance(self, employee, check_in_utc, status_in):
         """Función auxiliar para crear un registro de hr.attendance."""

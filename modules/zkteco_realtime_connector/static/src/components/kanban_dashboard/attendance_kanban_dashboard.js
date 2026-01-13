@@ -6,6 +6,9 @@ import { registry } from "@web/core/registry";
 import { session } from "@web/session";
 
 export class AttendanceKanbanDashboard extends Component {
+    static props = {
+        onFilter: {type: Function, optional: true},
+    }
     static template = "zkteco_realtime_connector.AttendanceKanbanDashboard";
 
     setup() {
@@ -56,6 +59,9 @@ export class AttendanceKanbanDashboard extends Component {
 
     async _onRefreshClick() {
         await this.loadStats();
+        if (this.props.onFilter) {
+            this.props.onFilter(this.state.start_date, this.state.end_date);
+        }
     }
 
 }

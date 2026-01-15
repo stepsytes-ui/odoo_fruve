@@ -121,6 +121,12 @@ class EmployeeExpedient(models.Model):
         store=True
     )
 
+    history_ids = fields.One2many(
+        'employee.expedient.line', 
+        'expedient_id', 
+        string='Historial de Fechas'
+    )
+
     @api.depends('employee_id', 'tipo_registro', 'fecha_movimiento')
     def _compute_name(self):
         for record in self:
@@ -214,3 +220,12 @@ class EmployeeExpedient(models.Model):
             'domain': [('employee_id', '=', self.employee_id.id)],
             'context': {'default_employee_id': self.employee_id.id},
         }
+    
+    @api.depends('history_ids.fecha')
+    def _compute_latest_movement(self):
+        for record in self:
+            latest = record.history_ids.filtered(lambda l: l.tipo_movimiento in ['alta', 'reingreso'])
+            if latest:
+                record.fecha_movimiento = latest[0].fecha
+            else:
+                record.fecha_movimiento = fields.Date.today()

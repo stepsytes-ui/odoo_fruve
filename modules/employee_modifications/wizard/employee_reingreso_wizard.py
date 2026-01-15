@@ -8,19 +8,27 @@ class EmployeeExpedientReingresoWizard(models.TransientModel):
     employee_id = fields.Many2one('hr.employee', string='Empleado', required=True, readonly=True)
     fecha_movimiento = fields.Date(string='Fecha de Movimiento', required=True, default=fields.Date.today)
 
-    
-    # Acción para crear el registro de baja
     def action_confirm_reingreso(self):
         self.ensure_one()
+        expedient = self.env['employee.expedient'].search([('employee_id', '=', self.employee_id.id)], limit=1)
         
-        # 1. Crear el registro de Expediente (tipo baja)
-        expedient = self.env['employee.expedient'].create({
-            'employee_id': self.employee_id.id,
-            'tipo_registro': 'reingreso',
-            'fecha_movimiento': self.fecha_movimiento,
-            'recontratable': 'n/a',
+        if expedient:
+            # 2. Agregar la "Baja" al historial (la matriz)
+            self.env['employee.expedient.line'].create({
+                'expedient_id': expedient.id,
+                'tipo_movimiento': 'reingreso',
+                'fecha': self.fecha_movimiento,
+            })
+            
+            # 3. Guardar los archivos en el expediente maestro
+            expedient.write({
+                'tipo_registro': 'reingreso',
+                'employee_status': 'active',
+                'fecha_movimiento': self.fecha_movimiento,
+            })
+
+        self.employee_id.write({
+            'active': True,
+            'employee_status': 'active',
         })
-
-        self.employee_id.write({'employee_status': 'active'})
-
         return {'type': 'ir.actions.act_window_close'}

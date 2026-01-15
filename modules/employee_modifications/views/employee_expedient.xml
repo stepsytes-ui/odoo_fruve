@@ -22,32 +22,6 @@
             </field>
         </record>
 
-        <record id="view_employee_expedient_form" model="ir.ui.view">
-            <field name="name">employee.expedient.form</field>
-            <field name="model">employee.expedient</field>
-            <field name="arch" type="xml">
-                <form string="Registro de Movimiento">
-                    <sheet>
-                        <group>
-                            <field name="employee_id"/>
-                            <field name="numero_empleado"/>
-                            <field name="employee_status"/>
-                            <field name="tipo_registro"/>
-                            <field name="fecha_movimiento"/>
-                            <field name="recontratable" widget="radio"/>
-                        </group>
-                        
-                        <group string="Cálculo de Vacaciones">
-                            <field name="antiguedad" readonly="1"/>
-                            <field name="dias_vacaciones_ley" readonly="1"/>
-                            <field name="dias_vacaciones_ajuste"/> <field name="dias_vacaciones_saldo_inicial" readonly="1"/>
-                            <field name="dias_vacaciones_utilizados" readonly="1"/>
-                            <field name="dias_vacaciones_disponibles" readonly="1" decoration-info="True"/>
-                        </group>
-                        </sheet>
-                </form>
-            </field>
-        </record>
         <record id="view_employee_expedient_search" model="ir.ui.view">
             <field name="name">employee.expedient.search</field>
             <field name="model">employee.expedient</field>
@@ -67,6 +41,76 @@
                         <filter string="Fecha" name="group_by_fecha" context="{'group_by': 'fecha_movimiento'}"/>
                     </group>
                 </search>
+            </field>
+        </record>
+
+        <record id="view_employee_expedient_form" model="ir.ui.view">
+            <field name="name">employee.expedient.form</field>
+            <field name="model">employee.expedient</field>
+            <field name="arch" type="xml">
+                <form string="Expediente de Movimientos">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="employee_id" readonly="1"/>
+                                <field name="numero_empleado"/>
+                                <field name="employee_status" widget="badge" 
+                                    decoration-success="employee_status == 'active'" 
+                                    decoration-danger="employee_status == 'inactive'"/>
+                            </group>
+                            <group>
+                                <field name="tipo_registro" string="Último Movimiento"/>
+                                <field name="fecha_movimiento" string="Fecha del Movimiento"/>
+                                <field name="recontratable" widget="radio" options="{'horizontal': true}"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+                            <page string="Cálculo de Vacaciones" name="vacaciones">
+                                <group>
+                                    <group string="Estado de Antigüedad">
+                                        <field name="antiguedad" readonly="1"/>
+                                        <field name="dias_vacaciones_ley" readonly="1"/>
+                                    </group>
+                                    <group string="Saldos de Días">
+                                        <field name="dias_vacaciones_ajuste"/>
+                                        <field name="dias_vacaciones_saldo_inicial" readonly="1"/>
+                                        <field name="dias_vacaciones_utilizados" readonly="1"/>
+                                        <field name="dias_vacaciones_disponibles" readonly="1" 
+                                            decoration-info="True" font-weight="bold"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <page string="Historial de Fechas (Matriz)" name="historial">
+                                <field name="history_ids" readonly="1">
+                                    <list decoration-info="tipo_movimiento == 'alta'" 
+                                        decoration-danger="tipo_movimiento == 'baja'" 
+                                        decoration-success="tipo_movimiento == 'reingreso'">
+                                        <field name="fecha"/>
+                                        <field name="tipo_movimiento" widget="badge"/>
+                                        <field name="motivo"/>
+                                    </list>
+                                </field>
+                            </page>
+
+                            <page string="Documentación de Baja/Renuncia" name="documentacion">
+                                <group>
+                                    <group string="Archivos">
+                                        <field name="hoja_renuncia_convenio" filename="nombre_hoja_renuncia" widget="binary"/>
+                                        <field name="nombre_hoja_renuncia" invisible="1"/>
+                                        
+                                        <field name="encuesta" filename="nombre_encuesta" widget="binary"/>
+                                        <field name="nombre_encuesta" invisible="1"/>
+                                    </group>
+                                    <group string="Detalles Adicionales">
+                                        <field name="motivo_baja" placeholder="Detalles del motivo de la última baja..."/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
             </field>
         </record>
 

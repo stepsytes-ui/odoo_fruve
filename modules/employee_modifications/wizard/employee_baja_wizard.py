@@ -31,31 +31,33 @@ class EmployeeExpedientBajaWizard(models.TransientModel):
         ('n/a', 'N/A'),
     ], string='Es recontratable?', default='n/a', required=True)
     
-    # Acción para crear el registro de baja
     def action_confirm_baja(self):
         self.ensure_one()
+        # 1. Buscar el expediente único del empleado
+        expedient = self.env['employee.expedient'].search([('employee_id', '=', self.employee_id.id)], limit=1)
         
-        # 1. Crear el registro en tu tabla de Expedientes
-        self.env['employee.expedient'].create({
-            'employee_id': self.employee_id.id,
-            'tipo_registro': 'baja',
-            'fecha_movimiento': self.fecha_movimiento,
-            'motivo_baja': self.motivo_baja,
-            'hoja_renuncia_convenio': self.hoja_renuncia_convenio,
-            'nombre_hoja_renuncia': self.nombre_hoja_renuncia,
-            'encuesta': self.encuesta,
-            'nombre_encuesta': self.nombre_encuesta,
-            'recontratable': self.recontratable,
-        })
+        if expedient:
+            # 2. Agregar la "Baja" al historial (la matriz)
+            self.env['employee.expedient.line'].create({
+                'expedient_id': expedient.id,
+                'tipo_movimiento': 'baja',
+                'fecha': self.fecha_movimiento,
+                'motivo': self.motivo_baja,
+            })
+            
+            # 3. Guardar los archivos en el expediente maestro
+            expedient.write({
+                'tipo_registro': 'baja',
+                'hoja_renuncia_convenio': self.hoja_renuncia_convenio,
+                'nombre_hoja_renuncia': self.nombre_hoja_renuncia,
+                'recontratable': self.recontratable,
+            })
 
-        # 2. Actualizar el empleado con la información de salida de Odoo y ARCHIVAR
-        # Odoo usa 'departure_date', 'departure_reason_id' y 'departure_description'
+        # 4. Archivar empleado (como hicimos antes)
         self.employee_id.write({
-            'departure_date': self.fecha_movimiento,
+            'active': False,
             'departure_reason_id': self.departure_reason_id.id,
-            'departure_description': self.motivo_baja,
-            'employee_status': 'inactive',
-            'active': False,  # Esto archiva al empleado automáticamente
+            'departure_date': self.fecha_movimiento,
+            'employee_status': 'inactive'
         })
-
         return {'type': 'ir.actions.act_window_close'}

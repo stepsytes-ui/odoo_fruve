@@ -2,6 +2,8 @@
 from odoo import api, fields, models
 import pytz
 
+from odoo.osv import expression
+
 class ShiftManagement(models.Model):
     _name = 'shift.management'
     _description = 'Gestión de Turnos de Empleados'
@@ -118,3 +120,27 @@ class ShiftManagement(models.Model):
 
             record.hora_entrada_str = format_utc_to_local_time(record.hora_entrada)
             record.hora_salida_str = format_utc_to_local_time(record.hora_salida)
+
+
+    #Metodo para filtrar busquedas por compañia recuerdalo papu
+    @api.model
+    def _search(self, args, offset=0, limit=None, order=None): 
+        domain = args or []
+
+        active_company_ids = self.env.context.get('allowed_company_ids', False)
+        
+        if active_company_ids:
+            
+            company_domain = expression.OR([
+                [('company_id', 'in', active_company_ids)],
+                [('company_id', '=', False)] 
+            ])
+            
+            domain = expression.AND([domain, company_domain])
+
+        return super(ShiftManagement, self)._search(
+            domain, 
+            offset=offset, 
+            limit=limit,  
+            order=order
+        )

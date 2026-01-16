@@ -10,7 +10,7 @@ class Overtime(models.Model):
     
     name = fields.Char(string='Folio', required=True, copy=False, readonly=True, default=lambda self: _('Nuevo'))
     create_date = fields.Datetime(string='Fecha Creación', readonly=True )
-    employee_id = fields.Many2one('hr.employee', string='Empleado', required=True,default=lambda self: self.env.user.employee_id.id)
+    employee_id = fields.Many2one('hr.employee', string='Empleado')
     supervisor_id = fields.Many2one('res.users',string='Supervisor que solicita',default=lambda self: self.env.user.id,readonly=True)
     requested_date = fields.Date(string='Fecha Solicitada', required=True)
     department_id = fields.Many2one('hr.department',string='Departamento',store=True)

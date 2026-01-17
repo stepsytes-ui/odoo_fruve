@@ -36,6 +36,7 @@ class HrAttendance(models.Model):
         ('LunchS','Salida de Planta'),
         ('LunchE','Regreso a Planta'),
         ('end','Fin de turno'),
+        ('overtime', 'Tiempo Extra'),
         ('forgot_checkout', 'Olvido Checar Salida'),
         ('n/a','No aplica'),
     ] + NEW_LEAVE_STATUSES, string='Estatus de Puntualidad', default='n/a')
@@ -95,7 +96,6 @@ class HrAttendance(models.Model):
 
     @api.model
     def _cron_generate_absences(self):
-        _logger.info("Iniciando CRON para generar faltas...")
         
         try:
             COMPANY_TZ = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
@@ -118,20 +118,12 @@ class HrAttendance(models.Model):
         day_of_week_int = check_date.weekday()
         field_to_check = day_mapping.get(day_of_week_int)
 
-        if not field_to_check:
-            _logger.warning(f"Error de Cron: No se pudo determinar el día de la semana para {check_date}.")
-            return
-
         Employee = self.env['hr.employee']
         employees_to_check = Employee.search([
             ('employee_status', '=', 'active'),
             ('turno_id', '!=', False),
             (f'turno_id.{field_to_check}', '=', True)
         ])
-
-        if not employees_to_check:
-            _logger.info(f"Cron Faltas: No se encontraron empleados programados para trabajar en {check_date}.")
-            return
 
         start_of_day_local = COMPANY_TZ.localize(datetime.combine(check_date, time.min))
         end_of_day_local = COMPANY_TZ.localize(datetime.combine(check_date, time.max))
@@ -142,7 +134,6 @@ class HrAttendance(models.Model):
         start_utc_str = fields.Datetime.to_string(start_of_day_utc)
         end_utc_str = fields.Datetime.to_string(end_of_day_utc)
 
-        _logger.info(f"Revisando faltas para {len(employees_to_check)} empleados en el rango UTC: {start_utc_str} a {end_utc_str}")
         Attendance = self.env['hr.attendance']
         Leave = self.env['hr.leave'].sudo()
 
@@ -178,8 +169,6 @@ class HrAttendance(models.Model):
                 if approved_leave:
                     leave_name = approved_leave.holiday_status_id.name
                     new_status = leave_status_map.get(leave_name, 'leave_other')
-
-                    _logger.info(f"Generando AUSENCIA JUSTIFICADA ({new_status}) para {employee.name} (Permiso: {leave_name}) en {check_date}")
                     
                     Attendance.create({
                         'employee_id': employee.id,
@@ -188,7 +177,6 @@ class HrAttendance(models.Model):
                         'punctuality_status': new_status,
                     })
                 else:
-                    _logger.info(f"Generando FALTA para {employee.name} (ID: {employee.biometric_id}) en {check_date}")
                     
                     new_attendance = Attendance.create({
                         'employee_id': employee.id,
@@ -293,8 +281,6 @@ class HrAttendance(models.Model):
 
     @api.model
     def _cron_auto_close_open_attendances(self):
-        _logger.info("Iniciando CRON para cerrar asistencias abiertas (olvido de salida)...")
-
         now_utc = pytz.utc.localize(datetime.now())
         
         # 1. Buscar asistencias abiertas (check_out = False)
@@ -303,10 +289,6 @@ class HrAttendance(models.Model):
             ('employee_id.employee_status', '=', 'active'),
             ('employee_id.turno_id', '!=', False)
         ])
-
-        if not open_attendances:
-            _logger.info("CRON Cierre: No se encontraron asistencias abiertas elegibles.")
-            return
 
         attendances_to_close = self.env['hr.attendance']
         
@@ -323,16 +305,11 @@ class HrAttendance(models.Model):
                     attendances_to_close += attendance
 
         if attendances_to_close:
-            _logger.info(f"CRON Cierre: Cerrando {len(attendances_to_close)} asistencias abiertas.")
             for attendance in attendances_to_close:
                 check_out_time = attendance.check_in + timedelta(minutes=1) 
                 attendance.write({
                     'check_out': fields.Datetime.to_string(check_out_time),
-                    'punctuality_status': 'forgot_checkout', 
                 })
-                _logger.info(f"Cerrada asistencia de {attendance.employee_id.name}. Check-in: {fields.Datetime.to_string(attendance.check_in)}. Check-out: {fields.Datetime.to_string(check_out_time)}")
-        else:
-            _logger.info("CRON Cierre: No hay asistencias que necesiten ser cerradas automáticamente.")
 
     def _check_and_alert_four_absences(self, employee, new_attendance):
             """Verifica si el empleado tiene 4 faltas no justificadas y notifica al grupo de RRHH."""
@@ -348,15 +325,15 @@ class HrAttendance(models.Model):
 
                         recipient_partner_ids = []
                         
-                        if not hr_group:
-                            _logger.warning("No se encontró el grupo de Recursos Humanos.")
-                            return
+                        # if not hr_group:
+                        #     _logger.warning("No se encontró el grupo de Recursos Humanos.")
+                        #     return
 
                         recipient_partner_ids = [user.partner_id.id for user in hr_group.users if user.partner_id and user.partner_id.email]
                         
-                        if not recipient_partner_ids:
-                            _logger.warning("ALERTA: El grupo de RRHH existe, pero ninguno de sus usuarios tiene un correo electrónico configurado.")
-                            return
+                        # if not recipient_partner_ids:
+                        #     _logger.warning("ALERTA: El grupo de RRHH existe, pero ninguno de sus usuarios tiene un correo electrónico configurado.")
+                        #     return
                         
                         recipient_user_ids = [user.id for user in hr_group.users]
                         # Convertir los IDs a un formato para 'recipient_ids' [(4, id), (4, id), ...]
@@ -385,7 +362,6 @@ class HrAttendance(models.Model):
                         activity_type = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
 
                         if not activity_type:
-                            _logger.warning("Fallo al encontrar la actividad por ID XML. Buscando por nombre 'To Do' o 'Para hacer'.")
                             activity_type = self.env['mail.activity.type'].search([('name', 'in', ['To Do', 'Para hacer'])], limit=1)
 
                         if activity_type:
@@ -404,10 +380,6 @@ class HrAttendance(models.Model):
                             for user_id in recipient_user_ids:
                                 activity_data['user_id'] = user_id # Asigna un solo usuario por actividad
                                 self.env['mail.activity'].sudo().create(activity_data)
-                                
-                            _logger.info(f"ACTIVIDAD CREADA: Notificación in-app creada para {employee.name} para {len(recipient_user_ids)} usuarios.")
 
-                        else:
-                            _logger.warning("No se encontró NINGÚN tipo de actividad adecuado. No se pudo crear la notificación in-app.")
             return      
 

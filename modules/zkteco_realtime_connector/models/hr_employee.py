@@ -1,5 +1,5 @@
 
-from odoo import models,fields
+from odoo import models, fields, api
 
 
 class hr_employee(models.Model):

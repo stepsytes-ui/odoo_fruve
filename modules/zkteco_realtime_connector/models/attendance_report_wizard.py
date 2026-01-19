@@ -52,7 +52,14 @@ class AttendanceReportWizard(models.TransientModel):
         if self.employee_id:
             employee_domain.append(('id', '=', self.employee_id.id))
         
-        employees = self.env['hr.employee'].search(employee_domain, order='biometric_id asc')
+        employees = self.env['hr.employee'].search(employee_domain)
+        
+        # Ordenar numéricamente por biometric_id (convertiendo a número)
+        try:
+            employees = sorted(employees, key=lambda e: int(e.biometric_id) if e.biometric_id else 0)
+        except (ValueError, TypeError):
+            # Si algún biometric_id no es válido como número, ordenar alfabéticamente
+            employees = sorted(employees, key=lambda e: e.biometric_id or '')
         
         if not employees:
             raise ValueError(_('No se encontraron empleados con los criterios especificados.'))

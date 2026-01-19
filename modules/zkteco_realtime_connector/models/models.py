@@ -164,7 +164,7 @@ class ZkTecoAttendanceLog(models.Model):
                 self._close_attendance(last_attendance, check_datetime_utc) 
 
                 is_end_of_shift = False
-                if shift_out_utc_dt and check_datetime_utc_dt >= shift_out_utc_dt:
+                if shift_out_utc_dt and check_datetime_utc_dt >= (shift_out_utc_dt - timedelta(minutes=10)):
                     is_end_of_shift = True
                 
                 if not is_end_of_shift: 

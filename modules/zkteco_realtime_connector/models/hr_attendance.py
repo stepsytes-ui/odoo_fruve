@@ -151,8 +151,7 @@ class HrAttendance(models.Model):
             attendance_exists = Attendance.search([
                 ('employee_id', '=', employee.id),
                 ('check_in', '>=', start_utc_str),
-                ('check_in', '<=', end_utc_str),
-                ('punctuality_status', 'in', ['on_time', 'late'])
+                ('check_in', '<=', end_utc_str)
             ], limit=1)
 
             if not attendance_exists:

@@ -214,6 +214,42 @@ class AttendanceReportWizard(models.TransientModel):
         if not employee.turno_id:
             return {'text': '', 'color': None, 'font_color': None, 'bold': False}
         
+        shift = employee.turno_id
+        
+        # CASO ESPECIAL: Turno Seguridad
+        # Los empleados de Seguridad no generan faltas, simplemente muestran Descanso si no hay checadas
+        if shift.turno_name == 'Seguridad':
+            # 5a. Si hay check-ins válidos, mostrarlos
+            valid_attendances = Attendance.search([
+                ('employee_id', '=', employee.id),
+                ('check_in', '>=', start_utc_str),
+                ('check_in', '<=', end_utc_str),
+                ('punctuality_status', 'in', ['on_time', 'late', 'LunchS', 'LunchE', 'end', 'overtime'])
+            ], order='check_in asc')
+            
+            if valid_attendances:
+                check_in_times = []
+                for att in valid_attendances:
+                    utc_datetime = pytz.utc.localize(att.check_in)
+                    local_datetime = utc_datetime.astimezone(COMPANY_TZ)
+                    time_str = local_datetime.strftime("%H:%M:%S")
+                    check_in_times.append(time_str)
+                
+                return {
+                    'text': ' - '.join(check_in_times),
+                    'color': '00B050',  # Verde
+                    'font_color': 'FFFFFF',  # Blanco
+                    'bold': False
+                }
+            
+            # Si no hay check-ins, mostrar Descanso
+            return {
+                'text': 'Descanso',
+                'color': None,
+                'font_color': '808080',  # Gris
+                'bold': False
+            }
+        
         day_mapping = {
             0: 'work_monday',
             1: 'work_tuesday',
@@ -227,7 +263,6 @@ class AttendanceReportWizard(models.TransientModel):
         field_to_check = day_mapping.get(day_of_week)
         
         # Verificar si el día es laboral (considerando también días especiales)
-        shift = employee.turno_id
         is_work_day = getattr(shift, field_to_check, False)
         
         # 2. Verificar vacaciones

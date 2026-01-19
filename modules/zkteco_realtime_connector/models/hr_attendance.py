@@ -122,7 +122,8 @@ class HrAttendance(models.Model):
         employees_to_check = Employee.search([
             ('employee_status', '=', 'active'),
             ('turno_id', '!=', False),
-            (f'turno_id.{field_to_check}', '=', True)
+            (f'turno_id.{field_to_check}', '=', True),
+            ('turno_id.turno_name', '!=', 'Seguridad')  # Excluir turno de Seguridad
         ])
 
         start_of_day_local = COMPANY_TZ.localize(datetime.combine(check_date, time.min))

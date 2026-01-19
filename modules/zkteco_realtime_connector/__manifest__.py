@@ -27,6 +27,7 @@ Modulo para integración de ZKTeco en odoo
         'views/hr_attendance.xml',
         'views/res_company_views.xml',
         'views/zkteco_device_views.xml',
+        'views/attendance_report_wizard_views.xml',
         'views/zkteco_menu_views.xml',
     ],
 

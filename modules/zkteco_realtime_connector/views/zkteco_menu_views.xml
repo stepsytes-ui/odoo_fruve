@@ -1,11 +1,24 @@
 <odoo>
     <data>
         <menuitem 
+            id="menu_zkteco_connector" 
+            name="Herramientas" 
+            parent="hr_attendance.menu_hr_attendance_root" 
+            sequence="50"/>
+
+        <menuitem 
             id="menu_hr_attendance_view_shift_management" 
             name="Gestión de Turnos" 
-            parent="hr_attendance.menu_hr_attendance_root" 
+            parent="menu_zkteco_connector" 
             groups="hr_attendance.group_hr_attendance_officer" 
             action="zkteco_realtime_connector.shift_action"/>
+
+        <menuitem 
+            id="menu_attendance_report_wizard" 
+            name="Reporte Personalizado" 
+            parent="menu_zkteco_connector" 
+            action="zkteco_realtime_connector.attendance_report_wizard_action" 
+            groups="zkteco_realtime_connector.group_hr_manager_custom"/>
 
     </data>
 </odoo>

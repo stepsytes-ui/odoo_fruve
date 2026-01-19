@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Vista formulario del wizard -->
+        <record id="view_attendance_report_wizard_form" model="ir.ui.view">
+            <field name="name">attendance.report.wizard.form</field>
+            <field name="model">attendance.report.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Reporte Personalizado de Asistencia">
+                    <group>
+                        <group>
+                            <field name="date_from" />
+                            <field name="date_to" />
+                        </group>
+                        <group>
+                            <field name="employee_id" />
+                        </group>
+                    </group>
+                    <footer>
+                        <button name="action_generate_report" string="Generar Reporte" type="object" class="btn-primary" />
+                        <button string="Cancelar" class="btn-default" special="cancel" />
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Acción para abrir el wizard -->
+        <record id="attendance_report_wizard_action" model="ir.actions.act_window">
+            <field name="name">Reporte Personalizado de Asistencia</field>
+            <field name="res_model">attendance.report.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>

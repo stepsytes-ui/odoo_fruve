@@ -2,3 +2,4 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_zkteco_realtime_connector_zkteco_realtime_connector,zkteco.attendance.log,model_zkteco_attendance_log,base.group_user,1,1,1,1
 access_shift_management_officer,shift.management,model_shift_management,hr_attendance.group_hr_attendance_officer,1,1,1,1
 access_zkteco_device_company,zkteco.device,model_zkteco_device,hr_attendance.group_hr_attendance_officer,1,1,1,1
+access_attendance_report_wizard,attendance.report.wizard,model_attendance_report_wizard,zkteco_realtime_connector.group_hr_manager_custom,1,1,1,1

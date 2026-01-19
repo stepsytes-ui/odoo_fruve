@@ -288,8 +288,8 @@ class AttendanceReportWizard(models.TransientModel):
             
             return {
                 'text': ' - '.join(check_in_times),
-                'color': None,
-                'font_color': None,
+                'color': '00B050',  # Verde
+                'font_color': 'FFFFFF',  # Blanco
                 'bold': False
             }
         

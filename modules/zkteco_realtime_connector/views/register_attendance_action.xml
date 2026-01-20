@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Acción para registrar asistencia desde el empleado -->
+        <record id="action_register_attendance" model="ir.actions.act_window">
+            <field name="name">Registrar Asistencia</field>
+            <field name="res_model">hr.attendance</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="hr_attendance.hr_attendance_view_form"/>
+            <field name="target">new</field>
+            <field name="context">{
+                'default_employee_id': active_id,
+                'default_check_in': context_today(),
+            }</field>
+        </record>
+    </data>
+</odoo>

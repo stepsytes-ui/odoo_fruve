@@ -5,10 +5,12 @@
             <field name="model">hr.employee</field>
             <field name="inherit_id" ref="hr.view_employee_form"/>
             <field name="arch" type="xml">
-                <!-- <xpath expr="//field[@name='vat']/.." position="inside">
-                    <field name="is_freelance"/>
-                </xpath> -->
+                <!-- Botones en el header -->
+                <xpath expr="//header" position="inside">
+                    <button name="%(action_register_attendance)d" string="Registrar Asistencia" type="action" class="btn-primary"/>
+                </xpath>
 
+                <!-- Campos personalizados -->
                 <field name="coach_id" position="after">
                     <field name="biometric_id"/>
                 </field>

@@ -21,6 +21,7 @@ Modulo para integración de ZKTeco en odoo
         'security/ir.model.access.csv',
         'security/hr_groups.xml',
         'data/ir_cron_data.xml',
+        'views/register_attendance_action.xml',
         'views/hr_punctuality_report_views.xml',
         'views/hr_employee.xml',
         'views/shift_management.xml',

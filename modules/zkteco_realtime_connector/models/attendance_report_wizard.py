@@ -193,7 +193,8 @@ class AttendanceReportWizard(models.TransientModel):
     def _get_cell_data_for_employee_date(self, employee, target_date, company_tz, Attendance):
         """
         Retorna información completa para una celda: texto, color de fondo y color de fuente.
-        Considera: check-ins, descanso, falta, vacaciones
+        Considera: check-ins, descanso, falta, vacaciones y todos los tipos de permiso (NEW_LEAVE_STATUS).
+        Para Incapacidad, ignora los descansos del shift_management.
         """
         try:
             COMPANY_TZ = company_tz
@@ -219,6 +220,41 @@ class AttendanceReportWizard(models.TransientModel):
         # CASO ESPECIAL: Turno Seguridad
         # Los empleados de Seguridad no generan faltas, simplemente muestran Descanso si no hay checadas
         if shift.turno_name == 'Seguridad':
+            # Primero verificar Incapacidad (que ignora descansos)
+            Leave = self.env['hr.leave'].sudo()
+            sickness_leave = Leave.search([
+                ('employee_id', '=', employee.id),
+                ('state', '=', 'validate'),
+                ('holiday_status_id.name', '=', 'Incapacidad'),
+                ('date_from', '<=', end_utc_str),
+                ('date_to', '>=', start_utc_str)
+            ], limit=1)
+            
+            if sickness_leave:
+                return {
+                    'text': 'Incapacidad',
+                    'color': 'FFC000',  # Amarillo/Oro
+                    'font_color': 'FFFFFF',  # Blanco
+                    'bold': True
+                }
+            
+            # Verificar otros tipos de permiso
+            approved_leave = Leave.search([
+                ('employee_id', '=', employee.id),
+                ('state', '=', 'validate'),
+                ('date_from', '<=', end_utc_str),
+                ('date_to', '>=', start_utc_str)
+            ], limit=1)
+            
+            if approved_leave:
+                leave_name = approved_leave.holiday_status_id.name
+                return {
+                    'text': leave_name,
+                    'color': 'FFC7CE',  # Rosa claro
+                    'font_color': 'FF6600',  # Naranja oscuro
+                    'bold': True
+                }
+            
             # 5a. Si hay check-ins válidos, mostrarlos
             valid_attendances = Attendance.search([
                 ('employee_id', '=', employee.id),
@@ -265,8 +301,25 @@ class AttendanceReportWizard(models.TransientModel):
         # Verificar si el día es laboral (considerando también días especiales)
         is_work_day = getattr(shift, field_to_check, False)
         
-        # 2. Verificar vacaciones
+        # 2. Verificar Incapacidad PRIMERO (ignora descansos del shift)
         Leave = self.env['hr.leave'].sudo()
+        sickness_leave = Leave.search([
+            ('employee_id', '=', employee.id),
+            ('state', '=', 'validate'),
+            ('holiday_status_id.name', '=', 'Incapacidad'),
+            ('date_from', '<=', end_utc_str),
+            ('date_to', '>=', start_utc_str)
+        ], limit=1)
+        
+        if sickness_leave:
+            return {
+                'text': 'Incapacidad',
+                'color': 'FFC000',  # Amarillo/Oro
+                'font_color': 'FFFFFF',  # Blanco
+                'bold': True
+            }
+        
+        # 3. Verificar otros tipos de permiso/licencia
         approved_leave = Leave.search([
             ('employee_id', '=', employee.id),
             ('state', '=', 'validate'),
@@ -275,21 +328,22 @@ class AttendanceReportWizard(models.TransientModel):
         ], limit=1)
         
         if approved_leave:
+            leave_name = approved_leave.holiday_status_id.name
             return {
-                'text': 'Vacaciones',
-                'color': 'FFC7CE',  # Naranja claro
+                'text': leave_name,
+                'color': 'FFC7CE',  # Rosa claro
                 'font_color': 'FF6600',  # Naranja oscuro
                 'bold': True
             }
         
-        # 3. Buscar attendances
+        # 4. Buscar attendances
         attendances = Attendance.search([
             ('employee_id', '=', employee.id),
             ('check_in', '>=', start_utc_str),
             ('check_in', '<=', end_utc_str)
         ], order='check_in asc')
         
-        # 4. Verificar si hay falta
+        # 5. Verificar si hay falta
         absence_record = Attendance.search([
             ('employee_id', '=', employee.id),
             ('check_in', '>=', start_utc_str),
@@ -305,7 +359,7 @@ class AttendanceReportWizard(models.TransientModel):
                 'bold': True
             }
         
-        # 5. Si hay check-ins válidos, mostrarlos
+        # 6. Si hay check-ins válidos, mostrarlos
         valid_attendances = Attendance.search([
             ('employee_id', '=', employee.id),
             ('check_in', '>=', start_utc_str),
@@ -328,7 +382,7 @@ class AttendanceReportWizard(models.TransientModel):
                 'bold': False
             }
         
-        # 6. Si NO es un día laboral, mostrar "Descanso"
+        # 7. Si NO es un día laboral, mostrar "Descanso"
         if not is_work_day:
             return {
                 'text': 'Descanso',
@@ -337,7 +391,7 @@ class AttendanceReportWizard(models.TransientModel):
                 'bold': False
             }
         
-        # 7. Si es día laboral sin check-ins y sin falta, celda vacía
+        # 8. Si es día laboral sin check-ins y sin falta, celda vacía
         return {'text': '', 'color': None, 'font_color': None, 'bold': False}
 
     def _get_check_ins_for_employee_date(self, employee, target_date, company_tz, Attendance):

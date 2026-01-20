@@ -11,8 +11,8 @@ FIXED_DEVICE_TIMEZONE_NAME = 'America/Tijuana'
 NEW_LEAVE_STATUSES = [
     ('leave_birthday', 'Permiso por cumpleaños'),
     ('leave_marriage', 'Permiso por matrimonio'),   
-    ('leave_unpaid', 'Permiso sin goce de sueldo'),
-    ('leave_paid', 'Permiso con goce de sueldo'),
+    ('leave_unpaid', 'Permiso no pagado'),
+    ('leave_paid', 'Permiso pagado'),
     ('leave_sickness', 'Incapacidad'),
     ('leave_vacation', 'Vacaciones'),
     ('leave_maternity', 'Maternidad'),
@@ -56,8 +56,16 @@ class HrAttendance(models.Model):
     biometric_id = fields.Char(
         string='Número de Empleado',
         related='employee_id.biometric_id',
-        store=True, # Importante para poder buscar y filtrar eficientemente
+        store=True,
         readonly=True
+    )
+
+    biometric_id_display = fields.Integer(
+        string='Número de Empleado',
+        compute='_compute_biometric_id_display',
+        store=True,
+        readonly=True,
+        help='Campo para mostrar sin comas y permitir ordenamiento numérico'
     )
 
     turno_id = fields.Many2one(
@@ -67,6 +75,19 @@ class HrAttendance(models.Model):
         store=True, 
         readonly=True
     )
+    @api.depends('biometric_id')
+    def _compute_biometric_id_display(self):
+        """Mostrar biometric_id como entero para ordenamiento numérico"""
+        for record in self:
+            if record.biometric_id:
+                try:
+                    # Remover espacios y comas, convertir a entero
+                    clean_id = record.biometric_id.replace(' ', '').replace(',', '')
+                    record.biometric_id_display = int(clean_id)
+                except (ValueError, AttributeError):
+                    record.biometric_id_display = 0
+            else:
+                record.biometric_id_display = 0
 
     def _compute_check_in_time_only(self):
         user_tz = self.env.user.tz or pytz.utc

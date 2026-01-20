@@ -18,9 +18,8 @@
                 </field>
 
                 <field name="employee_id" position="before">
-                    <field name="biometric_id" optional="show"/>
+                    <field name="biometric_id_display"/>
                 </field>
-                
                 <field name="check_out_time_only" position="attributes">
                     <attribute name="invisible">1</attribute>
                 </field>

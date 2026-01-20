@@ -65,6 +65,7 @@ class HrAttendance(models.Model):
         compute='_compute_biometric_id_display',
         store=True,
         readonly=True,
+        aggregator=None,
         help='Campo para mostrar sin comas y permitir ordenamiento numérico'
     )
 

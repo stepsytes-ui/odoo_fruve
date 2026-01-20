@@ -211,16 +211,13 @@ class AttendanceReportWizard(models.TransientModel):
         start_utc_str = fields.Datetime.to_string(start_of_day_utc)
         end_utc_str = fields.Datetime.to_string(end_of_day_utc)
 
-        # 1. Verificar si es un día laboral según el turno
         if not employee.turno_id:
             return {'text': '', 'color': None, 'font_color': None, 'bold': False}
         
         shift = employee.turno_id
         
-        # CASO ESPECIAL: Turno Seguridad
-        # Los empleados de Seguridad no generan faltas, simplemente muestran Descanso si no hay checadas
         if shift.turno_name == 'Seguridad':
-            # Primero verificar Incapacidad (que ignora descansos)
+
             Leave = self.env['hr.leave'].sudo()
             sickness_leave = Leave.search([
                 ('employee_id', '=', employee.id),
@@ -233,12 +230,11 @@ class AttendanceReportWizard(models.TransientModel):
             if sickness_leave:
                 return {
                     'text': 'Incapacidad',
-                    'color': 'FFC000',  # Amarillo/Oro
-                    'font_color': 'FFFFFF',  # Blanco
+                    'color': 'FFC000',  
+                    'font_color': 'FFFFFF',  
                     'bold': True
                 }
             
-            # Verificar otros tipos de permiso
             approved_leave = Leave.search([
                 ('employee_id', '=', employee.id),
                 ('state', '=', 'validate'),

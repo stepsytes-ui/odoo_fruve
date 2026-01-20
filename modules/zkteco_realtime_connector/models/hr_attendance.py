@@ -68,25 +68,6 @@ class HrAttendance(models.Model):
         readonly=True
     )
 
-    @api.model
-    def _name_search(self, name, args=None, operator='ilike', limit=100, name_get_uid=None):
-        """
-        Permite buscar empleados por nombre, apellido, email o biometric_id
-        """
-        if args is None:
-            args = []
-        
-        # Si el nombre es un número o contiene números, buscar también por biometric_id
-        if name and any(c.isdigit() for c in name):
-            domain = ['|', 
-                ('employee_id.biometric_id', operator, name),
-                ('employee_id.name', operator, name)
-            ]
-        else:
-            domain = [('employee_id.name', operator, name)]
-        
-        return self._search(args + domain, limit=limit, access_rights_uid=name_get_uid)
-
     def _compute_check_in_time_only(self):
         user_tz = self.env.user.tz or pytz.utc
         local_tz = pytz.timezone(user_tz)

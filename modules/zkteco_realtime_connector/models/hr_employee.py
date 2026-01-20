@@ -33,3 +33,29 @@ class hr_employee(models.Model):
                 employee.biometric_id_numeric = int(employee.biometric_id)
             else:
                 employee.biometric_id_numeric = 0
+
+    @api.model
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        """
+        Permite buscar empleados por nombre o biometric_id en formularios
+        """
+        args = args or []
+        
+        if not name:
+            return super().name_search(name=name, args=args, operator=operator, limit=limit)
+        
+        if name.isdigit():
+            domain = [
+                '|',
+                ('biometric_id', 'ilike', name),
+                ('name', operator, name)
+            ]
+        else:
+            domain = [
+                '|',
+                ('name', operator, name),
+                ('biometric_id', operator, name)
+            ]
+        
+        employee_ids = self._search(args + domain, limit=limit)
+        return [(emp_id, self.browse(emp_id).display_name) for emp_id in employee_ids]

@@ -256,7 +256,7 @@ class AttendanceReportWizard(models.TransientModel):
                 ('employee_id', '=', employee.id),
                 ('check_in', '>=', start_utc_str),
                 ('check_in', '<=', end_utc_str),
-                ('punctuality_status', 'in', ['on_time', 'late', 'LunchS', 'LunchE', 'end', 'overtime'])
+                ('punctuality_status', 'in', ['on_time', 'late', 'LunchS', 'LunchE', 'end', 'overtime','n/a'])
             ], order='check_in asc')
             
             if valid_attendances:
@@ -360,7 +360,7 @@ class AttendanceReportWizard(models.TransientModel):
             ('employee_id', '=', employee.id),
             ('check_in', '>=', start_utc_str),
             ('check_in', '<=', end_utc_str),
-            ('punctuality_status', 'in', ['on_time', 'late', 'LunchS', 'LunchE', 'end', 'overtime'])
+            ('punctuality_status', 'in', ['on_time', 'late', 'LunchS', 'LunchE', 'end', 'overtime', 'n/a'])
         ], order='check_in asc')
         
         if valid_attendances:
@@ -408,7 +408,7 @@ class AttendanceReportWizard(models.TransientModel):
             ('employee_id', '=', employee.id),
             ('check_in', '>=', start_utc_str),
             ('check_in', '<=', end_utc_str),
-            ('punctuality_status', 'in', ['on_time', 'late', 'LunchS', 'LunchE', 'end', 'overtime'])
+            ('punctuality_status', 'in', ['on_time', 'late', 'LunchS', 'LunchE', 'end', 'overtime', 'n/a'])
         ], order='check_in asc')
 
         check_in_times = []

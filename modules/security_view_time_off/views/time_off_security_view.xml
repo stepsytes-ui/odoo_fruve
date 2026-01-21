@@ -1,59 +1,18 @@
 <odoo>
-    <record id="hr_leave_security_list_view" model="ir.ui.view">
-        <field name="name">hr.leave.security.list</field>
-        <field name="model">hr.leave</field>
-        <field name="arch" type="xml">
-            <list create="0" edit="0" delete="0">
-                <field name="employee_image" widget="image" class="oe_avatar" options="{'size': [0, 100]}"/>
-                <field name="biometric_id"/>
-                <field name="employee_id"/>
-                <field name="holiday_status_id" string="Tipo de Ausencia"/>
-                <field name="request_datetime_from" string="Fecha Inicio"/>
-                <field name="request_datetime_to" string="Fecha Fin"/>
-                <field name="display_duration" string="Duración"/>
-                <field name="state"/>
-            </list>
-        </field>
-    </record>
-
-    <record id="view_hr_leave_form_readonly_security" model="ir.ui.view">
-        <field name="name">hr.leave.form.readonly.security</field>
-        <field name="model">hr.leave</field>
-        <field name="inherit_id" ref="hr_holidays.hr_leave_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//form" position="attributes" groups="security_view_time_off.group_time_off_security">
-                <attribute name="create">0</attribute>
-                <attribute name="edit">0</attribute>
-                <attribute name="delete">0</attribute>
-            </xpath>
-        </field>
-    </record>
-
-    <record id="view_attendance_list_readonly_security" model="ir.ui.view">
-        <field name="name">hr.attendance.list.readonly.security</field>
-        <field name="model">hr.attendance</field>
-        <field name="inherit_id" ref="hr_attendance.view_attendance_tree"/>
-        <field name="arch" type="xml">
-            <xpath expr="//list" position="attributes" groups="security_view_time_off.group_time_off_security">
-                <attribute name="create">0</attribute>
-                <attribute name="edit">0</attribute>
-                <attribute name="delete">0</attribute>
-            </xpath>
-        </field>
-    </record>
-
-    <record id="view_attendance_form_readonly_security" model="ir.ui.view">
-        <field name="name">hr.attendance.form.readonly.security</field>
-        <field name="model">hr.attendance</field>
-        <field name="inherit_id" ref="hr_attendance.hr_attendance_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//form" position="attributes" groups="security_view_time_off.group_time_off_security">
-                <attribute name="create">0</attribute>
-                <attribute name="edit">0</attribute>
-                <attribute name="delete">0</attribute>
-            </xpath>
-        </field>
-    </record>
-
-
+  <record id="hr_leave_security_list_view" model="ir.ui.view">
+    <field name="name">hr.leave.security.list</field>
+    <field name="model">hr.leave</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="employee_image" widget="image" class="oe_avatar" options="{'size': [0, 100]}"/>
+        <field name="biometric_id"/>
+        <field name="employee_id"/>
+        <field name="holiday_status_id" string="Tipo de Ausencia"/>
+        <field name="request_datetime_from" string="Fecha Inicio"/>
+        <field name="request_datetime_to" string="Fecha Fin"/>
+        <field name="display_duration" string="Duración"/>
+        <field name="state"/>
+      </list>
+    </field>
+  </record>
 </odoo>

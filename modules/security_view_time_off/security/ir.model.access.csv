@@ -1,2 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_hr_leave_security,hr.leave.security.read,hr_holidays.model_hr_leave,security_view_time_off.group_time_off_security,1,0,0,0
+access_hr_attendance_security,attendance.guard,hr_attendance.model_hr_attendance,security_view_time_off.group_time_off_security,1,0,1,0
+access_hr_employee_security,employee.guard.read,hr.model_hr_employee,security_view_time_off.group_time_off_security,1,0,0,0

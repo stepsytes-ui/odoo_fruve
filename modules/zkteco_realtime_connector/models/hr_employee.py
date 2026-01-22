@@ -59,3 +59,20 @@ class hr_employee(models.Model):
         
         employee_ids = self._search(args + domain, limit=limit)
         return [(emp_id, self.browse(emp_id).display_name) for emp_id in employee_ids]
+    
+    @api.model
+    def _search_read_employee_by_identifier(self, identifier):
+        """
+        Sobrescribimos para que el Quiosco reconozca el biometric_id
+        """
+        # Intentar buscar por biometric_id
+        employee = self.search([('biometric_id', '=', identifier)], limit=1)
+        
+        # Si no lo encuentra, usar la lógica estándar (barcode o PIN)
+        if not employee:
+            employee = self.search(['|', ('barcode', '=', identifier), ('pin', '=', identifier)], limit=1)
+        
+        if employee:
+            # Retornamos lo que el componente OWL espera
+            return employee.read(['id', 'name', 'attendance_state', 'pin'])[0]
+        return False

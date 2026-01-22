@@ -38,7 +38,7 @@ class HrAttendance(models.Model):
         ('end','Fin de turno'),
         ('overtime', 'Tiempo Extra'),
         ('forgot_checkout', 'Olvido Checar Salida'),
-        ('n/a','No aplica'),
+        ('n/a','Checada desde Quiosco'),
     ] + NEW_LEAVE_STATUSES, string='Estatus de Puntualidad', default='n/a')
 
     check_in_time_only = fields.Char(
@@ -108,7 +108,7 @@ class HrAttendance(models.Model):
         local_tz = pytz.timezone(user_tz)
         
         for record in self:
-            if record.check_in:
+            if record.check_out:
                 utc_datetime = pytz.utc.localize(record.check_in)
                 local_datetime = utc_datetime.astimezone(local_tz)
 

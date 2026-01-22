@@ -61,12 +61,12 @@ class HrAttendance(models.Model):
     )
 
     biometric_id_display = fields.Integer(
-        string='Número de Empleado',
+        string='No. Empleado',
         compute='_compute_biometric_id_display',
         store=True,
         readonly=True,
         aggregator=None,
-        help='Campo para mostrar sin comas y permitir ordenamiento numérico'
+        help='Campo numérico para ordenamiento sin comas'
     )
 
     turno_id = fields.Many2one(

@@ -3,6 +3,7 @@
         <record model="res.groups" id="group_time_off_security">
             <field name="name">Vista de permisos para guardias</field>
             <field name="category_id" ref="base.module_category_human_resources"/>
+            <field name="implied_ids" eval="[(4, ref('hr.group_hr_user'))]"/>
         </record>
 
         <record model="ir.rule" id="hr_leave_current_day_security_rule">

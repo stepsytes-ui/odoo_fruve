@@ -265,6 +265,14 @@ class AttendanceReportWizard(models.TransientModel):
                     utc_datetime = pytz.utc.localize(att.check_in)
                     local_datetime = utc_datetime.astimezone(COMPANY_TZ)
                     time_str = local_datetime.strftime("%H:%M:%S")
+                    
+                    # Si es 'n/a', incluir también check_out si existe
+                    if att.punctuality_status == 'n/a' and att.check_out:
+                        utc_checkout = pytz.utc.localize(att.check_out)
+                        local_checkout = utc_checkout.astimezone(COMPANY_TZ)
+                        checkout_str = local_checkout.strftime("%H:%M:%S")
+                        time_str = f"{time_str} / {checkout_str}"
+                    
                     check_in_times.append(time_str)
                 
                 return {
@@ -369,6 +377,14 @@ class AttendanceReportWizard(models.TransientModel):
                 utc_datetime = pytz.utc.localize(att.check_in)
                 local_datetime = utc_datetime.astimezone(COMPANY_TZ)
                 time_str = local_datetime.strftime("%H:%M:%S")
+                
+                # Si es 'n/a', incluir también check_out si existe
+                if att.punctuality_status == 'n/a' and att.check_out:
+                    utc_checkout = pytz.utc.localize(att.check_out)
+                    local_checkout = utc_checkout.astimezone(COMPANY_TZ)
+                    checkout_str = local_checkout.strftime("%H:%M:%S")
+                    time_str = f"{time_str} / {checkout_str}"
+                
                 check_in_times.append(time_str)
             
             return {

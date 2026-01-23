@@ -383,7 +383,7 @@ class AttendanceReportWizard(models.TransientModel):
                     utc_checkout = pytz.utc.localize(att.check_out)
                     local_checkout = utc_checkout.astimezone(COMPANY_TZ)
                     checkout_str = local_checkout.strftime("%H:%M:%S")
-                    time_str = f"{time_str} / {checkout_str}"
+                    time_str = f"{time_str} - {checkout_str}"
                 
                 check_in_times.append(time_str)
             

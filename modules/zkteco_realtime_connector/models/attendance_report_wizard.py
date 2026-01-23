@@ -216,6 +216,47 @@ class AttendanceReportWizard(models.TransientModel):
         
         shift = employee.turno_id
         
+        # Manejo especial para turno "ESPECIAL" (gerentes/dueños)
+        if shift.turno_name == 'ESPECIAL':
+            # Verificar si hay checadas válidas
+            valid_attendances = Attendance.search([
+                ('employee_id', '=', employee.id),
+                ('check_in', '>=', start_utc_str),
+                ('check_in', '<=', end_utc_str),
+                ('punctuality_status', 'in', ['on_time', 'late', 'LunchS', 'LunchE', 'end', 'overtime', 'n/a'])
+            ], order='check_in asc')
+            
+            if valid_attendances:
+                # Si hay checadas, mostrarlas
+                check_in_times = []
+                for att in valid_attendances:
+                    utc_datetime = pytz.utc.localize(att.check_in)
+                    local_datetime = utc_datetime.astimezone(COMPANY_TZ)
+                    time_str = local_datetime.strftime("%H:%M:%S")
+                    
+                    if att.punctuality_status == 'n/a' and att.check_out:
+                        utc_checkout = pytz.utc.localize(att.check_out)
+                        local_checkout = utc_checkout.astimezone(COMPANY_TZ)
+                        checkout_str = local_checkout.strftime("%H:%M:%S")
+                        time_str = f"{time_str} - {checkout_str}"
+                    
+                    check_in_times.append(time_str)
+                
+                return {
+                    'text': ' - '.join(check_in_times),
+                    'color': '00B050',  # Verde
+                    'font_color': 'FFFFFF',  # Blanco
+                    'bold': False
+                }
+            else:
+                # Si no hay checadas, mostrar palomita
+                return {
+                    'text': '✓',
+                    'color': '00B050',  # Verde
+                    'font_color': 'FFFFFF',  # Blanco
+                    'bold': True
+                }
+        
         if shift.turno_name == 'Seguridad':
 
             Leave = self.env['hr.leave'].sudo()

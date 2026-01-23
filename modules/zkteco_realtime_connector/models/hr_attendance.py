@@ -475,5 +475,4 @@ class HrAttendance(models.Model):
                                 activity_data['user_id'] = user_id # Asigna un solo usuario por actividad
                                 self.env['mail.activity'].sudo().create(activity_data)
 
-            return      
-
+            return

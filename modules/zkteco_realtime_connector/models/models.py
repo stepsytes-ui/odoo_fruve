@@ -117,6 +117,7 @@ class ZkTecoAttendanceLog(models.Model):
                 continue
 
             company_id = device.company_id.id
+            company = device.company_id
 
             search_id = str(log.user_id)
             employee = Employee.search([
@@ -131,8 +132,34 @@ class ZkTecoAttendanceLog(models.Model):
                 continue
 
             try:
-                naive_datetime = fields.Datetime.from_string(log.timestamp) 
-                check_datetime_local = FIXED_TIMEZONE.localize(naive_datetime, is_dst=None)
+                naive_datetime = fields.Datetime.from_string(log.timestamp)
+                
+                # Validar si la fecha está más de 1 mes en el pasado o futuro
+                now_utc = datetime.utcnow()
+                time_diff = abs((naive_datetime - now_utc).days)
+                
+                if time_diff > 30:  # Más de 1 mes de diferencia
+                    _logger.warning(
+                        "⚠️ Fecha de checada inválida detectada para log %s (Employee: %s, Device: %s). "
+                        "Fecha del dispositivo: %s, Diferencia: %d días. Usando hora actual.",
+                        log.id, employee.name, device_serial, naive_datetime, time_diff
+                    )
+                    
+                    # Obtener zona horaria de la empresa
+                    company_tz_name = company.timezone or FIXED_DEVICE_TIMEZONE_NAME
+                    try:
+                        COMPANY_TIMEZONE = pytz.timezone(company_tz_name)
+                    except pytz.UnknownTimeZoneError:
+                        _logger.warning("Zona horaria '%s' de la empresa no válida, usando %s", company_tz_name, FIXED_DEVICE_TIMEZONE_NAME)
+                        COMPANY_TIMEZONE = FIXED_TIMEZONE
+                    
+                    # Usar hora actual en la zona horaria de la empresa
+                    check_datetime_local = datetime.now(COMPANY_TIMEZONE)
+                    _logger.info("✅ Usando hora actual de la empresa (%s): %s", company_tz_name, check_datetime_local)
+                else:
+                    # Fecha válida, procesar normalmente
+                    check_datetime_local = FIXED_TIMEZONE.localize(naive_datetime, is_dst=None)
+                
                 check_datetime_utc_dt = check_datetime_local.astimezone(UTC_TIMEZONE) 
                 check_datetime_utc = fields.Datetime.to_string(check_datetime_utc_dt)
                 

@@ -211,6 +211,22 @@ class AttendanceReportWizard(models.TransientModel):
         start_utc_str = fields.Datetime.to_string(start_of_day_utc)
         end_utc_str = fields.Datetime.to_string(end_of_day_utc)
 
+        # 1. Verificar si es día festivo global PRIMERO (tiene prioridad sobre todo)
+        CalendarLeaves = self.env['resource.calendar.leaves']
+        public_holiday = CalendarLeaves.search([
+            ('resource_id', '=', False),  # Festivo global (aplica a todos)
+            ('date_from', '<=', end_utc_str),
+            ('date_to', '>=', start_utc_str)
+        ], limit=1)
+        
+        if public_holiday:
+            return {
+                'text': public_holiday.name,
+                'color': '4472C4',  # Azul
+                'font_color': 'FFFFFF',  # Blanco
+                'bold': True
+            }
+        
         if not employee.turno_id:
             return {'text': '', 'color': None, 'font_color': None, 'bold': False}
         

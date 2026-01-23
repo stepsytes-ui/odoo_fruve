@@ -145,6 +145,25 @@ class HrAttendance(models.Model):
         day_of_week_int = today_local.weekday()
         field_to_check = day_mapping.get(day_of_week_int)
 
+        # Verificar si es día festivo global (aplica a toda la empresa)
+        CalendarLeaves = self.env['resource.calendar.leaves']
+        start_of_day_local = COMPANY_TZ.localize(datetime.combine(today_local, time.min))
+        end_of_day_local = COMPANY_TZ.localize(datetime.combine(today_local, time.max))
+        
+        start_of_day_utc = start_of_day_local.astimezone(pytz.utc)
+        end_of_day_utc = end_of_day_local.astimezone(pytz.utc)
+        
+        # Buscar días festivos globales (sin resource_id = todos los empleados)
+        public_holiday = CalendarLeaves.search([
+            ('resource_id', '=', False),  # Festivo global
+            ('date_from', '<=', fields.Datetime.to_string(end_of_day_utc)),
+            ('date_to', '>=', fields.Datetime.to_string(start_of_day_utc))
+        ], limit=1)
+        
+        if public_holiday:
+            _logger.info(f"[CRON FALTAS] ⚠️ Hoy es día festivo: {public_holiday.name}. No se generarán faltas.")
+            return
+        
         Employee = self.env['hr.employee']
         # Excluir turnos Seguridad y ESPECIAL
         employees_to_check = Employee.search([
@@ -156,13 +175,7 @@ class HrAttendance(models.Model):
 
         _logger.info(f"[CRON FALTAS] Empleados a verificar: {len(employees_to_check)}")
 
-        # Rango del día actual (00:00:00 - 23:59:59)
-        start_of_day_local = COMPANY_TZ.localize(datetime.combine(today_local, time.min))
-        end_of_day_local = COMPANY_TZ.localize(datetime.combine(today_local, time.max))
-
-        start_of_day_utc = start_of_day_local.astimezone(pytz.utc)
-        end_of_day_utc = end_of_day_local.astimezone(pytz.utc)
-        
+        # Rango UTC ya calculado arriba, crear strings
         start_utc_str = fields.Datetime.to_string(start_of_day_utc)
         end_utc_str = fields.Datetime.to_string(end_of_day_utc)
         

@@ -118,15 +118,20 @@ class HrAttendance(models.Model):
 
     @api.model
     def _cron_generate_absences(self):
-        
+        """
+        Se ejecuta a las 10pm de cada día.
+        Genera faltas para empleados sin check_in en el día actual.
+        Excluye: turno Seguridad (faltas manuales) y turno ESPECIAL (siempre tienen asistencia).
+        """
         try:
             COMPANY_TZ = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
         except pytz.UnknownTimeZoneError:
             _logger.error(f"Error de Cron: Zona horaria '{FIXED_DEVICE_TIMEZONE_NAME}' es inválida.")
             return
 
+        # Usar el día ACTUAL (no el anterior)
         today_local = datetime.now(COMPANY_TZ).date()
-        check_date = today_local - timedelta(days=1)
+        _logger.info(f"[CRON FALTAS] Iniciando generación de faltas para el día: {today_local}")
         
         day_mapping = {
             0: 'work_monday',
@@ -137,25 +142,33 @@ class HrAttendance(models.Model):
             5: 'work_saturday',
             6: 'work_sunday',
         }
-        day_of_week_int = check_date.weekday()
+        day_of_week_int = today_local.weekday()
         field_to_check = day_mapping.get(day_of_week_int)
 
         Employee = self.env['hr.employee']
+        # Excluir turnos Seguridad y ESPECIAL
         employees_to_check = Employee.search([
             ('employee_status', '=', 'active'),
             ('turno_id', '!=', False),
-            (f'turno_id.{field_to_check}', '=', True),
-            ('turno_id.turno_name', '!=', 'Seguridad')  # Excluir turno de Seguridad
+            (f'turno_id.{field_to_check}', '=', True),  # Solo días laborales
+            ('turno_id.turno_name', 'not in', ['Seguridad', 'ESPECIAL'])  # Excluir estos turnos
         ])
 
-        start_of_day_local = COMPANY_TZ.localize(datetime.combine(check_date, time.min))
-        end_of_day_local = COMPANY_TZ.localize(datetime.combine(check_date, time.max))
+        _logger.info(f"[CRON FALTAS] Empleados a verificar: {len(employees_to_check)}")
+
+        # Rango del día actual (00:00:00 - 23:59:59)
+        start_of_day_local = COMPANY_TZ.localize(datetime.combine(today_local, time.min))
+        end_of_day_local = COMPANY_TZ.localize(datetime.combine(today_local, time.max))
 
         start_of_day_utc = start_of_day_local.astimezone(pytz.utc)
         end_of_day_utc = end_of_day_local.astimezone(pytz.utc)
         
         start_utc_str = fields.Datetime.to_string(start_of_day_utc)
         end_utc_str = fields.Datetime.to_string(end_of_day_utc)
+        
+        # check_out será 1 segundo después del check_in
+        check_out_time_utc = start_of_day_utc + timedelta(seconds=1)
+        check_out_str = fields.Datetime.to_string(check_out_time_utc)
 
         Attendance = self.env['hr.attendance']
         Leave = self.env['hr.leave'].sudo()
@@ -170,7 +183,11 @@ class HrAttendance(models.Model):
             'Suspension': 'leave_suspension',
         }
 
+        faltas_generadas = 0
+        permisos_generados = 0
+
         for employee in employees_to_check:
+            # Verificar si ya tiene algún check_in en el día
             attendance_exists = Attendance.search([
                 ('employee_id', '=', employee.id),
                 ('check_in', '>=', start_utc_str),
@@ -178,7 +195,7 @@ class HrAttendance(models.Model):
             ], limit=1)
 
             if not attendance_exists:
-
+                # Verificar si tiene un permiso aprobado
                 approved_leave = Leave.search([
                     ('employee_id', '=', employee.id),
                     ('state', '=', 'validate'),
@@ -186,28 +203,34 @@ class HrAttendance(models.Model):
                     ('date_to', '>=', start_utc_str)   
                 ], limit=1)
                 
-                check_out_time = start_of_day_utc + timedelta(seconds=1)
-                
                 if approved_leave:
+                    # Crear registro con el tipo de permiso
                     leave_name = approved_leave.holiday_status_id.name
                     new_status = leave_status_map.get(leave_name, 'leave_other')
                     
                     Attendance.create({
                         'employee_id': employee.id,
                         'check_in': start_utc_str,
-                        'check_out': fields.Datetime.to_string(check_out_time),
+                        'check_out': check_out_str,
                         'punctuality_status': new_status,
                     })
+                    permisos_generados += 1
+                    _logger.info(f"[CRON FALTAS] ✅ Permiso registrado para {employee.name}: {leave_name}")
                 else:
-                    
+                    # Crear registro de falta
                     new_attendance = Attendance.create({
                         'employee_id': employee.id,
                         'check_in': start_utc_str,
-                        'check_out': fields.Datetime.to_string(check_out_time),
+                        'check_out': check_out_str,
                         'punctuality_status': 'absence',
                     })
+                    faltas_generadas += 1
+                    _logger.warning(f"[CRON FALTAS] ⚠️ Falta registrada para {employee.name}")
 
+                    # Verificar si es la cuarta falta y enviar alerta
                     self._check_and_alert_four_absences(employee, new_attendance)
+        
+        _logger.info(f"[CRON FALTAS] ✅ Finalizado. Faltas: {faltas_generadas}, Permisos: {permisos_generados}")
 
     @api.model
     def get_attendance_dashboard_stats(self, start_date=None, end_date=None):

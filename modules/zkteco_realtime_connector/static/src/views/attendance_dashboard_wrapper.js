@@ -60,8 +60,14 @@ export class AttendanceDashboardWrapper extends Component {
 
         // Añadir filtro de fechas si hay fechas seleccionadas
         if (this.state.startDate && this.state.endDate) {
-            const startDateTime = this.state.startDate + ' 00:00:00';
-            const endDateTime = this.state.endDate + ' 23:59:59';
+            // Convertir fechas locales a UTC para coincidir con cómo están almacenadas en Odoo
+            const startDate = new Date(this.state.startDate + 'T00:00:00');
+            const endDate = new Date(this.state.endDate + 'T23:59:59');
+            
+            // Convertir a formato ISO UTC (Odoo espera formato 'YYYY-MM-DD HH:MM:SS')
+            const startDateTime = startDate.toISOString().replace('T', ' ').substring(0, 19);
+            const endDateTime = endDate.toISOString().replace('T', ' ').substring(0, 19);
+            
             baseDomain = [...baseDomain, ['check_in', '>=', startDateTime], ['check_in', '<=', endDateTime]];
         }
 

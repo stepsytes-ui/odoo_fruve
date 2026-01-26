@@ -194,9 +194,12 @@ class Overtime(models.Model):
             grand_total_hours += column_totals[date_str]['hours']
             grand_total_amount += column_totals[date_str]['amount']
         
+        # Ordenar filas por número de empleado (menor a mayor)
+        rows_sorted = sorted(rows, key=lambda x: int(x['employee_number']) if x['employee_number'].isdigit() else 999999)
+        
         return {
             'headers': headers,
-            'rows': rows,
+            'rows': rows_sorted,
             'column_totals': column_totals,
             'grand_total_hours': grand_total_hours,
             'grand_total_amount': grand_total_amount,

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Vista de Búsqueda/Filtros para hr.leave.report.calendar -->
+        <record id="view_hr_leave_report_calendar_search_biometric" model="ir.ui.view">
+            <field name="name">hr.leave.report.calendar.search.biometric</field>
+            <field name="model">hr.leave.report.calendar</field>
+            <field name="inherit_id" ref="hr_holidays.hr_leave_report_calendar_view_search"/>
+            <field name="arch" type="xml">
+                <!-- Agregar campo biometric_id al buscador, antes del campo employee_id -->
+                <xpath expr="//field[@name='employee_id']" position="before">
+                    <field name="biometric_id" string="Número de Empleado"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Vista de Calendario - Agregar biometric_id -->
+        <record id="view_hr_leave_report_calendar_biometric" model="ir.ui.view">
+            <field name="name">hr.leave.report.calendar.biometric</field>
+            <field name="model">hr.leave.report.calendar</field>
+            <field name="inherit_id" ref="hr_holidays.hr_leave_report_calendar_view"/>
+            <field name="arch" type="xml">
+                <!-- Agregar biometric_id como campo disponible -->
+                <xpath expr="//field[@name='employee_id']" position="after">
+                    <field name="biometric_id"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Vista de Formulario - Mostrar biometric_id -->
+        <record id="view_hr_leave_report_calendar_form_biometric" model="ir.ui.view">
+            <field name="name">hr.leave.report.calendar.form.biometric</field>
+            <field name="model">hr.leave.report.calendar</field>
+            <field name="inherit_id" ref="hr_holidays.hr_leave_report_calendar_view_form"/>
+            <field name="arch" type="xml">
+                <!-- Agregar biometric_id después del campo employee_id -->
+                <xpath expr="//field[@name='employee_id']" position="after">
+                    <field name="biometric_id" readonly="1"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

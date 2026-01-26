@@ -13,32 +13,26 @@
     letter-spacing: 0.5px;
 }
 
-/* Wrapper del dashboard - estructura flex para scroll */
+/* Wrapper del dashboard - scroll de todo el contenido */
 .o_overtime_dashboard_wrapper {
     height: 100%;
-    display: flex;
-    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
-/* Dashboard superior (fijo) */
+/* Dashboard superior */
 .o_overtime_dashboard_wrapper .o_dashboard_header {
-    flex-shrink: 0;
+    position: relative;
     z-index: 10;
 }
 
-/* Contenedor principal que crece */
+/* Contenedor de la lista */
 .o_overtime_dashboard_wrapper .o_dashboard_content {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
+    position: relative;
+    min-height: 400px;
 }
 
-/* Área con scroll dentro del dashboard */
-.o_overtime_dashboard_wrapper .o_dashboard_scroll_area {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    overflow-x: hidden;
-    min-height: 0;
-    max-height: 100%;
+/* Ocultar el mensaje de "Sin Registros" cuando el dashboard está activo */
+.o_overtime_dashboard_wrapper .o_view_nocontent {
+    display: none !important;
 }

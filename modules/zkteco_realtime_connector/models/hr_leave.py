@@ -12,6 +12,48 @@ class HrLeaveCustom(models.Model):
     """Customización para que Incapacidad cuente días naturales"""
     _inherit = 'hr.leave'
 
+    biometric_id = fields.Char(
+        string='Número de Empleado',
+        related='employee_id.biometric_id',
+        store=True,
+        readonly=True
+    )
+
+    biometric_id_numeric = fields.Integer(
+        string='No. Empleado',
+        related='employee_id.biometric_id_numeric',
+        store=True,
+        readonly=True,
+        help='Campo numérico para ordenamiento'
+    )
+
+    @api.model
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        """
+        Permite buscar ausencias por nombre de empleado o biometric_id
+        """
+        args = args or []
+        
+        if not name:
+            return super().name_search(name=name, args=args, operator=operator, limit=limit)
+        
+        # Si el nombre es numérico, buscar por biometric_id
+        if name.isdigit():
+            domain = [
+                '|',
+                ('employee_id.biometric_id', 'ilike', name),
+                ('employee_id.name', operator, name)
+            ]
+        else:
+            domain = [
+                '|',
+                ('employee_id.name', operator, name),
+                ('employee_id.biometric_id', operator, name)
+            ]
+        
+        leave_ids = self._search(args + domain, limit=limit)
+        return self.browse(leave_ids).name_get()
+
     @api.constrains('date_from', 'date_to', 'employee_id')
     def _check_date(self):
         """Sobrescribir validación para permitir permisos de horas y días en el mismo día"""

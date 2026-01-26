@@ -8,6 +8,7 @@ import {session} from "@web/session";
 export class OvertimeDashboard extends Component {
     static props = {
         onChangeDates: {type: Function, optional: true},
+        onFilterEmployee: {type: Function, optional: true},
     }
 
     static template = "overtime.OvertimeDashboard";
@@ -29,7 +30,11 @@ export class OvertimeDashboard extends Component {
                 total_hours: 0,
                 total_play: 0,
             },
-            tableData: [],
+            tableHeaders: [],
+            tableRows: [],
+            columnTotals: {},
+            grandTotalHours: 0,
+            grandTotalAmount: 0,
         });
 
         // Restaurar fechas desde localStorage si existen
@@ -79,7 +84,7 @@ export class OvertimeDashboard extends Component {
             );
             this.state.stats = stats;
 
-            // Cargar datos de la tabla
+            // Cargar datos de la tabla con estructura de días dinámicos
             const tableData = await this.orm.call(
                 "overtime",
                 "get_overtime_table_data",
@@ -89,11 +94,21 @@ export class OvertimeDashboard extends Component {
                     end_date: this.state.end_date,
                 }
             );
-            this.state.tableData = tableData;
+            this.state.tableHeaders = tableData.headers || [];
+            this.state.tableRows = tableData.rows || [];
+            this.state.columnTotals = tableData.column_totals || {};
+            this.state.grandTotalHours = tableData.grand_total_hours || 0;
+            this.state.grandTotalAmount = tableData.grand_total_amount || 0;
         } catch (e){
             console.error("Error al cargar estadisticas de tiempo extra:", e);
         } finally {
             this.state.loading = false;
+        }
+    }
+
+    onClickRow(employeeNumber, employeeName) {
+        if (this.props.onFilterEmployee) {
+            this.props.onFilterEmployee(employeeNumber, employeeName);
         }
     }
 

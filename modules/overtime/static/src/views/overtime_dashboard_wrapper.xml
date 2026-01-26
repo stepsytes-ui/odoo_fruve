@@ -3,7 +3,9 @@
     <t t-name="overtime.OvertimeDashboardWrapper" owl="1"> 
         <div class="o_overtime_dashboard_wrapper h-100 overflow-auto">
             <div t-if="shouldRenderDashboard" class="o_dashboard_header">
-                <OvertimeDashboard onChangeDates="onDatesUpdated"/> 
+                <OvertimeDashboard 
+                    onChangeDates="onDatesUpdated"
+                    onFilterEmployee="onFilterEmployee"/> 
             </div>
             <div class="o_dashboard_content">
                 <DynamicView t-props="dynamicViewProps"/>

@@ -36,3 +36,13 @@
 .o_overtime_dashboard_wrapper .o_view_nocontent {
     display: none !important;
 }
+
+/* Estilo para filas clickeables en la tabla */
+.overtime-row:hover {
+    background-color: #e3f2fd !important;
+    transition: background-color 0.2s ease;
+}
+
+.overtime-row:active {
+    background-color: #bbdefb !important;
+}

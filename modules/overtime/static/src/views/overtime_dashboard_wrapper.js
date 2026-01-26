@@ -32,6 +32,7 @@ export class OvertimeDashboardWrapper extends Component{
         this.state = useState({
             startDate: new Date().toISOString().split("T")[0],
             endDate: new Date().toISOString().split("T")[0],
+            selectedEmployeeNumber: null,
         });
 
         // Restaurar fechas persistidas (si el usuario navegó fuera/volvió)
@@ -47,6 +48,12 @@ export class OvertimeDashboardWrapper extends Component{
         }
 
         this.onDatesUpdated = this.onDatesUpdated.bind(this);
+        this.onFilterEmployee = this.onFilterEmployee.bind(this);
+    }
+
+    onFilterEmployee(employeeNumber, employeeName) {
+        this.state.selectedEmployeeNumber = employeeNumber;
+        console.log(`Filtrando por empleado: ${employeeName} (${employeeNumber})`);
     }
 
     onDatesUpdated(startDate, endDate) {
@@ -97,6 +104,13 @@ export class OvertimeDashboardWrapper extends Component{
             baseDomain = baseDomain.concat([
                 ['requested_date', '>=', this.state.startDate],
                 ['requested_date', '<=', this.state.endDate],
+            ]);
+        }
+
+        // Añadir filtro de empleado si está seleccionado
+        if (this.state.selectedEmployeeNumber) {
+            baseDomain = baseDomain.concat([
+                ['biometric_id', '=', this.state.selectedEmployeeNumber],
             ]);
         }
 

@@ -70,18 +70,64 @@ class Overtime(models.Model):
     @api.model
     def get_overtime_table_data(self, start_date, end_date):
         """
-        Retorna los datos para la tabla dinámica del dashboard
-        Columnas: employee_number, daily_rate, employee_name, days_worked, hours_taken, total_cost
+        Retorna los datos para la tabla dinámica del dashboard con columnas por día
+        Estructura: {
+            'headers': [{'date': '2026-01-16', 'day_label': 'V16'}, ...],
+            'rows': [
+                {
+                    'employee_number': '1234',
+                    'employee_name': 'Juan Perez',
+                    'daily_rate': 250.00,
+                    'days': {
+                        '2026-01-16': {'hours': 2.5, 'amount': 125.00},
+                        '2026-01-17': {'hours': 0, 'amount': 0},
+                    },
+                    'total_hours': 2.5,
+                    'total_amount': 125.00
+                }
+            ]
+        }
         """
+        from datetime import datetime, timedelta
+        
         domain = [
             ('requested_date', '>=', start_date),
             ('requested_date', '<=', end_date),
             ('state', '=', 'approved'),
         ]
         
-        overtimes = self.search(domain, order='employee_id')
+        overtimes = self.search(domain, order='employee_id, requested_date')
         
-        # Agrupar por empleado para calcular días y horas trabajadas
+        # Generar todas las fechas del rango
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        all_dates = []
+        current = start_dt
+        while current <= end_dt:
+            all_dates.append(current)
+            current += timedelta(days=1)
+        
+        # Encontrar qué días tienen al menos una entrada de tiempo extra
+        dates_with_overtime = set()
+        for overtime in overtimes:
+            dates_with_overtime.add(overtime.requested_date)
+        
+        # Filtrar solo los días que tienen tiempo extra
+        active_dates = [d for d in all_dates if d in dates_with_overtime]
+        
+        # Construir headers con formato de día (ej: "V16" para viernes 16)
+        day_names = ['L', 'M', 'X', 'J', 'V', 'S', 'D']  # Lun, Mar, Mie, Jue, Vie, Sab, Dom
+        headers = []
+        for date in active_dates:
+            day_of_week = day_names[date.weekday()]
+            day_number = date.day
+            headers.append({
+                'date': str(date),
+                'day_label': f'{day_of_week}{day_number:02d}'
+            })
+        
+        # Agrupar por empleado y fecha
         employees_data = {}
         
         for overtime in overtimes:
@@ -89,43 +135,72 @@ class Overtime(models.Model):
             emp_name = overtime.employee_id.name
             emp_biometric = overtime.employee_id.biometric_id or 'N/A'
             emp_daily_rate = overtime.employee_id.daily_rate or 0.0
+            overtime_date = str(overtime.requested_date)
             
             if emp_id not in employees_data:
                 employees_data[emp_id] = {
                     'employee_number': emp_biometric,
                     'employee_name': emp_name,
                     'daily_rate': emp_daily_rate,
-                    'days_worked': set(),  # Usar set para días únicos
+                    'days': {},
                     'total_hours': 0.0,
+                    'total_amount': 0.0,
                 }
             
-            # Agregar el día (agrupar por fecha de solicitud)
-            employees_data[emp_id]['days_worked'].add(str(overtime.requested_date))
-            # Sumar horas
-            employees_data[emp_id]['total_hours'] += overtime.hours_taken or 0.0
+            # Si ya existe entrada para este día, sumar (en caso de múltiples registros)
+            if overtime_date in employees_data[emp_id]['days']:
+                employees_data[emp_id]['days'][overtime_date]['hours'] += overtime.hours_taken or 0.0
+            else:
+                employees_data[emp_id]['days'][overtime_date] = {
+                    'hours': overtime.hours_taken or 0.0,
+                }
+            
+            # Calcular el monto por día: (salario_diario / 8) * 2 * horas
+            hours = employees_data[emp_id]['days'][overtime_date]['hours']
+            amount = (emp_daily_rate / 8) * 2 * hours if emp_daily_rate > 0 else 0.0
+            employees_data[emp_id]['days'][overtime_date]['amount'] = amount
         
-        # Construir la lista final con cálculos
-        table_data = []
+        # Construir las filas finales
+        rows = []
         for emp_id, data in employees_data.items():
-            days_count = len(data['days_worked'])
-            total_hours = data['total_hours']
-            daily_rate = data['daily_rate']
+            # Asegurar que todos los días activos estén presentes (incluso si es 0)
+            for date in active_dates:
+                date_str = str(date)
+                if date_str not in data['days']:
+                    data['days'][date_str] = {'hours': 0.0, 'amount': 0.0}
             
-            # Cálculo del total: (salario_diario / 8) * 2 * horas_extras
-            # Usamos /8 para mantener compatibilidad con el sistema antiguo
-            # donde la hora ordinaria = daily_rate / 8 y la hora extra se paga al doble.
-            total_cost = (daily_rate / 8) * 2 * total_hours if daily_rate > 0 else 0.0
+            # Calcular totales
+            total_hours = sum(day_data['hours'] for day_data in data['days'].values())
+            total_amount = sum(day_data['amount'] for day_data in data['days'].values())
             
-            table_data.append({
-                'employee_number': data['employee_number'],
-                'daily_rate': daily_rate,
-                'employee_name': data['employee_name'],
-                'days_worked': days_count,
-                'hours_taken': total_hours,
-                'total': total_cost,
-            })
+            data['total_hours'] = total_hours
+            data['total_amount'] = total_amount
+            rows.append(data)
         
-        return table_data
+        # Calcular totales por columna (día)
+        column_totals = {}
+        grand_total_hours = 0.0
+        grand_total_amount = 0.0
+        
+        for date in active_dates:
+            date_str = str(date)
+            column_totals[date_str] = {'hours': 0.0, 'amount': 0.0}
+            
+            for row in rows:
+                if date_str in row['days']:
+                    column_totals[date_str]['hours'] += row['days'][date_str]['hours']
+                    column_totals[date_str]['amount'] += row['days'][date_str]['amount']
+            
+            grand_total_hours += column_totals[date_str]['hours']
+            grand_total_amount += column_totals[date_str]['amount']
+        
+        return {
+            'headers': headers,
+            'rows': rows,
+            'column_totals': column_totals,
+            'grand_total_hours': grand_total_hours,
+            'grand_total_amount': grand_total_amount,
+        }
 
     @api.model_create_multi
     def create(self, vals_list):

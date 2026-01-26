@@ -35,41 +35,85 @@
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
-                                <table class="table table-hover table-striped mb-0">
+                                <table class="table table-hover table-bordered mb-0" style="font-size: 0.85rem;">
                                     <thead class="table-light">
                                         <tr>
-                                            <th class="text-center" style="width: 10%;">No. Empleado</th>
-                                            <th class="text-center" style="width: 15%;">Nombre</th>
-                                            <th class="text-right" style="width: 12%;">Salario Diario</th>
-                                            <th class="text-center" style="width: 10%;">DTC Tiempo Extra</th>
-                                            <th class="text-center" style="width: 12%;">Horas Extras Totales</th>
-                                            <th class="text-right" style="width: 15%;">Total</th>
+                                            <th class="text-center align-middle" rowspan="2" style="width: 80px; vertical-align: middle;">No. Emp</th>
+                                            <th class="text-center align-middle" rowspan="2" style="width: 150px; vertical-align: middle;">Nombre</th>
+                                            <th class="text-center align-middle" rowspan="2" style="width: 100px; vertical-align: middle;">Salario Diario</th>
+                                            <!-- Columnas dinámicas por día -->
+                                            <th t-foreach="state.tableHeaders" t-as="header" t-key="header.date" 
+                                                class="text-center" colspan="2" style="background-color: #e3f2fd;">
+                                                <strong><t t-esc="header.day_label"/></strong>
+                                            </th>
+                                            <th class="text-center align-middle bg-success text-white" rowspan="2" style="width: 100px; vertical-align: middle;">Total Hrs</th>
+                                            <th class="text-center align-middle bg-success text-white" rowspan="2" style="width: 120px; vertical-align: middle;">Total $</th>
+                                        </tr>
+                                        <tr>
+                                            <!-- Sub-encabezados: Hora y $ para cada día -->
+                                            <t t-foreach="state.tableHeaders" t-as="header" t-key="'sub_' + header.date">
+                                                <th class="text-center" style="width: 60px; background-color: #f5f5f5;">Hora</th>
+                                                <th class="text-center" style="width: 80px; background-color: #f5f5f5;">$</th>
+                                            </t>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr t-foreach="state.tableData" t-as="row" t-key="row.employee_number">
-                                            <td class="text-center">
+                                        <tr t-foreach="state.tableRows" t-as="row" t-key="row.employee_number" 
+                                            t-on-click="() => this.onClickRow(row.employee_number, row.employee_name)"
+                                            style="cursor: pointer;"
+                                            class="overtime-row">
+                                            <td class="text-center align-middle">
                                                 <t t-esc="row.employee_number"/>
                                             </td>
-                                            <td class="text-left">
+                                            <td class="text-left align-middle">
                                                 <t t-esc="row.employee_name"/>
                                             </td>
-                                            <td class="text-right">
+                                            <td class="text-right align-middle">
                                                 $<t t-esc="(row.daily_rate || 0).toFixed(2)"/>
                                             </td>
-                                            <td class="text-center">
-                                                <t t-esc="row.days_worked"/>
+                                            <!-- Datos por día -->
+                                            <t t-foreach="state.tableHeaders" t-as="header" t-key="'data_' + header.date">
+                                                <t t-set="dayData" t-value="row.days[header.date] || {hours: 0, amount: 0}"/>
+                                                <td class="text-center align-middle">
+                                                    <t t-esc="(dayData.hours || 0).toFixed(2)"/>h
+                                                </td>
+                                                <td class="text-right align-middle">
+                                                    $<t t-esc="(dayData.amount || 0).toFixed(2)"/>
+                                                </td>
+                                            </t>
+                                            <td class="text-center align-middle fw-bold">
+                                                <t t-esc="(row.total_hours || 0).toFixed(2)"/>h
                                             </td>
-                                            <td class="text-center">
-                                                <t t-esc="(row.hours_taken || 0).toFixed(2)"/>h
-                                            </td>
-                                            <td class="text-right fw-bold text-success">
-                                                $<t t-esc="(row.total || 0).toFixed(2)"/>
+                                            <td class="text-right align-middle fw-bold text-success">
+                                                $<t t-esc="(row.total_amount || 0).toFixed(2)"/>
                                             </td>
                                         </tr>
-                                        <tr t-if="!state.tableData || state.tableData.length === 0">
-                                            <td colspan="6" class="text-center text-muted p-4">
+                                        <tr t-if="!state.tableRows || state.tableRows.length === 0">
+                                            <td t-att-colspan="3 + (state.tableHeaders.length * 2) + 2" class="text-center text-muted p-4">
                                                 No hay datos de tiempo extra para el período seleccionado
+                                            </td>
+                                        </tr>
+                                        <!-- Fila de totales -->
+                                        <tr t-if="state.tableRows &amp;&amp; state.tableRows.length > 0" class="table-primary fw-bold">
+                                            <td colspan="3" class="text-center align-middle">
+                                                <strong>TOTALES</strong>
+                                            </td>
+                                            <!-- Totales por día -->
+                                            <t t-foreach="state.tableHeaders" t-as="header" t-key="'total_' + header.date">
+                                                <t t-set="dayTotal" t-value="state.columnTotals[header.date] || {hours: 0, amount: 0}"/>
+                                                <td class="text-center align-middle bg-info text-white">
+                                                    <t t-esc="(dayTotal.hours || 0).toFixed(2)"/>h
+                                                </td>
+                                                <td class="text-right align-middle bg-info text-white">
+                                                    $<t t-esc="(dayTotal.amount || 0).toFixed(2)"/>
+                                                </td>
+                                            </t>
+                                            <!-- Gran total -->
+                                            <td class="text-center align-middle bg-success text-white">
+                                                <t t-esc="(state.grandTotalHours || 0).toFixed(2)"/>h
+                                            </td>
+                                            <td class="text-right align-middle bg-success text-white">
+                                                $<t t-esc="(state.grandTotalAmount || 0).toFixed(2)"/>
                                             </td>
                                         </tr>
                                     </tbody>

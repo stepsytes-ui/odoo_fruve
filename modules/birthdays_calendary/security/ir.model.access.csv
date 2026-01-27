@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_employee_birthday_user,access.employee.birthday.user,model_employee_birthday,base.group_user,1,0,0,0
+access_employee_birthday_hr_user,access.employee.birthday.hr.user,model_employee_birthday,hr.group_hr_user,1,0,0,0
+access_employee_birthday_hr_manager,access.employee.birthday.hr.manager,model_employee_birthday,hr.group_hr_manager,1,0,0,0

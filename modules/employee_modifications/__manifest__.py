@@ -25,5 +25,9 @@ Fruvemex requests for employee's module
     'demo': [
         'demo/demo.xml',
     ],
+    'installable': True,
+    'application': False,
+    'license': 'LGPL-3',
+
 }
 

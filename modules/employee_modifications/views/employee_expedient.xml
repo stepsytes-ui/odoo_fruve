@@ -151,54 +151,70 @@
                             </page>
                         </xpath>
                     </field>
-                </record>
+        </record>
 
-            <record id="view_employee_form_inherit_baja_button" model="ir.ui.view">
-                <field name="name">hr.employee.form.inherit.baja.button</field>
-                <field name="model">hr.employee</field>
-                <field name="inherit_id" ref="hr.view_employee_form"/>
-                <field name="arch" type="xml">
+        <record id="view_employee_form_inherit_ver_expediente_button" model="ir.ui.view">
+            <field name="name">hr.employee.form.inherit.ver.expediente.button</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_form"/>
+            <field name="arch" type="xml">
 
-                    <xpath expr="//header" position="inside">
-                        <button name="action_open_expedient_baja_wizard"
-                                type="object"
-                                string="Registrar Baja"
-                                class="btn-primary"
-                                invisible="employee_status == 'inactive'"/>
-                    </xpath>
+                <xpath expr="//header" position="inside">
+                    <button name="action_view_expedient"
+                            type="object"
+                            string="Ver Expediente"
+                            class="btn-secondary"/>
+                </xpath>
+
+            </field>
+        </record>
+
+        <record id="view_employee_form_inherit_baja_button" model="ir.ui.view">
+            <field name="name">hr.employee.form.inherit.baja.button</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_form"/>
+            <field name="arch" type="xml">
+
+                <xpath expr="//header" position="inside">
+                    <button name="action_open_expedient_baja_wizard"
+                            type="object"
+                            string="Registrar Baja"
+                            class="btn-primary"
+                            invisible="employee_status == 'inactive'"/>
+                </xpath>
+
+            </field>
+        </record>
+
+        <record id="view_employee_form_inherit_reingreso_button" model="ir.ui.view">
+            <field name="name">hr.employee.form.inherit.reingreso.button</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_form"/>
+            <field name="arch" type="xml">
+
+                <xpath expr="//header" position="inside">
+                    <button name="action_open_expedient_reingreso_wizard"
+                            type="object"
+                            string="Registrar Reingreso"
+                            class="btn-primary"
+                            invisible="employee_status == 'active'"/>
+                </xpath>
+
+            </field>
+        </record>
+
+        <record id="view_hr_employee_form_inherit_expedient" model="ir.ui.view">
+            <field name="name">hr.employee.form.inherit.expedient</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_form"/>
+            <field name="arch" type="xml">
+                
+                <xpath expr="//field[@name='parent_id']" position="after">
+                    <field name="fecha_ingreso_manual" invisible="context.get('active_id')"/>
+                </xpath>
 
                 </field>
-            </record>
-
-            <record id="view_employee_form_inherit_reingreso_button" model="ir.ui.view">
-                <field name="name">hr.employee.form.inherit.reingreso.button</field>
-                <field name="model">hr.employee</field>
-                <field name="inherit_id" ref="hr.view_employee_form"/>
-                <field name="arch" type="xml">
-
-                    <xpath expr="//header" position="inside">
-                        <button name="action_open_expedient_reingreso_wizard"
-                                type="object"
-                                string="Registrar Reingreso"
-                                class="btn-primary"
-                                invisible="employee_status == 'active'"/>
-                    </xpath>
-
-                </field>
-            </record>
-
-            <record id="view_hr_employee_form_inherit_expedient" model="ir.ui.view">
-                <field name="name">hr.employee.form.inherit.expedient</field>
-                <field name="model">hr.employee</field>
-                <field name="inherit_id" ref="hr.view_employee_form"/>
-                <field name="arch" type="xml">
-                    
-                    <xpath expr="//field[@name='parent_id']" position="after">
-                        <field name="fecha_ingreso_manual" invisible="context.get('active_id')"/>
-                    </xpath>
-
-                    </field>
-            </record>
+        </record>
 
     </data>
 </odoo>

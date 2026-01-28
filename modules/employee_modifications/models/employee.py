@@ -64,3 +64,29 @@ class HrEmployeeExtension(models.Model):
             'target': 'new',
             'context': {'default_employee_id': self.id},
         }
+    
+    def action_view_expedient(self):
+        self.ensure_one()
+        expedient = self.env['employee.expedient'].search([
+            ('employee_id', '=', self.id)
+        ], limit=1)
+        
+        if not expedient:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'message': 'No se encontró expediente para este empleado.',
+                    'type': 'warning',
+                    'sticky': False,
+                }
+            }
+        
+        return {
+            'name': f"Expediente de {self.name}",
+            'type': 'ir.actions.act_window',
+            'res_model': 'employee.expedient',
+            'view_mode': 'form',
+            'res_id': expedient.id,
+            'target': 'current',
+        }

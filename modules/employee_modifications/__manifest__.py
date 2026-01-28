@@ -13,13 +13,14 @@ Fruvemex requests for employee's module
     'category': 'Human Resources',
     'version': '18.0.0.1',
 
-    'depends': ['base','hr','hr_attendance', 'web','zkteco_realtime_connector',],
+    'depends': ['base','hr','hr_attendance', 'hr_holidays_attendance', 'web','zkteco_realtime_connector',],
 
     'data': [
             'security/ir.model.access.csv',
             'views/employee_expedient.xml', 
             'views/employee_menus.xml',
-            'views/employee_disciplinary.xml', 
+            'views/employee_disciplinary.xml',
+            'views/employee_attendance_buttons_hide.xml',
             'wizard/employee_expedient_wizard_views.xml',
         ],
     'demo': [

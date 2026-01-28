@@ -1,0 +1,27 @@
+<odoo>
+    <data>
+        <!-- Ocultar el botón inteligente de Horas Extra (Extra Hours) -->
+        <record id="view_employee_form_hide_overtime_button" model="ir.ui.view">
+            <field name="name">hr.employee.form.hide.overtime.button</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr_attendance.view_employee_form_inherit_hr_attendance"/>
+            <field name="arch" type="xml">
+                <xpath expr="//button[@name='action_open_last_month_overtime']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Ocultar el botón de Descontar Horas Extra (Deduct Extra Hours) -->
+        <record id="view_employee_form_hide_deduct_button" model="ir.ui.view">
+            <field name="name">hr.employee.form.hide.deduct.button</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr_holidays_attendance.hr_employee_view_form_inherit"/>
+            <field name="arch" type="xml">
+                <xpath expr="//button[@name='%(hr_holidays_attendance.hr_leave_allocation_overtime_manager_action)d']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -82,7 +82,7 @@
                                 </group>
                             </page>
 
-                            <page string="Historial de Fechas (Matriz)" name="historial">
+                            <page string="Historial de Movimientos" name="historial">
                                 <field name="history_ids" readonly="1">
                                     <list decoration-info="tipo_movimiento == 'alta'" 
                                         decoration-danger="tipo_movimiento == 'baja'" 

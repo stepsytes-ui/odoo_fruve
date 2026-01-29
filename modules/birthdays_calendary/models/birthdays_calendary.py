@@ -20,12 +20,13 @@ class EmployeeBirthday(models.Model):
     biometric_id = fields.Char(string='No. Empleado', readonly=True)
     icon = fields.Char(string='Icono', compute='_compute_icon', store=False)
     
-    @api.depends('employee_id', 'employee_id.name')
+    @api.depends('employee_id', 'employee_id.name', 'biometric_id')
     def _compute_name(self):
-        """Genera el nombre con formato: Cumpleaños de [Nombre Empleado]"""
+        """Genera el nombre con formato: Cumpleaños de [No. Empleado] [Nombre Empleado]"""
         for record in self:
             if record.employee_id:
-                record.name = f"🎂 Cumpleaños de {record.employee_id.name}"
+                biometric = record.biometric_id or ''
+                record.name = f"🎂 Cumpleaños de {biometric} {record.employee_id.name}"
             else:
                 record.name = "Cumpleaños"
     

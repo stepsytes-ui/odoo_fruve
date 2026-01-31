@@ -164,6 +164,18 @@
                             type="object"
                             string="Ver Expediente"
                             class="btn-secondary"/>
+                    <button name="action_view_warnings"
+                            type="object"
+                            string="Amonestaciones"
+                            class="btn-secondary"/>
+                    <button name="action_view_overtime"
+                            type="object"
+                            string="Tiempo Extra"
+                            class="btn-secondary"/>
+                    <button name="action_view_documents"
+                            type="object"
+                            string="Archivos"
+                            class="btn-secondary"/>
                 </xpath>
 
             </field>

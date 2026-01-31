@@ -8,7 +8,7 @@ class hr_employee(models.Model):
     biometric_id = fields.Char(string='Numero de empleado')
     
     biometric_id_numeric = fields.Integer(
-        string='Número de Empleado (Numérico)',
+        string='No. Empleado (ordenamiento)',
         compute='_compute_biometric_id_numeric',
         store=True,
         help='Campo numérico derivado de biometric_id para ordenamiento'

@@ -5,3 +5,5 @@ from . import employee
 from . import hr_leave_expendient_link
 from . import employee_disciplinary_record
 from . import employee_expedient_history_movements
+from . import employee_warning
+from . import employee_documents

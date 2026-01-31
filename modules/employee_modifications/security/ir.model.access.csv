@@ -4,6 +4,8 @@ access_employee_expedient_baja_wizard,employee_expedient_baja_wizard,model_emplo
 access_employee_expedient_reingreso_wizard,employee_expedient_reingreso_wizard,model_employee_expedient_reingreso_wizard,,1,1,1,1
 access_employee_disciplinary_record,employee_disciplinary_record,model_employee_disciplinary_record,,1,1,1,1
 access_employee_expedient_history_movements,employee_expedient_history_movements,model_employee_expedient_line,,1,1,1,1
+access_employee_warning,employee_warning,model_employee_warning,base.group_user,1,1,1,1
+access_employee_documents,employee_documents,model_employee_documents,base.group_user,1,1,1,1
 access_hr_employee_read_only,hr.employee.read_only,hr.model_hr_employee,group_hr_read_employees,1,0,0,0
 access_hr_employee_public_read_only,hr.employee.public.read_only,hr.model_hr_employee_public,group_hr_read_employees,1,0,0,0
 access_hr_department_read_only,hr.department.read_only,hr.model_hr_department,group_hr_read_employees,1,0,0,0

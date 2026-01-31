@@ -25,6 +25,24 @@ class HrEmployeeExtension(models.Model):
         string='Actas Disciplinarias'
     )
 
+    warning_ids = fields.One2many(
+        'employee.warning',
+        'employee_id',
+        string='Amonestaciones'
+    )
+
+    custom_overtime_ids = fields.One2many(
+        'overtime',
+        'employee_id',
+        string='Solicitudes Tiempo Extra'
+    )
+
+    documents_ids = fields.One2many(
+        'employee.documents',
+        'employee_id',
+        string='Archivos y Documentos'
+    )
+
     @api.model_create_multi
     def create(self, vals_list):
         employees = super().create(vals_list)
@@ -88,5 +106,59 @@ class HrEmployeeExtension(models.Model):
             'res_model': 'employee.expedient',
             'view_mode': 'form',
             'res_id': expedient.id,
+            'target': 'current',
+        }
+    
+    def action_view_warnings(self):
+        """Método para abrir la vista de amonestaciones del empleado"""
+        self.ensure_one()
+        return {
+            'name': f"Amonestaciones de {self.name}",
+            'type': 'ir.actions.act_window',
+            'res_model': 'employee.warning',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.id)],
+            'context': {
+                'default_employee_id': self.id,
+                'default_biometric_id': self.biometric_id,
+            },
+            'target': 'current',
+        }
+    
+    def action_view_overtime(self):
+        """Método para abrir la vista de tiempo extra del empleado"""
+        self.ensure_one()
+        return {
+            'name': f"Tiempo Extra de {self.name}",
+            'type': 'ir.actions.act_window',
+            'res_model': 'overtime',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.id)],
+            'context': {
+                'default_employee_id': self.id,
+            },
+            'target': 'current',
+        }
+    
+    def action_view_documents(self):
+        """Método para abrir los archivos y documentos del empleado"""
+        self.ensure_one()
+        # Buscar o crear el registro de documentos para este empleado
+        document = self.env['employee.documents'].search([
+            ('employee_id', '=', self.id)
+        ], limit=1)
+        
+        if not document:
+            # Crear automáticamente el registro si no existe
+            document = self.env['employee.documents'].create({
+                'employee_id': self.id,
+            })
+        
+        return {
+            'name': f"Archivos de {self.name}",
+            'type': 'ir.actions.act_window',
+            'res_model': 'employee.documents',
+            'view_mode': 'form',
+            'res_id': document.id,
             'target': 'current',
         }

@@ -18,17 +18,17 @@
                 <attribute name="groups">hr.group_hr_user,!employee_modifications.group_hr_read_employees</attribute>
             </page>
             
-            <!-- Ocultar botón Launch Plan para read_employees -->
+            <!-- Ocultar botón Iniciar Plan -->
             <xpath expr="//header/button[@name='%(hr.plan_wizard_action)d']" position="attributes">
-                <attribute name="groups">hr.group_hr_user,!employee_modifications.group_hr_read_employees</attribute>
+                <attribute name="invisible">1</attribute>
             </xpath>
             
         </field>
     </record>
 
     <!-- Vista heredada de lista para agregar biometric_id -->
-    <record id="view_employee_tree_biometric_inherit" model="ir.ui.view">
-        <field name="name">hr.employee.tree.biometric.inherit</field>
+    <record id="view_employee_list_biometric_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.list.biometric.inherit</field>
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr.view_employee_tree"/>
         <field name="arch" type="xml">

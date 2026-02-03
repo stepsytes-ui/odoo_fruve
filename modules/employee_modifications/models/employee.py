@@ -43,6 +43,42 @@ class HrEmployeeExtension(models.Model):
         string='Archivos y Documentos'
     )
 
+    suspension_ids = fields.One2many(
+        'hr.suspension',
+        'employee_id',
+        string='Suspensiones'
+    )
+
+    suspension_count = fields.Integer(
+        string='Número de Suspensiones',
+        compute='_compute_suspension_count',
+        help='Cantidad de suspensiones del empleado'
+    )
+
+    incapacity_ids = fields.One2many(
+        'hr.incapacity',
+        'employee_id',
+        string='Incapacidades'
+    )
+
+    incapacity_count = fields.Integer(
+        string='Número de Incapacidades',
+        compute='_compute_incapacity_count',
+        help='Cantidad de incapacidades del empleado'
+    )
+
+    @api.depends('suspension_ids')
+    def _compute_suspension_count(self):
+        """Calcula el número de suspensiones del empleado"""
+        for employee in self:
+            employee.suspension_count = len(employee.suspension_ids)
+
+    @api.depends('incapacity_ids')
+    def _compute_incapacity_count(self):
+        """Calcula el número de incapacidades del empleado"""
+        for employee in self:
+            employee.incapacity_count = len(employee.incapacity_ids)
+
     @api.model_create_multi
     def create(self, vals_list):
         employees = super().create(vals_list)
@@ -160,5 +196,35 @@ class HrEmployeeExtension(models.Model):
             'res_model': 'employee.documents',
             'view_mode': 'form',
             'res_id': document.id,
+            'target': 'current',
+        }
+    
+    def action_view_suspensions(self):
+        """Método para abrir la vista de suspensiones del empleado"""
+        self.ensure_one()
+        return {
+            'name': f"Suspensiones de {self.name}",
+            'type': 'ir.actions.act_window',
+            'res_model': 'hr.suspension',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.id)],
+            'context': {
+                'default_employee_id': self.id,
+            },
+            'target': 'current',
+        }
+    
+    def action_view_incapacities(self):
+        """Método para abrir la vista de incapacidades del empleado"""
+        self.ensure_one()
+        return {
+            'name': f"Incapacidades de {self.name}",
+            'type': 'ir.actions.act_window',
+            'res_model': 'hr.incapacity',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.id)],
+            'context': {
+                'default_employee_id': self.id,
+            },
             'target': 'current',
         }

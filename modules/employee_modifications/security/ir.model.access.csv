@@ -2,6 +2,7 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_employee_expedient_user,employee_expedient,model_employee_expedient,base.group_user,1,1,1,1
 access_employee_expedient_baja_wizard,employee_expedient_baja_wizard,model_employee_expedient_baja_wizard,,1,1,1,1
 access_employee_expedient_reingreso_wizard,employee_expedient_reingreso_wizard,model_employee_expedient_reingreso_wizard,,1,1,1,1
+access_import_curp_rfc_wizard,import_curp_rfc_wizard,model_import_curp_rfc_wizard,hr.group_hr_user,1,1,1,1
 access_employee_disciplinary_record,employee_disciplinary_record,model_employee_disciplinary_record,,1,1,1,1
 access_employee_expedient_history_movements,employee_expedient_history_movements,model_employee_expedient_line,,1,1,1,1
 access_employee_warning,employee_warning,model_employee_warning,base.group_user,1,1,1,1

@@ -31,6 +31,7 @@ Fruvemex requests for employee's module
             'views/hr_incapacity_views.xml',
             'views/employee_menus.xml',
             'wizard/employee_expedient_wizard_views.xml',
+            'wizard/import_curp_rfc_wizard_views.xml',
         ],
     'demo': [
         'demo/demo.xml',

@@ -66,6 +66,14 @@ class HrEmployeeExtension(models.Model):
         compute='_compute_incapacity_count',
         help='Cantidad de incapacidades del empleado'
     )
+    
+    # Campo para RFC (Odoo 18 no usa address_home_id, se maneja directamente)
+    rfc = fields.Char(
+        string='RFC',
+        groups='hr.group_hr_user',
+        tracking=True,
+        help='Registro Federal de Contribuyentes del empleado'
+    )
 
     @api.depends('suspension_ids')
     def _compute_suspension_count(self):

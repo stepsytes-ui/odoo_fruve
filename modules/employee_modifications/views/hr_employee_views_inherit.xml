@@ -56,4 +56,25 @@
         </field>
     </record>
 
+    <!-- Vista heredada para agregar CURP y RFC en Información Privada -->
+    <record id="view_employee_form_private_info_curp_rfc_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.form.private.info.curp.rfc.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Cambiar etiqueta de identification_id a CURP -->
+            <xpath expr="//page[@name='personal_information']//field[@name='identification_id']" position="attributes">
+                <attribute name="string">CURP</attribute>
+                <attribute name="placeholder">Ej: AAGR850101HDFRNN05</attribute>
+            </xpath>
+            
+            <!-- Agregar RFC después del campo identification_id en el grupo Citizenship -->
+            <xpath expr="//page[@name='personal_information']//field[@name='identification_id']" position="after">
+                <field name="rfc" string="RFC" placeholder="Ej: AAGR850101ABC"/>
+            </xpath>
+            
+        </field>
+    </record>
+
 </odoo>

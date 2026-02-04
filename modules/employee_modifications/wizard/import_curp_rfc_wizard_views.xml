@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista del formulario del wizard de importación CURP y RFC -->
+    <record id="view_import_curp_rfc_wizard_form" model="ir.ui.view">
+        <field name="name">import.curp.rfc.wizard.form</field>
+        <field name="model">import.curp.rfc.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Importar CURP y RFC desde Excel">
+                <sheet>
+                    <!-- Estado: Seleccionar Archivo -->
+                    <group invisible="state != 'seleccionar'">
+                        <group>
+                            <field name="state" invisible="1"/>
+                            <div class="oe_title">
+                                <h1>Importar CURP y RFC desde Excel</h1>
+                            </div>
+                        </group>
+                        <group>
+                            <div class="alert alert-info" role="alert">
+                                <strong>Instrucciones:</strong>
+                                <ul>
+                                    <li>El archivo Excel debe tener 4 columnas en el siguiente orden:</li>
+                                    <ol>
+                                        <li><strong>Número de Empleado</strong> (biometric_id)</li>
+                                        <li><strong>Nombre del Empleado</strong></li>
+                                        <li><strong>CURP</strong> (18 caracteres)</li>
+                                        <li><strong>RFC con Homoclave</strong> (12 o 13 caracteres)</li>
+                                    </ol>
+                                    <li>La primera fila debe contener los encabezados (será omitida)</li>
+                                    <li>El número de empleado debe coincidir con el campo "Número de Empleado" en Odoo</li>
+                                    <li>Los datos se actualizarán solo para empleados existentes</li>
+                                </ul>
+                            </div>
+                        </group>
+                        <group>
+                            <field name="archivo_excel" filename="nombre_archivo" widget="binary"/>
+                            <field name="nombre_archivo" invisible="1"/>
+                        </group>
+                    </group>
+
+                    <!-- Estado: Resultado -->
+                    <group invisible="state != 'resultado'">
+                        <group>
+                            <field name="state" invisible="1"/>
+                            <div class="oe_title">
+                                <h1>Resultado de la Importación</h1>
+                            </div>
+                        </group>
+                        
+                        <!-- Estadísticas resumidas -->
+                        <group>
+                            <group>
+                                <field name="empleados_actualizados" readonly="1" 
+                                       widget="statinfo" 
+                                       string="Actualizados"
+                                       class="oe_stat_button"/>
+                            </group>
+                            <group>
+                                <field name="empleados_no_encontrados" readonly="1" 
+                                       widget="statinfo" 
+                                       string="No Encontrados"
+                                       class="oe_stat_button"/>
+                            </group>
+                            <group>
+                                <field name="errores_count" readonly="1" 
+                                       widget="statinfo" 
+                                       string="Errores"
+                                       class="oe_stat_button"/>
+                            </group>
+                        </group>
+                        
+                        <!-- Resultado detallado -->
+                        <group>
+                            <field name="resultado_importacion" nolabel="1" colspan="2"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <!-- Botones para estado: seleccionar -->
+                    <button string="Importar" 
+                            name="action_importar" 
+                            type="object" 
+                            invisible="state != 'seleccionar'"
+                            class="btn-primary"/>
+                    <button string="Cancelar" 
+                            invisible="state != 'seleccionar'"
+                            class="btn-secondary" 
+                            special="cancel"/>
+                    
+                    <!-- Botones para estado: resultado -->
+                    <button string="Nueva Importación" 
+                            name="action_volver" 
+                            type="object"
+                            invisible="state != 'resultado'" 
+                            class="btn-primary"/>
+                    <button string="Cerrar" 
+                            name="action_cerrar" 
+                            type="object"
+                            invisible="state != 'resultado'" 
+                            class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción del wizard -->
+    <record id="action_import_curp_rfc_wizard" model="ir.actions.act_window">
+        <field name="name">Importar CURP y RFC</field>
+        <field name="res_model">import.curp.rfc.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="hr.model_hr_employee"/>
+        <field name="binding_view_types">list</field>
+    </record>
+
+    <!-- Menú para acceder al wizard desde Empleados -->
+    <menuitem id="menu_import_curp_rfc_wizard"
+              name="Importar CURP y RFC"
+              parent="hr.menu_hr_root"
+              action="action_import_curp_rfc_wizard"
+              sequence="100"
+              groups="hr.group_hr_user"/>
+</odoo>

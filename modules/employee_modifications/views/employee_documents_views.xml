@@ -185,11 +185,4 @@
         </field>
     </record>
 
-    <!-- Menú -->
-    <menuitem id="menu_employee_documents"
-              name="Archivos de Empleados"
-              parent="hr.menu_hr_root"
-              action="action_employee_documents"
-              sequence="65"/>
-
 </odoo>

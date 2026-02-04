@@ -109,11 +109,4 @@
         </field>
     </record>
 
-    <!-- Menú para Amonestaciones -->
-    <menuitem id="menu_employee_warning"
-              name="Amonestaciones"
-              parent="hr.menu_hr_root"
-              action="action_employee_warning"
-              sequence="60"/>
-
 </odoo>

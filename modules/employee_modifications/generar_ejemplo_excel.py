@@ -31,7 +31,7 @@ alignment.vert = xlwt.Alignment.VERT_CENTER
 header_style.alignment = alignment
 
 # Escribir encabezados
-headers = ['Número de Empleado', 'Nombre del Empleado', 'CURP', 'RFC']
+headers = ['Número de Empleado', 'Nombre del Empleado', 'CURP', 'RFC', 'NSS']
 for col, header in enumerate(headers):
     sheet.write(0, col, header, header_style)
 
@@ -40,14 +40,15 @@ sheet.col(0).width = 5000  # Número de Empleado
 sheet.col(1).width = 8000  # Nombre del Empleado
 sheet.col(2).width = 6000  # CURP
 sheet.col(3).width = 5000  # RFC
+sheet.col(4).width = 4000  # NSS
 
 # Datos de ejemplo
 datos_ejemplo = [
-    ['1001', 'Juan Pérez García', 'PEGJ850101HDFRNN05', 'PEGJ850101ABC'],
-    ['1002', 'María López Hernández', 'LOHM900215MDFRNN08', 'LOHM900215XY1'],
-    ['1003', 'Carlos Rodríguez Martínez', 'ROMC750512HDFRNN03', 'ROMC750512AB2'],
-    ['1004', 'Ana Martínez Sánchez', 'MASA881120MDFRNN04', 'MASA881120CD3'],
-    ['1005', 'Luis González Torres', 'GOTL920305HDFRNN09', 'GOTL920305EF4'],
+    ['1001', 'Juan Pérez García', 'PEGJ850101HDFRNN05', 'PEGJ850101ABC', '12345678901'],
+    ['1002', 'María López Hernández', 'LOHM900215MDFRNN08', 'LOHM900215XY1', '23456789012'],
+    ['1003', 'Carlos Rodríguez Martínez', 'ROMC750512HDFRNN03', 'ROMC750512AB2', '34567890123'],
+    ['1004', 'Ana Martínez Sánchez', 'MASA881120MDFRNN04', 'MASA881120CD3', '45678901234'],
+    ['1005', 'Luis González Torres', 'GOTL920305HDFRNN09', 'GOTL920305EF4', '56789012345'],
 ]
 
 # Estilo para datos
@@ -71,4 +72,5 @@ print("- Columna A: Número de Empleado (biometric_id)")
 print("- Columna B: Nombre del Empleado")
 print("- Columna C: CURP (18 caracteres)")
 print("- Columna D: RFC (12 o 13 caracteres)")
+print("- Columna E: NSS (11 dígitos)")
 print("\nEl archivo contiene 5 registros de ejemplo.")

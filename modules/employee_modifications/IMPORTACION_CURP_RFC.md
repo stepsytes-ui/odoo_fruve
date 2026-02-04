@@ -1,11 +1,11 @@
-# Importación de CURP y RFC desde Excel
+# Importación de CURP, RFC y NSS desde Excel
 
 ## Descripción
-Este módulo permite importar datos de CURP y RFC a empleados existentes en Odoo desde un archivo Excel.
+Este módulo permite importar datos de CURP, RFC y NSS (Número de Seguro Social) a empleados existentes en Odoo desde un archivo Excel.
 
 ## Formato del Archivo Excel
 
-El archivo debe tener **4 columnas** en el siguiente orden:
+El archivo debe tener **5 columnas** en el siguiente orden:
 
 | Columna | Nombre | Descripción | Validación |
 |---------|--------|-------------|------------|
@@ -13,14 +13,15 @@ El archivo debe tener **4 columnas** en el siguiente orden:
 | B | Nombre del Empleado | Nombre para referencia (no se actualiza) | Opcional |
 | C | CURP | Clave Única de Registro de Población | 18 caracteres |
 | D | RFC | Registro Federal de Contribuyentes con homoclave | 12 o 13 caracteres |
+| E | NSS | Número de Seguro Social | 11 dígitos |
 
 ### Ejemplo de Archivo Excel
 
 ```
-Número de Empleado | Nombre del Empleado        | CURP               | RFC
-1001              | Juan Pérez García          | PEGJ850101HDFRNN05 | PEGJ850101ABC
-1002              | María López Hernández      | LOHM900215MDFRNN08 | LOHM900215XY1
-1003              | Carlos Rodríguez Martínez  | ROMC750512HDFRNN03 | ROMC750512AB2
+Número de Empleado | Nombre del Empleado        | CURP               | RFC           | NSS
+1001              | Juan Pérez García          | PEGJ850101HDFRNN05 | PEGJ850101ABC | 12345678901
+1002              | María López Hernández      | LOHM900215MDFRNN08 | LOHM900215XY1 | 23456789012
+1003              | Carlos Rodríguez Martínez  | ROMC750512HDFRNN03 | ROMC750512AB2 | 34567890123
 ```
 
 ## Campos Actualizados
@@ -37,6 +38,13 @@ Número de Empleado | Nombre del Empleado        | CURP               | RFC
 - **Ubicación**: Empleados > Información Privada
 - **Validación**: Debe tener 12 o 13 caracteres
 - **Nota**: El RFC se almacena directamente en el empleado
+
+### NSS
+- **Campo en Odoo**: `ssnid` (hr.employee)
+- **Etiqueta**: "Número de Seguridad Social"
+- **Ubicación**: Empleados > Información Privada
+- **Validación**: Debe tener exactamente 11 dígitos
+- **Nota**: Solo acepta valores numéricos
 
 ## Cómo Usar el Asistente de Importación
 

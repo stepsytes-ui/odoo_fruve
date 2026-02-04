@@ -5,26 +5,27 @@
         <field name="name">import.curp.rfc.wizard.form</field>
         <field name="model">import.curp.rfc.wizard</field>
         <field name="arch" type="xml">
-            <form string="Importar CURP y RFC desde Excel">
+            <form string="Importar CURP, RFC y NSS desde Excel">
                 <sheet>
                     <!-- Estado: Seleccionar Archivo -->
                     <group invisible="state != 'seleccionar'">
                         <group>
                             <field name="state" invisible="1"/>
                             <div class="oe_title">
-                                <h1>Importar CURP y RFC desde Excel</h1>
+                                <h1>Importar CURP, RFC y NSS desde Excel</h1>
                             </div>
                         </group>
                         <group>
                             <div class="alert alert-info" role="alert">
                                 <strong>Instrucciones:</strong>
                                 <ul>
-                                    <li>El archivo Excel debe tener 4 columnas en el siguiente orden:</li>
+                                    <li>El archivo Excel debe tener 5 columnas en el siguiente orden:</li>
                                     <ol>
                                         <li><strong>Número de Empleado</strong> (biometric_id)</li>
                                         <li><strong>Nombre del Empleado</strong></li>
                                         <li><strong>CURP</strong> (18 caracteres)</li>
                                         <li><strong>RFC con Homoclave</strong> (12 o 13 caracteres)</li>
+                                        <li><strong>NSS</strong> (Número de Seguro Social - 11 dígitos)</li>
                                     </ol>
                                     <li>La primera fila debe contener los encabezados (será omitida)</li>
                                     <li>El número de empleado debe coincidir con el campo "Número de Empleado" en Odoo</li>
@@ -105,7 +106,7 @@
 
     <!-- Acción del wizard -->
     <record id="action_import_curp_rfc_wizard" model="ir.actions.act_window">
-        <field name="name">Importar CURP y RFC</field>
+        <field name="name">Importar CURP, RFC y NSS</field>
         <field name="res_model">import.curp.rfc.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
@@ -113,11 +114,4 @@
         <field name="binding_view_types">list</field>
     </record>
 
-    <!-- Menú para acceder al wizard desde Empleados -->
-    <menuitem id="menu_import_curp_rfc_wizard"
-              name="Importar CURP y RFC"
-              parent="hr.menu_hr_root"
-              action="action_import_curp_rfc_wizard"
-              sequence="100"
-              groups="hr.group_hr_user"/>
 </odoo>

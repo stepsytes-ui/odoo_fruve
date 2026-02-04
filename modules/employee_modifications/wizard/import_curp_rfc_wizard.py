@@ -83,6 +83,7 @@ class ImportCurpRfcWizard(models.TransientModel):
                     nombre_empleado = str(sheet.cell_value(row_idx, 1)).strip() if sheet.ncols > 1 else ''
                     curp = str(sheet.cell_value(row_idx, 2)).strip().upper() if sheet.ncols > 2 else ''
                     rfc = str(sheet.cell_value(row_idx, 3)).strip().upper() if sheet.ncols > 3 else ''
+                    nss = str(sheet.cell_value(row_idx, 4)).strip() if sheet.ncols > 4 else ''
                     
                     # Limpiar valores numéricos de Excel (ej: 123.0 -> 123)
                     if '.' in numero_empleado and numero_empleado.replace('.', '').isdigit():
@@ -144,6 +145,27 @@ class ImportCurpRfcWizard(models.TransientModel):
                             resultado_html += f"<tr class='table-danger'><td>{numero_empleado}</td><td>{empleado.name}</td>"
                             resultado_html += f"<td><span class='badge badge-danger'>Error</span></td>"
                             resultado_html += f"<td>RFC inválido: {rfc} (debe tener 12 o 13 caracteres)</td></tr>"
+                            continue
+                    
+                    # Actualizar NSS si se proporciona
+                    if nss:
+                        # Limpiar valores numéricos de Excel (ej: 123.0 -> 123)
+                        if '.' in nss and nss.replace('.', '').isdigit():
+                            nss = str(int(float(nss)))
+                        
+                        # Validar formato NSS (11 dígitos)
+                        if len(nss) == 11 and nss.isdigit():
+                            valores['ssnid'] = nss
+                            detalles.append(f"NSS: {nss}")
+                        else:
+                            errores.append({
+                                'numero': numero_empleado,
+                                'nombre': empleado.name,
+                                'error': f'NSS inválido: {nss} (debe tener 11 dígitos)'
+                            })
+                            resultado_html += f"<tr class='table-danger'><td>{numero_empleado}</td><td>{empleado.name}</td>"
+                            resultado_html += f"<td><span class='badge badge-danger'>Error</span></td>"
+                            resultado_html += f"<td>NSS inválido: {nss} (debe tener 11 dígitos)</td></tr>"
                             continue
                     
                     # Actualizar el empleado si hay cambios

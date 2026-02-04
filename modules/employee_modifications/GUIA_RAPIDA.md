@@ -2,19 +2,20 @@
 
 ## 📝 Preparar el Excel
 
-Tu archivo debe tener **4 columnas** en este orden:
+Tu archivo debe tener **5 columnas** en este orden:
 
-| A | B | C | D |
-|---|---|---|---|
-| **Número de Empleado** | **Nombre** | **CURP** | **RFC** |
-| 1001 | Juan Pérez | PEGJ850101HDFRNN05 | PEGJ850101ABC |
-| 1002 | María López | LOHM900215MDFRNN08 | LOHM900215XY1 |
+| A | B | C | D | E |
+|---|---|---|---|---|
+| **Número de Empleado** | **Nombre** | **CURP** | **RFC** | **NSS** |
+| 1001 | Juan Pérez | PEGJ850101HDFRNN05 | PEGJ850101ABC | 12345678901 |
+| 1002 | María López | LOHM900215MDFRNN08 | LOHM900215XY1 | 23456789012 |
 
 ### ⚠️ Importante:
 - Primera fila = Encabezados (se omite automáticamente)
 - Número de Empleado = debe coincidir con el campo en Odoo
 - CURP = exactamente 18 caracteres
 - RFC = 12 o 13 caracteres
+- NSS = exactamente 11 dígitos
 
 ## 🔄 Actualizar el Módulo
 

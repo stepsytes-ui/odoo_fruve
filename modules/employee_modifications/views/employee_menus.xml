@@ -1,28 +1,74 @@
 <odoo>
     <data>
+        <!-- Menú Principal: Herramientas -->
+        <menuitem 
+            id="menu_hr_herramientas" 
+            name="Herramientas" 
+            parent="hr.menu_hr_root" 
+            sequence="100"
+            groups="hr.group_hr_user"/> 
+        
+        <!-- Submenú: Expedientes -->
         <menuitem 
             id="menu_hr_employee_view_expedient" 
             name="Expedientes" 
-            parent="hr.menu_hr_root" 
-            sequence="20"
+            parent="menu_hr_herramientas" 
+            sequence="10"
             groups="hr.group_hr_manager" 
             action="employee_modifications.employee_expedient_action"/> 
         
+        <!-- Submenú: Suspensiones -->
         <menuitem 
             id="menu_hr_suspension" 
             name="Suspensiones" 
-            parent="hr.menu_hr_root" 
-            sequence="25"
+            parent="menu_hr_herramientas" 
+            sequence="20"
             groups="hr.group_hr_manager" 
             action="action_hr_suspension"/> 
         
+        <!-- Submenú: Incapacidades -->
         <menuitem 
             id="menu_hr_incapacity" 
             name="Incapacidades" 
-            parent="hr.menu_hr_root" 
+            parent="menu_hr_herramientas" 
             sequence="30"
             groups="hr.group_hr_manager" 
             action="action_hr_incapacity"/> 
+        
+        <!-- Submenú: Amonestaciones -->
+        <menuitem 
+            id="menu_employee_warning_herramientas"
+              name="Amonestaciones"
+              parent="menu_hr_herramientas"
+              action="action_employee_warning"
+              sequence="40"
+              groups="hr.group_hr_user"/>
+        
+        <!-- Submenú: Archivos de Empleados -->
+        <menuitem 
+            id="menu_employee_documents_herramientas"
+              name="Archivos de Empleados"
+              parent="menu_hr_herramientas"
+              action="action_employee_documents"
+              sequence="50"
+              groups="hr.group_hr_user"/>
+        
+        <!-- Submenú: Reportes (placeholder - agregar acción cuando esté lista) -->
+        <menuitem 
+            id="menu_hr_reportes"
+              name="Reportes"
+              parent="menu_hr_herramientas"
+              sequence="60"
+              groups="hr.group_hr_user"/>
+        
+        <!-- Submenú: Importar CURP, RFC y NSS -->
+        <menuitem 
+            id="menu_import_curp_rfc_herramientas"
+              name="Importar CURP, RFC y NSS"
+              parent="menu_hr_herramientas"
+              action="action_import_curp_rfc_wizard"
+              sequence="70"
+              groups="hr.group_hr_user"/>
     
     </data>
 </odoo>

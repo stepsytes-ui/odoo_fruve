@@ -36,6 +36,7 @@
 
                         <group>
                             <group string="Información General">
+                                <field name="company_id" options="{'no_create': True}" groups="base.group_multi_company"/>
                                 <field name="department_id"/>
                                 <field name="area_id"/>
                                 <field name="supervisor_id"/>
@@ -96,6 +97,7 @@
             <field name="model">overtime</field>
             <field name="arch" type="xml">
                 <list string="Solicitudes de Tiempo Extra">
+                    <field name="company_id" column_invisible="True"/>
                     <field name="name"/>
                     <field name="requested_date" width="120"/>
                     <field name="department_id"/>

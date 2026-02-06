@@ -9,6 +9,8 @@ access_employee_warning,employee_warning,model_employee_warning,base.group_user,
 access_employee_documents,employee_documents,model_employee_documents,base.group_user,1,1,1,1
 access_hr_suspension,hr_suspension,model_hr_suspension,base.group_user,1,1,1,1
 access_hr_incapacity,hr_incapacity,model_hr_incapacity,base.group_user,1,1,1,1
+access_hr_permission,hr_permission,model_hr_permission,base.group_user,1,1,1,1
+access_hr_vacation,hr_vacation,model_hr_vacation,base.group_user,1,1,1,1
 access_hr_employee_read_only,hr.employee.read_only,hr.model_hr_employee,group_hr_read_employees,1,0,0,0
 access_hr_employee_public_read_only,hr.employee.public.read_only,hr.model_hr_employee_public,group_hr_read_employees,1,0,0,0
 access_hr_department_read_only,hr.department.read_only,hr.model_hr_department,group_hr_read_employees,1,0,0,0

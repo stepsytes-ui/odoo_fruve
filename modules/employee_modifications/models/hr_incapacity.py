@@ -50,6 +50,13 @@ class HrIncapacity(models.Model):
         readonly=True
     )
     
+    supervisor_id = fields.Many2one(
+        'res.users',
+        string='Supervisor',
+        tracking=True,
+        help='Supervisor asignado (del grupo Supervisor Tiempo Extra)'
+    )
+    
     company_id = fields.Many2one(
         'res.company',
         string='Compañía',

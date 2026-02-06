@@ -13,12 +13,19 @@ NEW_LEAVE_STATUSES = [
     ('leave_marriage', 'Permiso por matrimonio'),   
     ('leave_unpaid', 'Permiso no pagado'),
     ('leave_paid', 'Permiso pagado'),
+    ('leave_delay_pass_paid', 'Permiso retardo'),
+    ('leave_payday', 'Permiso día pagado'),
+    ('leave_no_payday', 'Permiso día no pagado'),
+    ('leave_partial_paid', 'Permiso parcial pagado'),
+    ('leave_partial_unpaid', 'Permiso parcial no pagado'),
     ('leave_sickness', 'Incapacidad'),
     ('leave_vacation', 'Vacaciones'),
     ('leave_maternity', 'Maternidad'),
     ('leave_paternity', 'Paternidad'),
     ('leave_suspension', 'Suspensión'),
     ('leave_other', 'Ausencia Justificada (Otro)')
+    
+
 ]
 
 LEAVE_STATUS_KEYS = [key for key, label in NEW_LEAVE_STATUSES]

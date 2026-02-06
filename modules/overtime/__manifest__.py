@@ -11,7 +11,7 @@ Modulo con los formularios para solicitar,autorizar y calcular pagos de tiempo e
     'author': "NeyiSoek",
     'website': "https://fruvemex.com/es/",
     'category': 'Human Resources',
-    'version': '18.0.0.1',
+    'version': '18.0.0.4',
 
     'depends': ['base',
                 'hr',
@@ -26,6 +26,7 @@ Modulo con los formularios para solicitar,autorizar y calcular pagos de tiempo e
     'data': [
         'security/groups.xml',
         'security/ir.model.access.csv',
+        'security/overtime_security_rules.xml',
         'data/overtime_sequence.xml',
         'views/employee_extension_daily_rate.xml',
         'views/deparment_area_upgrade.xml',
@@ -52,5 +53,6 @@ Modulo con los formularios para solicitar,autorizar y calcular pagos de tiempo e
     'installable': True,
     'application': False,
     'license':'LGPL-3',
+    'post_init_hook': 'post_init_hook',
 }
 

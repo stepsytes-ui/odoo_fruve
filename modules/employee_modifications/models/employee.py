@@ -66,6 +66,30 @@ class HrEmployeeExtension(models.Model):
         compute='_compute_incapacity_count',
         help='Cantidad de incapacidades del empleado'
     )
+
+    permission_ids = fields.One2many(
+        'hr.permission',
+        'employee_id',
+        string='Permisos'
+    )
+
+    permission_count = fields.Integer(
+        string='Número de Permisos',
+        compute='_compute_permission_count',
+        help='Cantidad de permisos del empleado'
+    )
+
+    vacation_ids = fields.One2many(
+        'hr.vacation',
+        'employee_id',
+        string='Vacaciones'
+    )
+
+    vacation_count = fields.Integer(
+        string='Número de Vacaciones',
+        compute='_compute_vacation_count',
+        help='Cantidad de solicitudes de vacaciones del empleado'
+    )
     
     # Campo para RFC (Odoo 18 no usa address_home_id, se maneja directamente)
     rfc = fields.Char(
@@ -86,6 +110,18 @@ class HrEmployeeExtension(models.Model):
         """Calcula el número de incapacidades del empleado"""
         for employee in self:
             employee.incapacity_count = len(employee.incapacity_ids)
+
+    @api.depends('permission_ids')
+    def _compute_permission_count(self):
+        """Calcula el número de permisos del empleado"""
+        for employee in self:
+            employee.permission_count = len(employee.permission_ids)
+
+    @api.depends('vacation_ids')
+    def _compute_vacation_count(self):
+        """Calcula el número de vacaciones del empleado"""
+        for employee in self:
+            employee.vacation_count = len(employee.vacation_ids)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -229,6 +265,36 @@ class HrEmployeeExtension(models.Model):
             'name': f"Incapacidades de {self.name}",
             'type': 'ir.actions.act_window',
             'res_model': 'hr.incapacity',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.id)],
+            'context': {
+                'default_employee_id': self.id,
+            },
+            'target': 'current',
+        }
+
+    def action_view_permissions(self):
+        """Método para abrir la vista de permisos del empleado"""
+        self.ensure_one()
+        return {
+            'name': f"Permisos de {self.name}",
+            'type': 'ir.actions.act_window',
+            'res_model': 'hr.permission',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.id)],
+            'context': {
+                'default_employee_id': self.id,
+            },
+            'target': 'current',
+        }
+
+    def action_view_vacations(self):
+        """Método para abrir la vista de vacaciones del empleado"""
+        self.ensure_one()
+        return {
+            'name': f"Vacaciones de {self.name}",
+            'type': 'ir.actions.act_window',
+            'res_model': 'hr.vacation',
             'view_mode': 'list,form',
             'domain': [('employee_id', '=', self.id)],
             'context': {

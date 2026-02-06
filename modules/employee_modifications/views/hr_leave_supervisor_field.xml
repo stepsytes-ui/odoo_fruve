@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Agregar campo Supervisor en hr.leave después del campo de descripción -->
+        <record id="view_hr_leave_form_supervisor_field" model="ir.ui.view">
+            <field name="name">hr.leave.form.supervisor.field</field>
+            <field name="model">hr.leave</field>
+            <field name="inherit_id" ref="hr_holidays.hr_leave_view_form"/>
+            <field name="arch" type="xml">
+                <!-- Agregar campo supervisor después del campo de descripción (name) -->
+                <xpath expr="//field[@name='name']" position="after">
+                    <field name="supervisor_id" 
+                           options="{'no_create': True, 'no_create_edit': True}"
+                           placeholder="Seleccione el supervisor..."/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

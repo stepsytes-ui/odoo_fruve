@@ -10,11 +10,11 @@ class HrLeave(models.Model):
         copy=False,
     )
 
-    # Campos para Suspensiones
+    # Campo Supervisor (para todos los tipos de ausencia)
     supervisor_id = fields.Many2one(
-        'hr.employee',
+        'res.users',
         string='Supervisor',
-        domain=lambda self: [('user_id.groups_id', 'in', [self.env.ref('overtime.group_overtime_supervisor').id])],
+        domain=lambda self: [('groups_id', 'in', [self.env.ref('overtime.group_overtime_supervisor').id])],
         tracking=True,
         help='Supervisor asignado (debe pertenecer al grupo Supervisor Tiempo Extra)'
     )
@@ -61,6 +61,50 @@ class HrLeave(models.Model):
         help='Registro de incapacidad asociado'
     )
 
+    # Campos para Permisos
+    is_permission = fields.Boolean(
+        string='Es Permiso',
+        compute='_compute_is_permission',
+        store=True,
+        help='Indica si esta ausencia es de tipo Permiso'
+    )
+
+    permission_id = fields.Many2one(
+        'hr.permission',
+        string='Permiso',
+        readonly=True,
+        help='Registro de permiso asociado'
+    )
+
+    # Campos para Vacaciones
+    is_vacation = fields.Boolean(
+        string='Es Vacación',
+        compute='_compute_is_vacation',
+        store=True,
+        help='Indica si esta ausencia es de tipo Vacaciones'
+    )
+
+    vacation_id = fields.Many2one(
+        'hr.vacation',
+        string='Vacación',
+        readonly=True,
+        help='Registro de vacación asociado'
+    )
+
+    vacation_days_available = fields.Float(
+        string='Días de Vacaciones Disponibles',
+        compute='_compute_vacation_info',
+        store=False,
+        help='Días de vacaciones disponibles del empleado'
+    )
+
+    employee_antiguedad = fields.Char(
+        string='Antigüedad del Empleado',
+        compute='_compute_vacation_info',
+        store=False,
+        help='Antigüedad del empleado en la empresa'
+    )
+
     @api.depends('holiday_status_id', 'holiday_status_id.name')
     def _compute_is_suspension(self):
         """Determina si la ausencia es de tipo Suspensión"""
@@ -72,6 +116,41 @@ class HrLeave(models.Model):
         """Determina si la ausencia es de tipo Incapacidad"""
         for leave in self:
             leave.is_incapacity = leave.holiday_status_id and leave.holiday_status_id.name == 'Incapacidad'
+
+    @api.depends('holiday_status_id', 'holiday_status_id.name')
+    def _compute_is_permission(self):
+        """Determina si la ausencia es de tipo Permiso (cualquiera que contenga 'Permiso')"""
+        for leave in self:
+            leave.is_permission = (
+                leave.holiday_status_id and 
+                'Permiso' in leave.holiday_status_id.name
+            )
+
+    @api.depends('holiday_status_id', 'holiday_status_id.name')
+    def _compute_is_vacation(self):
+        """Determina si la ausencia es de tipo Vacaciones"""
+        for leave in self:
+            leave.is_vacation = leave.holiday_status_id and leave.holiday_status_id.name == 'Vacaciones'
+
+    @api.depends('employee_id', 'is_vacation')
+    def _compute_vacation_info(self):
+        """Calcula los días disponibles y antigüedad del empleado"""
+        for leave in self:
+            if leave.employee_id and leave.is_vacation:
+                # Buscar el expediente del empleado
+                expedient = self.env['employee.expedient'].search([
+                    ('employee_id', '=', leave.employee_id.id)
+                ], order='fecha_movimiento desc', limit=1)
+                
+                if expedient:
+                    leave.vacation_days_available = expedient.dias_vacaciones_disponibles
+                    leave.employee_antiguedad = expedient.antiguedad or 'N/A'
+                else:
+                    leave.vacation_days_available = 0.0
+                    leave.employee_antiguedad = 'Sin expediente'
+            else:
+                leave.vacation_days_available = 0.0
+                leave.employee_antiguedad = ''
 
     @api.onchange('is_incapacity', 'request_date_from', 'total_days_incapacity')
     def _onchange_incapacity_dates(self):
@@ -151,6 +230,14 @@ class HrLeave(models.Model):
             # Si es una incapacidad, crear el registro en hr.incapacity
             if leave.is_incapacity and leave.state not in ['cancel', 'refuse']:
                 self._create_incapacity_record(leave)
+            
+            # Si es un permiso, crear el registro en hr.permission
+            if leave.is_permission and leave.state not in ['cancel', 'refuse']:
+                self._create_permission_record(leave)
+            
+            # Si es una vacación, crear el registro en hr.vacation
+            if leave.is_vacation and leave.state not in ['cancel', 'refuse']:
+                self._create_vacation_record(leave)
         
         return leaves
 
@@ -172,15 +259,25 @@ class HrLeave(models.Model):
                     self._create_incapacity_record(leave)
                 elif leave.incapacity_id:
                     self._update_incapacity_record(leave)
+            
+            # Si es un permiso y está aprobado, crear o actualizar el registro
+            if leave.is_permission:
+                if leave.state in ['validate', 'validate1'] and not leave.permission_id:
+                    self._create_permission_record(leave)
+                elif leave.permission_id:
+                    self._update_permission_record(leave)
+            
+            # Si es una vacación y está aprobada, crear o actualizar el registro
+            if leave.is_vacation:
+                if leave.state in ['validate', 'validate1'] and not leave.vacation_id:
+                    self._create_vacation_record(leave)
+                elif leave.vacation_id:
+                    self._update_vacation_record(leave)
         
         return res
 
     def _create_suspension_record(self, leave):
         """Crea un registro de suspensión asociado a esta ausencia"""
-        if not leave.supervisor_id:
-            raise ValidationError(
-                _('Debe seleccionar un Supervisor para crear la Suspensión.')
-            )
         
         suspension_vals = {
             'employee_id': leave.employee_id.id,
@@ -242,6 +339,10 @@ class HrLeave(models.Model):
             'state': 'validate' if leave.state in ['validate', 'validate1'] else 'draft',
         }
         
+        # Agregar supervisor si está disponible
+        if leave.supervisor_id:
+            incapacity_vals['supervisor_id'] = leave.supervisor_id.id
+        
         incapacity = self.env['hr.incapacity'].create(incapacity_vals)
         leave.incapacity_id = incapacity.id
         return incapacity
@@ -260,6 +361,10 @@ class HrLeave(models.Model):
             if leave.incapacity_type:
                 update_vals['incapacity_type'] = leave.incapacity_type
             
+            # Actualizar supervisor si está disponible
+            if leave.supervisor_id:
+                update_vals['supervisor_id'] = leave.supervisor_id.id
+            
             # Actualizar estado según el estado de la ausencia
             if leave.state in ['validate', 'validate1']:
                 update_vals['state'] = 'validate'
@@ -269,3 +374,115 @@ class HrLeave(models.Model):
                 update_vals['state'] = 'cancel'
             
             leave.incapacity_id.write(update_vals)
+
+    def _create_permission_record(self, leave):
+        """Crea un registro de permiso asociado a esta ausencia"""
+        # Extraer el tipo de permiso del nombre del tipo de ausencia
+        permission_type = leave.holiday_status_id.name if leave.holiday_status_id else 'Permiso'
+        
+        permission_vals = {
+            'employee_id': leave.employee_id.id,
+            'date_from': leave.date_from,
+            'date_to': leave.date_to,
+            'permission_type': permission_type,
+            'reason': leave.name or 'Permiso solicitado',
+            'leave_id': leave.id,
+            'state': 'validate' if leave.state in ['validate', 'validate1'] else 'draft',
+        }
+        
+        # Agregar supervisor si está disponible
+        if leave.supervisor_id:
+            permission_vals['supervisor_id'] = leave.supervisor_id.id
+        
+        permission = self.env['hr.permission'].create(permission_vals)
+        leave.permission_id = permission.id
+        return permission
+
+    def _update_permission_record(self, leave):
+        """Actualiza el registro de permiso existente"""
+        if leave.permission_id:
+            # Extraer el tipo de permiso del nombre del tipo de ausencia
+            permission_type = leave.holiday_status_id.name if leave.holiday_status_id else 'Permiso'
+            
+            update_vals = {
+                'date_from': leave.date_from,
+                'date_to': leave.date_to,
+                'permission_type': permission_type,
+                'reason': leave.name or 'Permiso solicitado',
+            }
+            
+            # Actualizar supervisor si está disponible
+            if leave.supervisor_id:
+                update_vals['supervisor_id'] = leave.supervisor_id.id
+            
+            # Actualizar estado según el estado de la ausencia
+            if leave.state in ['validate', 'validate1']:
+                update_vals['state'] = 'validate'
+            elif leave.state == 'refuse':
+                update_vals['state'] = 'refuse'
+            elif leave.state == 'cancel':
+                update_vals['state'] = 'cancel'
+            
+            leave.permission_id.write(update_vals)
+
+    def _create_vacation_record(self, leave):
+        """Crea un registro de vacación asociado a esta ausencia"""
+        # Obtener información del expediente
+        expedient = self.env['employee.expedient'].search([
+            ('employee_id', '=', leave.employee_id.id)
+        ], order='fecha_movimiento desc', limit=1)
+        
+        vacation_vals = {
+            'employee_id': leave.employee_id.id,
+            'date_from': leave.date_from,
+            'date_to': leave.date_to,
+            'description': leave.name or 'Solicitud de vacaciones',
+            'leave_id': leave.id,
+            'state': 'validate' if leave.state in ['validate', 'validate1'] else 'draft',
+        }
+        
+        # Agregar información del expediente si existe
+        if expedient:
+            vacation_vals['vacation_days_available'] = expedient.dias_vacaciones_disponibles
+            vacation_vals['employee_antiguedad'] = expedient.antiguedad
+        
+        # Agregar supervisor si está disponible
+        if leave.supervisor_id:
+            vacation_vals['supervisor_id'] = leave.supervisor_id.id
+        
+        vacation = self.env['hr.vacation'].create(vacation_vals)
+        leave.vacation_id = vacation.id
+        return vacation
+
+    def _update_vacation_record(self, leave):
+        """Actualiza el registro de vacación existente"""
+        if leave.vacation_id:
+            # Obtener información actualizada del expediente
+            expedient = self.env['employee.expedient'].search([
+                ('employee_id', '=', leave.employee_id.id)
+            ], order='fecha_movimiento desc', limit=1)
+            
+            update_vals = {
+                'date_from': leave.date_from,
+                'date_to': leave.date_to,
+                'description': leave.name or 'Solicitud de vacaciones',
+            }
+            
+            # Actualizar información del expediente si existe
+            if expedient:
+                update_vals['vacation_days_available'] = expedient.dias_vacaciones_disponibles
+                update_vals['employee_antiguedad'] = expedient.antiguedad
+            
+            # Actualizar supervisor si está disponible
+            if leave.supervisor_id:
+                update_vals['supervisor_id'] = leave.supervisor_id.id
+            
+            # Actualizar estado según el estado de la ausencia
+            if leave.state in ['validate', 'validate1']:
+                update_vals['state'] = 'validate'
+            elif leave.state == 'refuse':
+                update_vals['state'] = 'refuse'
+            elif leave.state == 'cancel':
+                update_vals['state'] = 'cancel'
+            
+            leave.vacation_id.write(update_vals)

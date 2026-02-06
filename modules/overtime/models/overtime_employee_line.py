@@ -6,6 +6,7 @@ class OvertimeEmployeeLine(models.Model):
     _description = 'Línea de Empleado en Solicitud de Tiempo Extra'
 
     overtime_id = fields.Many2one('overtime', string='Solicitud de Tiempo Extra', required=True, ondelete='cascade')
+    company_id = fields.Many2one('res.company', string='Compañía', related='overtime_id.company_id', store=True, readonly=True)
     biometric_id = fields.Char(string='Número de Empleado')
     employee_id = fields.Many2one('hr.employee', string='Empleado',)
     time_from = fields.Float(string='Desde', required=True)

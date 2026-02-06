@@ -43,10 +43,9 @@ class HrSuspension(models.Model):
     )
     
     supervisor_id = fields.Many2one(
-        'hr.employee',
+        'res.users',
         string='Supervisor',
-        domain=lambda self: [('user_id.groups_id', 'in', [self.env.ref('overtime.group_overtime_supervisor').id])],
-        required=True,
+        domain=lambda self: [('groups_id', 'in', [self.env.ref('overtime.group_overtime_supervisor').id])],
         tracking=True,
         help='Supervisor asignado (debe pertenecer al grupo Supervisor Tiempo Extra)'
     )

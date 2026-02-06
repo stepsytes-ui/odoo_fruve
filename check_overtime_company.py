@@ -31,7 +31,7 @@ def check_and_fix_overtime_records():
             default_company = env['res.company'].search([], limit=1)
             
             if not default_company:
-                print("❌ No se encontró ninguna compañía en el sistema")
+                print("No se encontró ninguna compañía en el sistema")
                 return
             
             print(f"✓ Compañía por defecto encontrada: {default_company.name} (ID: {default_company.id})")
@@ -39,8 +39,8 @@ def check_and_fix_overtime_records():
             # Buscar registros de overtime sin company_id
             overtimes_without_company = env['overtime'].search([('company_id', '=', False)])
             
-            print(f"\n📊 Total de registros de overtime: {env['overtime'].search_count([])}")
-            print(f"📊 Registros sin company_id: {len(overtimes_without_company)}")
+            print(f"\nTotal de registros de overtime: {env['overtime'].search_count([])}")
+            print(f"Registros sin company_id: {len(overtimes_without_company)}")
             
             if overtimes_without_company:
                 print(f"\n🔧 Asignando compañía '{default_company.name}' a {len(overtimes_without_company)} registros...\n")
@@ -50,16 +50,16 @@ def check_and_fix_overtime_records():
                     print(f"   ✓ {overtime.name} - Compañía asignada")
                 
                 cr.commit()
-                print(f"\n✅ Se actualizaron {len(overtimes_without_company)} registros de overtime")
+                print(f"\nSe actualizaron {len(overtimes_without_company)} registros de overtime")
             else:
-                print("\n✅ Todos los registros ya tienen company_id asignado")
+                print("\nTodos los registros ya tienen company_id asignado")
             
             # Verificar overtime.employee.line
             print("\n" + "="*60)
             lines_without_company = env['overtime.employee.line'].search([('company_id', '=', False)])
             
-            print(f"📊 Total de líneas de empleado: {env['overtime.employee.line'].search_count([])}")
-            print(f"📊 Líneas sin company_id: {len(lines_without_company)}")
+            print(f"Total de líneas de empleado: {env['overtime.employee.line'].search_count([])}")
+            print(f"Líneas sin company_id: {len(lines_without_company)}")
             
             if lines_without_company:
                 print(f"\n🔧 Recalculando company_id para {len(lines_without_company)} líneas...\n")
@@ -71,15 +71,15 @@ def check_and_fix_overtime_records():
                         print(f"   ✓ Línea ID {line.id} - Compañía recalculada")
                 
                 cr.commit()
-                print(f"\n✅ Se actualizaron {len(lines_without_company)} líneas de empleado")
+                print(f"\nSe actualizaron {len(lines_without_company)} líneas de empleado")
             else:
-                print("\n✅ Todas las líneas ya tienen company_id asignado")
+                print("\nTodas las líneas ya tienen company_id asignado")
 
 if __name__ == '__main__':
     try:
         check_and_fix_overtime_records()
     except Exception as e:
-        print(f"\n❌ Error: {str(e)}")
+        print(f"\nError: {str(e)}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

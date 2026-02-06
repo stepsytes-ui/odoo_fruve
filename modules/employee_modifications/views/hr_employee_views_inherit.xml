@@ -77,4 +77,36 @@
         </field>
     </record>
 
+    <!-- Vista heredada para agregar campo Finiquitado después de employee_status -->
+    <record id="view_employee_form_finiquitado_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.form.finiquitado.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="zkteco_realtime_connector.view_employee_form_biometric"/>
+        <field name="arch" type="xml">
+            
+            <!-- Agregar campo Finiquitado después de employee_status -->
+            <field name="employee_status" position="after">
+                <field name="finiquitado" widget="boolean_toggle" 
+                    invisible="employee_status != 'inactive'"/>
+            </field>
+            
+            <!-- Agregar mensajes informativos después del campo finiquitado -->
+            <field name="finiquitado" position="after">
+                <div class="alert alert-warning" role="alert" 
+                    invisible="employee_status != 'inactive' or finiquitado == True">
+                    <i class="fa fa-exclamation-triangle" title="Alerta"/> 
+                    <strong>Empleado en proceso de finiquito.</strong><br/>
+                    Este empleado aparecerá en reportes como "En proceso de finiquito".<br/>
+                    Marque "Finiquitado" cuando complete el proceso para archivarlo definitivamente.
+                </div>
+                <div class="alert alert-success" role="alert" 
+                    invisible="finiquitado != True">
+                    <i class="fa fa-check-circle" title="Completado"/> 
+                    <strong>Empleado finiquitado y archivado.</strong>
+                </div>
+            </field>
+            
+        </field>
+    </record>
+
 </odoo>

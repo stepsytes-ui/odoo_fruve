@@ -53,11 +53,12 @@ class EmployeeExpedientBajaWizard(models.TransientModel):
                 'recontratable': self.recontratable,
             })
 
-        # 4. Archivar empleado (como hicimos antes)
+        # 4. Cambiar estado del empleado a inactivo PERO NO archivarlo todavía
+        # Solo se archivará cuando se marque como finiquitado desde el formulario del empleado
         self.employee_id.write({
-            'active': False,
             'departure_reason_id': self.departure_reason_id.id,
             'departure_date': self.fecha_movimiento,
             'employee_status': 'inactive'
         })
+        
         return {'type': 'ir.actions.act_window_close'}

@@ -30,7 +30,7 @@
                         </group>
                     </sheet>
                     <footer>
-                        <button name="action_confirm_baja" string="Confirmar Baja y Archivar" type="object" class="btn-primary"/>
+                        <button name="action_confirm_baja" string="Registrar Baja" type="object" class="btn-primary"/>
                         <button string="Cancelar" class="btn-secondary" special="cancel"/>
                     </footer>
                 </form>

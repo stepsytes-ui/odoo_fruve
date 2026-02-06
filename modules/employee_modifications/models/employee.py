@@ -99,6 +99,13 @@ class HrEmployeeExtension(models.Model):
         help='Registro Federal de Contribuyentes del empleado'
     )
 
+    finiquitado = fields.Boolean(
+        string='Finiquitado',
+        default=False,
+        tracking=True,
+        help='Marca si el empleado ha sido finiquitado después de su baja'
+    )
+
     @api.depends('suspension_ids')
     def _compute_suspension_count(self):
         """Calcula el número de suspensiones del empleado"""
@@ -122,6 +129,25 @@ class HrEmployeeExtension(models.Model):
         """Calcula el número de vacaciones del empleado"""
         for employee in self:
             employee.vacation_count = len(employee.vacation_ids)
+
+    def write(self, vals):
+        """Override para archivar el empleado cuando se marca como finiquitado"""
+        _logger.info(f"🔵 write() llamado con vals: {vals}")
+        
+        # Si se marca como finiquitado, verificar si el empleado está inactivo
+        if vals.get('finiquitado') == True:
+            for employee in self:
+                _logger.info(f"🔵 Procesando empleado {employee.name}, employee_status: {employee.employee_status}")
+                # Verificar el estado actual del empleado (antes de escribir)
+                if employee.employee_status == 'inactive':
+                    vals['active'] = False
+                    _logger.info(f"✅ Empleado {employee.name} será finiquitado y archivado (active=False agregado a vals)")
+                else:
+                    _logger.warning(f"⚠️ Empleado {employee.name} NO es inactivo, estado actual: {employee.employee_status}")
+        
+        result = super().write(vals)
+        _logger.info(f"🔵 write() completado, resultado: {result}")
+        return result
 
     @api.model_create_multi
     def create(self, vals_list):

@@ -173,6 +173,7 @@ class HrAttendance(models.Model):
         
         Employee = self.env['hr.employee']
         # Excluir turnos Seguridad y ESPECIAL
+        # Solo empleados activos (no inactivos ni en proceso de finiquito)
         employees_to_check = Employee.search([
             ('employee_status', '=', 'active'),
             ('turno_id', '!=', False),
@@ -449,7 +450,7 @@ class HrAttendance(models.Model):
             _logger.error(f"[CRON AUTO-CLOSE] Error crítico en el cron: {e}", exc_info=True)
 
     def _check_and_alert_four_absences(self, employee, new_attendance):
-            """Verifica si el empleado tiene 4 faltas no justificadas y notifica al grupo de RRHH."""
+            """Verifica si el empleado tiene 4 faltas no justificadas y notifica al grupo de RRHH de su empresa."""
             
             # Dominio para contar solo las faltas (absence)
             absence_count = self.search_count([
@@ -460,19 +461,30 @@ class HrAttendance(models.Model):
             if absence_count == 4:
                         hr_group = self.env.ref('zkteco_realtime_connector.group_hr_manager_custom', raise_if_not_found=False)
 
-                        recipient_partner_ids = []
-                        
-                        # if not hr_group:
-                        #     _logger.warning("No se encontró el grupo de Recursos Humanos.")
-                        #     return
+                        if not hr_group:
+                            _logger.warning("No se encontró el grupo de Recursos Humanos.")
+                            return
 
-                        recipient_partner_ids = [user.partner_id.id for user in hr_group.users if user.partner_id and user.partner_id.email]
+                        # Obtener la empresa del empleado
+                        employee_company = employee.company_id
+                        if not employee_company:
+                            _logger.warning(f"El empleado {employee.name} no tiene empresa asignada. No se enviará notificación.")
+                            return
+
+                        # Filtrar usuarios de RH que pertenecen a la misma empresa del empleado
+                        hr_users = [user for user in hr_group.users if employee_company in user.company_ids]
                         
-                        # if not recipient_partner_ids:
-                        #     _logger.warning("ALERTA: El grupo de RRHH existe, pero ninguno de sus usuarios tiene un correo electrónico configurado.")
-                        #     return
+                        if not hr_users:
+                            _logger.warning(f"No se encontraron usuarios de RRHH para la empresa {employee_company.name}.")
+                            return
+
+                        recipient_partner_ids = [user.partner_id.id for user in hr_users if user.partner_id and user.partner_id.email]
                         
-                        recipient_user_ids = [user.id for user in hr_group.users]
+                        if not recipient_partner_ids:
+                            _logger.warning(f"Los usuarios de RRHH de la empresa {employee_company.name} no tienen correo electrónico configurado.")
+                            return
+                        
+                        recipient_user_ids = [user.id for user in hr_users]
                         # Convertir los IDs a un formato para 'recipient_ids' [(4, id), (4, id), ...]
                         recipients_tuple_list = [(4, pid) for pid in recipient_partner_ids]
 

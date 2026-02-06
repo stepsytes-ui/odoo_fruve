@@ -13,7 +13,10 @@
                     <field name="antiguedad"/> 
                     <field name="dias_vacaciones_disponibles"/>
                     <field name="recontratable" widget="toggle_button" options="{'positive': 'si', 'negative': 'no', 'default': 'n/a'}"/>
-                    <field name='genero'/>  
+                    <field name='genero'/> 
+                    <field name="employee_id" widget="badge" 
+                        decoration-warning="employee_id.employee_status == 'inactive' and not employee_id.finiquitado"
+                        decoration-muted="employee_id.finiquitado" invisible="1"/>
                     <field name="hoja_renuncia_convenio" filename="nombre_hoja_renuncia" string="Renuncia/Convenio" widget="attachment" class="oe_no_link"/>
                     <field name="encuesta" filename="nombre_encuesta" string="Encuesta" widget="attachment" class="oe_no_link"/>
                     <field name="nombre_hoja_renuncia" string=" " invisible="1"/>

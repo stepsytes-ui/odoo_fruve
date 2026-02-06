@@ -30,5 +30,6 @@ class EmployeeExpedientReingresoWizard(models.TransientModel):
         self.employee_id.write({
             'active': True,
             'employee_status': 'active',
+            'finiquitado': False,  # Quitar la marca de finiquitado
         })
         return {'type': 'ir.actions.act_window_close'}

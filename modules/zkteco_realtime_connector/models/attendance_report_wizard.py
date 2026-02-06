@@ -48,7 +48,15 @@ class AttendanceReportWizard(models.TransientModel):
         date_to = self.date_to
         
         # Construir dominio de empleados
-        employee_domain = [('employee_status', '=', 'active'), ('turno_id', '!=', False)]
+        # Incluir empleados activos Y empleados inactivos que NO han sido finiquitados
+        employee_domain = [
+            '|',
+            ('employee_status', '=', 'active'),
+            '&',
+            ('employee_status', '=', 'inactive'),
+            ('finiquitado', '=', False),
+            ('turno_id', '!=', False)
+        ]
         if self.employee_id:
             employee_domain.append(('id', '=', self.employee_id.id))
         
@@ -196,6 +204,15 @@ class AttendanceReportWizard(models.TransientModel):
         Considera: check-ins, descanso, falta, vacaciones y todos los tipos de permiso (NEW_LEAVE_STATUS).
         Para Incapacidad, ignora los descansos del shift_management.
         """
+        # PRIORIDAD MÁXIMA: Verificar si el empleado está en proceso de finiquito
+        if employee.employee_status == 'inactive' and not employee.finiquitado:
+            return {
+                'text': 'En proceso de finiquito',
+                'color': 'FF6600',  # Naranja fuerte
+                'font_color': 'FFFFFF',  # Blanco
+                'bold': True
+            }
+        
         try:
             COMPANY_TZ = company_tz
         except:

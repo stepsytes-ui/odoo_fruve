@@ -121,6 +121,12 @@ class EmployeeExpedient(models.Model):
         store=True
     )
 
+    fecha_ultima_renovacion = fields.Date(
+        string='Última Renovación de Vacaciones',
+        help='Fecha en que se renovaron las vacaciones por última vez',
+        copy=False
+    )
+
     history_ids = fields.One2many(
         'employee.expedient.line', 
         'expedient_id', 
@@ -229,3 +235,87 @@ class EmployeeExpedient(models.Model):
                 record.fecha_movimiento = latest[0].fecha
             else:
                 record.fecha_movimiento = fields.Date.today()
+    
+    @api.model
+    def _cron_recalcular_vacaciones_anuales(self):
+        """
+        Método ejecutado automáticamente por cron para recalcular las vacaciones
+        cuando un empleado cumple un año más de antigüedad.
+        Las vacaciones NO son acumulables, por lo que se resetean y recalculan.
+        """
+        import logging
+        _logger = logging.getLogger(__name__)
+        
+        TABLA_VACACIONES = [
+            (1, 1, 12),
+            (2, 2, 14),
+            (3, 3, 16),
+            (4, 4, 18),
+            (5, 5, 20),
+            (6, 10, 22),
+            (11, 15, 24),
+            (16, 20, 26),
+            (21, 25, 28),
+            (26, 30, 30),
+            (31, 35, 32),
+        ]
+
+        hoy = date.today()
+        
+        # Buscar expedientes de empleados activos
+        expedientes = self.search([
+            ('employee_id.active', '=', True),
+            ('employee_id.employee_status', '=', 'activo'),
+            ('tipo_registro', 'in', ['alta', 'reingreso'])
+        ])
+        
+        expedientes_actualizados = 0
+        
+        for expediente in expedientes:
+            # Determinar desde qué fecha contar (última renovación o fecha de movimiento)
+            fecha_referencia = expediente.fecha_ultima_renovacion or expediente.fecha_movimiento
+            
+            if not fecha_referencia:
+                continue
+            
+            # Calcular tiempo transcurrido
+            diff = relativedelta(hoy, fecha_referencia)
+            
+            # Si ha cumplido al menos 1 año completo desde la última renovación
+            if diff.years >= 1:
+                # Calcular nueva antigüedad total desde la fecha de movimiento original
+                diff_total = relativedelta(hoy, expediente.fecha_movimiento)
+                years_total = diff_total.years
+                
+                # Buscar días de vacaciones según la tabla
+                dias_vacaciones_nuevos = next(
+                    (dias for ini, fin, dias in TABLA_VACACIONES if ini <= years_total <= fin),
+                    0
+                )
+                
+                expediente.write({
+                    'dias_vacaciones_utilizados': 0.0, 
+                    'fecha_ultima_renovacion': hoy,
+                })
+                
+                expediente._compute_antiguedad_vacaciones()
+                expediente._compute_dias_inicial_calculado()
+                expediente._compute_dias_disponibles()
+                
+                expediente.message_post(
+                    body=_(
+                        "Renovación automática de vacaciones: El empleado ha cumplido un año más. "
+                        "Antigüedad: %s años. Nuevos días de vacaciones: %s días."
+                    ) % (years_total, dias_vacaciones_nuevos),
+                    subject=_("Renovación Automática de Vacaciones")
+                )
+                
+                expedientes_actualizados += 1
+        
+        if expedientes_actualizados > 0:
+            _logger.info(
+                "Cron de vacaciones ejecutado: %s expedientes actualizados", 
+                expedientes_actualizados
+            )
+        
+        return True

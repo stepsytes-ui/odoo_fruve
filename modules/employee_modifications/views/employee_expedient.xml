@@ -74,6 +74,7 @@
                                     <group string="Estado de Antigüedad">
                                         <field name="antiguedad" readonly="1"/>
                                         <field name="dias_vacaciones_ley" readonly="1"/>
+                                        <field name="fecha_ultima_renovacion" readonly="1"/>
                                     </group>
                                     <group string="Saldos de Días">
                                         <field name="dias_vacaciones_ajuste"/>

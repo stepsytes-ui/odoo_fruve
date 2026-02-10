@@ -7,5 +7,6 @@ from . import hr_attendance
 from . import res_company
 from . import zkteco_device
 from . import attendance_report_wizard
+from . import attendance_import_wizard
 from . import hr_leave
 from . import hr_leave_report_calendar

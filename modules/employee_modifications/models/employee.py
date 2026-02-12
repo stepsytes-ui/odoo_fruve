@@ -5,6 +5,78 @@ import logging
 _logger = logging.getLogger(__name__)
 
 
+def numero_a_letras(numero):
+    """
+    Convierte un número a su representación en letras (español mexicano)
+    """
+    unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE']
+    decenas = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA']
+    especiales = ['ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISEIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE']
+    veintitantos = ['VEINTE', 'VEINTIUNO', 'VEINTIDOS', 'VEINTITRES', 'VEINTICUATRO', 'VEINTICINCO', 'VEINTISEIS', 'VEINTISIETE', 'VEINTIOCHO', 'VEINTINUEVE']
+    centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS']
+
+    def convertir_centenas(n):
+        if n == 0:
+            return ''
+        elif n == 100:
+            return 'CIEN'
+        elif n < 10:
+            return unidades[n]
+        elif n == 10:
+            return decenas[1]
+        elif 11 <= n <= 19:
+            return especiales[n - 11]
+        elif 20 <= n <= 29:
+            return veintitantos[n - 20]
+        elif n < 100:
+            d = n // 10
+            u = n % 10
+            if u == 0:
+                return decenas[d]
+            else:
+                return decenas[d] + ' Y ' + unidades[u]
+        else:
+            c = n // 100
+            resto = n % 100
+            if resto == 0:
+                return centenas[c]
+            else:
+                return centenas[c] + ' ' + convertir_centenas(resto)
+
+    def convertir_miles(n):
+        if n == 0:
+            return 'CERO'
+        elif n == 1000:
+            return 'MIL'
+        elif n < 1000:
+            return convertir_centenas(n)
+        else:
+            m = n // 1000
+            resto = n % 1000
+            miles_str = 'MIL' if m == 1 else convertir_centenas(m) + ' MIL'
+            if resto == 0:
+                return miles_str
+            else:
+                return miles_str + ' ' + convertir_centenas(resto)
+
+    def convertir_millones(n):
+        if n < 1000000:
+            return convertir_miles(n)
+        else:
+            mill = n // 1000000
+            resto = n % 1000000
+            mill_str = 'UN MILLON' if mill == 1 else convertir_miles(mill) + ' MILLONES'
+            if resto == 0:
+                return mill_str
+            else:
+                return mill_str + ' ' + convertir_miles(resto)
+
+    entero = int(numero)
+    decimal = int(round((numero - entero) * 100))
+    
+    return convertir_millones(entero).strip()
+
+
 class HrEmployeeExtension(models.Model):
     _inherit = 'hr.employee'
 
@@ -328,3 +400,77 @@ class HrEmployeeExtension(models.Model):
             },
             'target': 'current',
         }
+
+    def get_fecha_ingreso(self):
+        """Obtiene la fecha de ingreso del empleado"""
+        self.ensure_one()
+        # Primero intentar del campo manual
+        if self.fecha_ingreso_manual:
+            return self.fecha_ingreso_manual
+        # Si no, buscar en el expediente de alta
+        expediente_alta = self.env['employee.expedient'].search([
+            ('employee_id', '=', self.id),
+            ('tipo_registro', '=', 'alta')
+        ], order='fecha_movimiento asc', limit=1)
+        
+        if expediente_alta:
+            return expediente_alta.fecha_movimiento
+        
+        return fields.Date.today()
+
+    def get_salario_mensual(self):
+        """Calcula el salario mensual (daily_rate * 7)"""
+        self.ensure_one()
+        if hasattr(self, 'daily_rate') and self.daily_rate:
+            return self.daily_rate * 7
+        return 0.00
+
+    def get_salario_mensual_letras(self):
+        """Obtiene el salario mensual en letras"""
+        self.ensure_one()
+        salario = self.get_salario_mensual()
+        entero = int(salario)
+        centavos = int(round((salario - entero) * 100))
+        
+        letras_entero = numero_a_letras(salario)
+        return f"{letras_entero} PESOS Y {centavos:02d}/100 M.N."
+
+    def get_horario_trabajo(self):
+        """Obtiene el horario de trabajo del empleado"""
+        self.ensure_one()
+        if hasattr(self, 'turno_id') and self.turno_id:
+            return self.turno_id.turno_name or 'N/A'
+        return 'N/A'
+
+    def get_company_location(self):
+        """Obtiene la ubicación basada en el nombre de la empresa"""
+        self.ensure_one()
+        company_name = self.company_id.name if self.company_id else ''
+        
+        if 'MEXICALI' in company_name.upper():
+            return 'MEXICALI, BAJA CALIFORNIA'
+        elif 'IRAPUATO' in company_name.upper():
+            return 'IRAPUATO, GUANAJUATO'
+        elif 'CULIACAN' in company_name.upper():
+            return 'CULIACAN, SINALOA'
+        elif 'ROSARITO' in company_name.upper():
+            return 'ROSARITO, BAJA CALIFORNIA'
+        else:
+            return 'MEXICALI, BAJA CALIFORNIA'  # Default
+
+    def get_fecha_ingreso_formatted(self):
+        """Obtiene la fecha de ingreso formateada en español"""
+        self.ensure_one()
+        fecha = self.get_fecha_ingreso()
+        
+        meses = {
+            1: 'ENERO', 2: 'FEBRERO', 3: 'MARZO', 4: 'ABRIL',
+            5: 'MAYO', 6: 'JUNIO', 7: 'JULIO', 8: 'AGOSTO',
+            9: 'SEPTIEMBRE', 10: 'OCTUBRE', 11: 'NOVIEMBRE', 12: 'DICIEMBRE'
+        }
+        
+        dia = fecha.strftime('%d')
+        mes = meses[fecha.month]
+        anio = fecha.strftime('%Y')
+        
+        return f"{dia}/{mes}/{anio}"

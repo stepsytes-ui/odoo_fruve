@@ -24,6 +24,7 @@ Fruvemex requests for employee's module
             'data/hr_permission_sequence.xml',
             'data/hr_vacation_sequence.xml',
             'data/vacation_renewal_cron.xml',
+            'reports/carta_laboral_report.xml',
             'views/employee_expedient.xml', 
             'views/employee_disciplinary.xml',
             'views/hr_employee_views_inherit.xml',

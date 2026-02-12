@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Definición del reporte -->
+    <record id="report_carta_laboral" model="ir.actions.report">
+        <field name="name">Carta Laboral</field>
+        <field name="model">hr.employee</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">employee_modifications.carta_laboral_template</field>
+        <field name="report_file">employee_modifications.carta_laboral_template</field>
+        <field name="binding_model_id" ref="hr.model_hr_employee"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Carta_Laboral_%s' % (object.name)</field>
+    </record>
+
+    <!-- Template QWeb -->
+    <template id="carta_laboral_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="employee">
+                <t t-call="web.external_layout">
+                        <style>
+                            .carta-laboral {
+                                font-family: Arial, sans-serif;
+                                font-size: 12pt;
+                            }
+                            .carta-laboral strong {
+                                display: inline-block;
+                                font-weight: bold;
+                                padding-right: 2px;    /* Reducido de 4px a 2px */
+                                white-space: pre-wrap;
+                                letter-spacing: -0.2px; /* Hace que la negrita sea más compacta */
+                            }
+                        </style>
+                    <div class="page carta-laboral">
+                        
+                        <!-- Encabezado con ubicación y fecha -->
+                        <t t-set="meses" t-value="{'1': 'ENERO', '2': 'FEBRERO', '3': 'MARZO', '4': 'ABRIL', '5': 'MAYO', '6': 'JUNIO', '7': 'JULIO', '8': 'AGOSTO', '9': 'SEPTIEMBRE', '10': 'OCTUBRE', '11': 'NOVIEMBRE', '12': 'DICIEMBRE'}"/>
+                        <t t-set="hoy" t-value="context_timestamp(datetime.datetime.now())"/>
+                        <t t-set="dia" t-value="hoy.strftime('%d')"/>
+                        <t t-set="mes" t-value="meses[hoy.strftime('%m').lstrip('0')]"/>
+                        <t t-set="anio" t-value="hoy.strftime('%Y')"/>
+                        
+                        <div style="text-align: right; margin-bottom: 60px;">
+                            <span t-esc="employee.get_company_location()"/>, A <t t-esc="dia"/> DE <t t-esc="mes"/> DE <t t-esc="anio"/>
+                        </div>
+
+                        <!-- Título -->
+                        <div style="text-align: left; margin-bottom: 40px; font-weight: bold;">
+                            <p>A QUIEN CORRESPONDA:</p>
+                        </div>
+
+                        <!-- Cuerpo del documento -->
+                        <div style="text-align: justify; line-height: 1.8; margin-bottom: 60px;">
+                            <p style="text-align: justify; line-height: 1.8;">
+                                Por medio de la presente hacemos constar que el/la C. <strong><t t-esc="employee.name.upper()"/></strong> labora en esta empresa denominada <strong><t t-esc="employee.company_id.name"/></strong> con domicilio en 
+                                <span t-if="employee.company_id.partner_id.street">
+                                    <t t-esc="employee.company_id.partner_id.street"/><t t-if="employee.company_id.partner_id.street2">, <t t-esc="employee.company_id.partner_id.street2"/></t><t t-if="employee.company_id.partner_id.city">, <t t-esc="employee.company_id.partner_id.city"/></t><t t-if="employee.company_id.partner_id.state_id">, <t t-esc="employee.company_id.partner_id.state_id.name"/></t><t t-if="employee.company_id.partner_id.zip">, C.P. <t t-esc="employee.company_id.partner_id.zip"/></t>
+                                </span> desde el día <strong><t t-esc="employee.get_fecha_ingreso_formatted()"/></strong>. Desempeñando el puesto de 
+                                <t t-if="employee.job_id">
+                                    <strong><t t-esc="employee.job_id.name.upper()"/></strong>
+                                </t>
+                                <t t-else="">
+                                    <strong>SIN PUESTO ASIGNADO</strong>
+                                </t> 
+                                con un horario hasta el día de hoy de <strong><t t-esc="employee.get_horario_trabajo().upper()"/></strong>,&#160; percibiendo ingresos mensuales de $ <strong><t t-esc="'%.2f' % employee.get_salario_mensual()"/></strong> (<strong><t t-esc="employee.get_salario_mensual_letras()"/></strong>)
+                                <t t-if="employee.rfc">, Registro Federal de Contribuyentes es: <strong><t t-esc="employee.rfc.upper()"/></strong></t>
+                                <t t-if="employee.ssnid"> con número de IMSS <strong><t t-esc="employee.ssnid"/></strong></t>
+                                <t t-if="employee.company_id.partner_id.company_registry"> el Registro Patronal de la empresa es <strong><t t-esc="employee.company_id.partner_id.company_registry"/></strong></t>
+                                <t t-if="employee.company_id.partner_id.vat"> y el Registro Federal de Contribuyente es <strong><t t-esc="employee.company_id.partner_id.vat"/></strong></t>.
+                            </p>
+                            <p style="margin-top: 20px;">
+                                Se extiende la presente carta de trabajo para los fines que el interesado considere convenientes.
+                            </p>
+                        </div>
+
+                        <!-- Firma -->
+                        <div style="text-align: center; margin-top: 80px;">
+                            <p style="font-weight: bold;">ATENTAMENTE:</p>
+                            <div style="margin-top: 60px;">
+                                <p>____________________________________</p>
+                                <p style="font-weight: bold; margin-top: 5px;">ING. BARBARA MONROY URIBE</p>
+                                <p style="font-weight: bold;">RECURSOS HUMANOS</p>
+                                <p style="font-weight: bold;" t-esc="employee.company_id.name"/>
+                            </div>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

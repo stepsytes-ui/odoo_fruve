@@ -52,6 +52,22 @@
               action="action_employee_documents"
               sequence="50"
               groups="hr.group_hr_user"/>
+
+        <!-- Subenú para permisos -->
+        <menuitem id="menu_hr_permission"
+                  name="Permisos"
+                  parent="menu_hr_herramientas"
+                  action="action_hr_permission"
+                  sequence="50"
+                  groups="hr.group_hr_user"/>
+
+                <!-- Menú para vacaciones -->
+        <menuitem id="menu_hr_vacation"
+                  name="Vacaciones"
+                  parent="menu_hr_herramientas"
+                  action="action_hr_vacation"
+                  sequence="51"
+                  groups="hr.group_hr_user"/>
         
         <!-- Submenú: Reportes (placeholder - agregar acción cuando esté lista) -->
         <menuitem 

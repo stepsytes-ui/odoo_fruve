@@ -142,13 +142,6 @@
             </field>
         </record>
 
-        <!-- Menú para vacaciones -->
-        <menuitem id="menu_hr_vacation"
-                  name="Vacaciones"
-                  parent="hr.menu_hr_root"
-                  action="action_hr_vacation"
-                  sequence="51"/>
-
         <!-- Agregar campos de información de vacaciones en hr.leave -->
         <record id="view_hr_leave_form_vacation_info" model="ir.ui.view">
             <field name="name">hr.leave.form.vacation.info</field>

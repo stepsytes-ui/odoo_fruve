@@ -193,12 +193,6 @@
             </field>
         </record>
 
-        <!-- Menú para permisos -->
-        <menuitem id="menu_hr_permission"
-                  name="Permisos"
-                  parent="hr.menu_hr_root"
-                  action="action_hr_permission"
-                  sequence="50"/>
 
         <!-- Extender vista de hr.employee para agregar botón de Permisos -->
         <record id="view_employee_form_inherit_permission_button" model="ir.ui.view">

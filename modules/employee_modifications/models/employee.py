@@ -419,10 +419,10 @@ class HrEmployeeExtension(models.Model):
         return fields.Date.today()
 
     def get_salario_mensual(self):
-        """Calcula el salario mensual (daily_rate * 7)"""
+        """Calcula el salario mensual (daily_rate * 7 * 4 = salario semanal * 4 semanas)"""
         self.ensure_one()
         if hasattr(self, 'daily_rate') and self.daily_rate:
-            return self.daily_rate * 7
+            return self.daily_rate * 28
         return 0.00
 
     def get_salario_mensual_letras(self):

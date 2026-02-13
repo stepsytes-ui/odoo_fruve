@@ -406,6 +406,15 @@ class AttendanceReportWizard(models.TransientModel):
         ], limit=1)
         
         if approved_leave:
+            # Si es domingo y NO es del departamento de seguridad, mostrar "Descanso"
+            if day_of_week == 6:  # Domingo
+                return {
+                    'text': 'Descanso',
+                    'color': None,
+                    'font_color': '808080',  # Gris
+                    'bold': False
+                }
+            # Si no es domingo, mostrar el tipo de permiso
             leave_name = approved_leave.holiday_status_id.name
             return {
                 'text': leave_name,

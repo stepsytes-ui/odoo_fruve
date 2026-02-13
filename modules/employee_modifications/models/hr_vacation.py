@@ -131,16 +131,48 @@ class HrVacation(models.Model):
         ('cancel', 'Cancelado')
     ], string='Estado', default='draft', tracking=True, required=True)
 
-    @api.depends('date_from', 'date_to')
+    @api.depends('date_from', 'date_to', 'employee_id', 'leave_id', 'leave_id.number_of_days')
     def _compute_duration(self):
-        """Calcula la duración de las vacaciones en días"""
+        """Calcula la duración de las vacaciones en días laborables (considerando horario del empleado y festivos)"""
         for record in self:
             if record.date_from and record.date_to:
                 if record.date_to < record.date_from:
                     raise ValidationError(_('La fecha de fin no puede ser anterior a la fecha de inicio.'))
                 
-                delta = record.date_to - record.date_from
-                record.duration_days = delta.days + 1  # +1 para incluir ambos días
+                # Si existe una solicitud hr.leave relacionada, usar sus días calculados
+                if record.leave_id:
+                    record.duration_days = record.leave_id.number_of_days
+                # Si no hay leave_id pero hay empleado, calcular usando el calendario laboral
+                elif record.employee_id and record.employee_id.resource_calendar_id:
+                    # Convertir fechas a datetime para el cálculo
+                    date_from = datetime.combine(record.date_from, datetime.min.time())
+                    date_to = datetime.combine(record.date_to, datetime.max.time())
+                    
+                    # Usar el método de resource.calendar para calcular días laborables
+                    calendar = record.employee_id.resource_calendar_id
+                    resource = record.employee_id.resource_id
+                    
+                    # Calcular días laborables considerando el calendario y festivos
+                    days_data = calendar._get_resources_day_total(
+                        date_from,
+                        date_to,
+                        resources=resource
+                    )
+                    
+                    # _get_resources_day_total devuelve un diccionario {resource_id: {'days': días, 'hours': horas}}
+                    if resource and resource.id in days_data:
+                        record.duration_days = days_data[resource.id]['days']
+                    else:
+                        # Si no hay resource específico, calcular para el calendario general
+                        record.duration_days = calendar._get_resources_day_total(
+                            date_from,
+                            date_to,
+                            resources=False
+                        )[False]['days']
+                else:
+                    # Fallback: cálculo simple si no hay calendario configurado
+                    delta = record.date_to - record.date_from
+                    record.duration_days = delta.days + 1
             else:
                 record.duration_days = 0.0
 

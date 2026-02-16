@@ -139,7 +139,7 @@ class AttendanceReportWizard(models.TransientModel):
         for employee in employees:
             ws.cell(row=row_num, column=1, value=employee.biometric_id or '')
             ws.cell(row=row_num, column=2, value=employee.name or '')
-            ws.cell(row=row_num, column=3, value=employee.turno_id.turno_name or '')
+            ws.cell(row=row_num, column=3, value=employee.sudo().turno_id.turno_name or '')
 
             # Aplicar bordes y alineación a celdas fijas
             for col in range(1, 4):
@@ -244,10 +244,10 @@ class AttendanceReportWizard(models.TransientModel):
                 'bold': True
             }
         
-        if not employee.turno_id:
+        if not employee.sudo().turno_id:
             return {'text': '', 'color': None, 'font_color': None, 'bold': False}
         
-        shift = employee.turno_id
+        shift = employee.sudo().turno_id
         
         # Manejo especial para turno "ESPECIAL" (gerentes/dueños)
         if shift.turno_name == 'ESPECIAL':

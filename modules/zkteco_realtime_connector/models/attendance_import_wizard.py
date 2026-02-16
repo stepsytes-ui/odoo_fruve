@@ -122,7 +122,7 @@ class AttendanceImportWizard(models.TransientModel):
                     ('biometric_id', '=', numero_empleado)
                 ], limit=1)
                 
-                turno = employee.turno_id.turno_name if employee and employee.turno_id else 'N/A'
+                turno = employee.sudo().turno_id.turno_name if employee and employee.sudo().turno_id else 'N/A'
                 
                 employee_info[numero_empleado] = {
                     'nombre': nombre,

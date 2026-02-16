@@ -6,6 +6,12 @@
             <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
         </record>
 
+        <record id="group_attendance_report_user" model="res.groups">
+            <field name="name">Usuario de Reportes de Asistencia</field>
+            <field name="category_id" ref="base.module_category_human_resources"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
         <record id="group_hr_recruiting_custom_access" model="res.groups">
             <field name="name">Acceso a Empleados (Custom)</field>
             <field name="category_id" ref="base.module_category_human_resources"/>
@@ -28,7 +34,8 @@
             <value eval="[ref('group_hr_manager_custom')]"/>
             <value eval="{'implied_ids': [(4, ref('group_hr_recruiting_custom_access')), 
                                           (4, ref('group_hr_time_off_custom_access')), 
-                                          (4, ref('group_hr_attendance_custom_access'))]}"/>
+                                          (4, ref('group_hr_attendance_custom_access')),
+                                          (4, ref('group_attendance_report_user'))]}"/>
         </function>
 
     </data>

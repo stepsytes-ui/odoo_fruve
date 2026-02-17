@@ -84,6 +84,18 @@ class HrLeave(models.Model):
         help='Indica si esta ausencia es de tipo Vacaciones'
     )
 
+    vacation_modality = fields.Selection(
+        [
+            ('gozadas', 'Gozadas'),
+            ('pagadas', 'Pagadas'),
+            ('ambos', 'Ambos'),
+        ],
+        string='Modalidad',
+        default='gozadas',
+        tracking=True,
+        help='Modalidad de la solicitud de vacaciones'
+    )
+
     vacation_id = fields.Many2one(
         'hr.vacation',
         string='Vacación',
@@ -438,6 +450,7 @@ class HrLeave(models.Model):
             'date_to': leave.date_to,
             'description': leave.name or 'Solicitud de vacaciones',
             'leave_id': leave.id,
+            'vacation_modality': leave.vacation_modality,
             'state': 'validate' if leave.state in ['validate', 'validate1'] else 'draft',
         }
         
@@ -466,6 +479,7 @@ class HrLeave(models.Model):
                 'date_from': leave.date_from,
                 'date_to': leave.date_to,
                 'description': leave.name or 'Solicitud de vacaciones',
+                'vacation_modality': leave.vacation_modality,
             }
             
             # Actualizar información del expediente si existe

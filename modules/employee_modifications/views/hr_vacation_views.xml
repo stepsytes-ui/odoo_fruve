@@ -40,6 +40,7 @@
                             <group string="Información de Vacaciones">
                                 <field name="date_from"/>
                                 <field name="date_to"/>
+                                <field name="vacation_modality"/>
                                 <field name="duration_days" readonly="1"/>
                                 <field name="vacation_days_available" readonly="1"/>
                                 <field name="employee_antiguedad" readonly="1"/>
@@ -78,6 +79,7 @@
                     <field name="turno_id"/>
                     <field name="date_from"/>
                     <field name="date_to"/>
+                    <field name="vacation_modality"/>
                     <field name="duration_days"/>
                     <field name="supervisor_id"/>
                     <field name="registered_by_id"/>
@@ -152,6 +154,10 @@
                 <xpath expr="//field[@name='holiday_status_id']" position="after">
                     <field name="is_vacation" invisible="1"/>
                     <field name="vacation_id" invisible="1"/>
+                          <field name="vacation_modality"
+                              invisible="not is_vacation"
+                              required="is_vacation"
+                              string="Modalidad"/>
                     <field name="vacation_days_available" 
                            invisible="not is_vacation"
                            readonly="1"

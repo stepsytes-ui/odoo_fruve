@@ -92,6 +92,18 @@ class HrVacation(models.Model):
         required=True,
         tracking=True
     )
+
+    vacation_modality = fields.Selection(
+        [
+            ('gozadas', 'Gozadas'),
+            ('pagadas', 'Pagadas'),
+            ('ambos', 'Ambos'),
+        ],
+        string='Modalidad',
+        default='gozadas',
+        tracking=True,
+        help='Modalidad de la solicitud de vacaciones'
+    )
     
     duration_days = fields.Float(
         string='Duración (Días)',

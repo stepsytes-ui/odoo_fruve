@@ -92,7 +92,7 @@ class HrVacation(models.Model):
         required=True,
         tracking=True
     )
-
+    
     vacation_modality = fields.Selection(
         [
             ('gozadas', 'Gozadas'),
@@ -133,6 +133,8 @@ class HrVacation(models.Model):
         readonly=True,
         help='Ausencia de tipo Vacaciones que creó este registro'
     )
+
+
     
     state = fields.Selection([
         ('draft', 'Borrador'),

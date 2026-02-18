@@ -273,14 +273,6 @@ class AttendanceReportWizard(models.TransientModel):
                     'bold': False
                 }
             else:
-                # Si no hay checadas, verificar si está en proceso de finiquito
-                if employee.employee_status == 'inactive' and not employee.finiquitado:
-                    return {
-                        'text': 'En proceso de finiquito',
-                        'color': 'FF6600',  # Naranja fuerte
-                        'font_color': 'FFFFFF',  # Blanco
-                        'bold': True
-                    }
                 # Si no hay checadas, mostrar palomita
                 return {
                     'text': '✓',
@@ -355,14 +347,6 @@ class AttendanceReportWizard(models.TransientModel):
                     'bold': False
                 }
             
-            # Si no hay check-ins
-            if employee.employee_status == 'inactive' and not employee.finiquitado:
-                return {
-                    'text': 'En proceso de finiquito',
-                    'color': 'FF6600',  # Naranja fuerte
-                    'font_color': 'FFFFFF',  # Blanco
-                    'bold': True
-                }
             # Si no hay check-ins, mostrar Descanso
             return {
                 'text': 'Descanso',
@@ -484,15 +468,8 @@ class AttendanceReportWizard(models.TransientModel):
                 'bold': False
             }
         
-        # 7. Si NO es un día laboral, mostrar "Descanso" o "En proceso de finiquito"
+        # 7. Si NO es un día laboral, mostrar "Descanso"
         if not is_work_day:
-            if employee.employee_status == 'inactive' and not employee.finiquitado:
-                return {
-                    'text': 'En proceso de finiquito',
-                    'color': 'FF6600',  # Naranja fuerte
-                    'font_color': 'FFFFFF',  # Blanco
-                    'bold': True
-                }
             return {
                 'text': 'Descanso',
                 'color': None,
@@ -501,6 +478,7 @@ class AttendanceReportWizard(models.TransientModel):
             }
         
         # 8. Si es día laboral sin check-ins y sin falta
+        # Aquí sí verificamos si está en proceso de finiquito (solo para días laborales sin asistencia)
         if employee.employee_status == 'inactive' and not employee.finiquitado:
             return {
                 'text': 'En proceso de finiquito',

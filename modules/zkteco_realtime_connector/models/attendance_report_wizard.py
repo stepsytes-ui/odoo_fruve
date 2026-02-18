@@ -204,15 +204,6 @@ class AttendanceReportWizard(models.TransientModel):
         Considera: check-ins, descanso, falta, vacaciones y todos los tipos de permiso (NEW_LEAVE_STATUS).
         Para Incapacidad, ignora los descansos del shift_management.
         """
-        # PRIORIDAD MÁXIMA: Verificar si el empleado está en proceso de finiquito
-        if employee.employee_status == 'inactive' and not employee.finiquitado:
-            return {
-                'text': 'En proceso de finiquito',
-                'color': 'FF6600',  # Naranja fuerte
-                'font_color': 'FFFFFF',  # Blanco
-                'bold': True
-            }
-        
         try:
             COMPANY_TZ = company_tz
         except:
@@ -282,6 +273,14 @@ class AttendanceReportWizard(models.TransientModel):
                     'bold': False
                 }
             else:
+                # Si no hay checadas, verificar si está en proceso de finiquito
+                if employee.employee_status == 'inactive' and not employee.finiquitado:
+                    return {
+                        'text': 'En proceso de finiquito',
+                        'color': 'FF6600',  # Naranja fuerte
+                        'font_color': 'FFFFFF',  # Blanco
+                        'bold': True
+                    }
                 # Si no hay checadas, mostrar palomita
                 return {
                     'text': '✓',
@@ -356,6 +355,14 @@ class AttendanceReportWizard(models.TransientModel):
                     'bold': False
                 }
             
+            # Si no hay check-ins
+            if employee.employee_status == 'inactive' and not employee.finiquitado:
+                return {
+                    'text': 'En proceso de finiquito',
+                    'color': 'FF6600',  # Naranja fuerte
+                    'font_color': 'FFFFFF',  # Blanco
+                    'bold': True
+                }
             # Si no hay check-ins, mostrar Descanso
             return {
                 'text': 'Descanso',
@@ -477,8 +484,15 @@ class AttendanceReportWizard(models.TransientModel):
                 'bold': False
             }
         
-        # 7. Si NO es un día laboral, mostrar "Descanso"
+        # 7. Si NO es un día laboral, mostrar "Descanso" o "En proceso de finiquito"
         if not is_work_day:
+            if employee.employee_status == 'inactive' and not employee.finiquitado:
+                return {
+                    'text': 'En proceso de finiquito',
+                    'color': 'FF6600',  # Naranja fuerte
+                    'font_color': 'FFFFFF',  # Blanco
+                    'bold': True
+                }
             return {
                 'text': 'Descanso',
                 'color': None,
@@ -486,7 +500,14 @@ class AttendanceReportWizard(models.TransientModel):
                 'bold': False
             }
         
-        # 8. Si es día laboral sin check-ins y sin falta, celda vacía
+        # 8. Si es día laboral sin check-ins y sin falta
+        if employee.employee_status == 'inactive' and not employee.finiquitado:
+            return {
+                'text': 'En proceso de finiquito',
+                'color': 'FF6600',  # Naranja fuerte
+                'font_color': 'FFFFFF',  # Blanco
+                'bold': True
+            }
         return {'text': '', 'color': None, 'font_color': None, 'bold': False}
 
     def _get_check_ins_for_employee_date(self, employee, target_date, company_tz, Attendance):

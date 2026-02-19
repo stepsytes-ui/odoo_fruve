@@ -2,7 +2,9 @@
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
+from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT
 from datetime import datetime, timedelta
+import pytz
 
 
 class HrVacation(models.Model):
@@ -158,9 +160,10 @@ class HrVacation(models.Model):
                     record.duration_days = record.leave_id.number_of_days
                 # Si no hay leave_id pero hay empleado, calcular usando el calendario laboral
                 elif record.employee_id and record.employee_id.resource_calendar_id:
-                    # Convertir fechas a datetime para el cálculo
-                    date_from = datetime.combine(record.date_from, datetime.min.time())
-                    date_to = datetime.combine(record.date_to, datetime.max.time())
+                    # Convertir fechas a datetime con timezone para el cálculo
+                    tz = pytz.timezone(record.employee_id.resource_calendar_id.tz or 'UTC')
+                    date_from = tz.localize(datetime.combine(record.date_from, datetime.min.time()))
+                    date_to = tz.localize(datetime.combine(record.date_to, datetime.max.time()))
                     
                     # Usar el método de resource.calendar para calcular días laborables
                     calendar = record.employee_id.resource_calendar_id

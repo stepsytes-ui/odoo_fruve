@@ -13,6 +13,7 @@
                     <field name="employee_name" string="Empleado"/>
                     <field name="supervisor_id"/>
                     <field name="date_from"/>
+                    <field name="total_days"/>
                     <field name="date_to"/>
                     <field name="duration_days" string="Días"/>
                     <field name="state" widget="badge" 
@@ -67,10 +68,16 @@
                                 <field name="supervisor_id" options="{'no_create': True, 'no_create_edit': True}"/>
                             </group>
                             <group>
-                                <field name="date_from"/>
-                                <field name="date_to"/>
-                                <field name="duration_days"/>
                                 <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                        </group>
+                        
+                        <group>
+                            <group string="Fechas de Suspensión">
+                                <field name="date_from"/>
+                                <field name="total_days" help="Cantidad de días de la suspensión considerando días laborables"/>
+                                <field name="date_to" readonly="1"/>
+                                <field name="duration_days" readonly="1"/>
                             </group>
                         </group>
                         

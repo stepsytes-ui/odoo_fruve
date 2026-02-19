@@ -235,8 +235,8 @@ class HrLeave(models.Model):
         
         # Procesar cada ausencia creada
         for leave in leaves:
-            # Si es una suspensión, crear el registro en hr.suspension
-            if leave.is_suspension and leave.state not in ['cancel', 'refuse']:
+            # Si es una suspensión, crear el registro en hr.suspension (a menos que se  cree desde una suspensión ya existente)
+            if leave.is_suspension and leave.state not in ['cancel', 'refuse'] and not self.env.context.get('skip_suspension_creation'):
                 self._create_suspension_record(leave)
             
             # Si es una incapacidad, crear el registro en hr.incapacity
@@ -260,7 +260,7 @@ class HrLeave(models.Model):
         for leave in self:
             # Si es una suspensión y está aprobada, crear o actualizar el registro
             if leave.is_suspension:
-                if leave.state in ['validate', 'validate1'] and not leave.suspension_id:
+                if leave.state in ['validate', 'validate1'] and not leave.suspension_id and not self.env.context.get('skip_suspension_creation'):
                     self._create_suspension_record(leave)
                 elif leave.suspension_id:
                     self._update_suspension_record(leave)

@@ -9,23 +9,21 @@ _logger = logging.getLogger(__name__)
 FIXED_DEVICE_TIMEZONE_NAME = 'America/Tijuana'
 
 NEW_LEAVE_STATUSES = [
-    ('leave_birthday', 'Permiso por cumpleaños'),
-    ('leave_marriage', 'Permiso por matrimonio'),   
-    ('leave_unpaid', 'Permiso no pagado'),
     ('leave_paid', 'Permiso pagado'),
-    ('leave_delay_pass_paid', 'Permiso retardo'),
-    ('leave_payday', 'Permiso día pagado'),
-    ('leave_no_payday', 'Permiso día no pagado'),
-    ('leave_partial_paid', 'Permiso parcial pagado'),
-    ('leave_partial_unpaid', 'Permiso parcial no pagado'),
-    ('leave_sickness', 'Incapacidad'),
     ('leave_vacation', 'Vacaciones'),
     ('leave_maternity', 'Maternidad'),
     ('leave_paternity', 'Paternidad'),
+    ('leave_sickness', 'Incapacidad'),
     ('leave_suspension', 'Suspensión'),
-    ('leave_other', 'Ausencia Justificada (Otro)')
-    
-
+    ('leave_unpaid', 'Permiso no pagado'),
+    ('leave_payday', 'Permiso día pagado'),
+    ('leave_birthday', 'Permiso por cumpleaños'),
+    ('leave_delay_pass_paid', 'Permiso retardo'),
+    ('leave_marriage', 'Permiso por matrimonio'),
+    ('leave_no_payday', 'Permiso día no pagado'),
+    ('leave_other', 'Ausencia Justificada (Otro)'),
+    ('leave_partial_paid', 'Permiso parcial pagado'),
+    ('leave_partial_unpaid', 'Permiso parcial no pagado'),
 ]
 
 LEAVE_STATUS_KEYS = [key for key, label in NEW_LEAVE_STATUSES]
@@ -37,15 +35,15 @@ class HrAttendance(models.Model):
     _inherit = 'hr.attendance'
 
     punctuality_status = fields.Selection([
-        ('on_time','A Tiempo'),
         ('late','Retardo'),
         ('absence', 'Falta'),
-        ('LunchS','Salida de Planta'),
-        ('LunchE','Regreso a Planta'),
+        ('on_time','A Tiempo'),
         ('end','Fin de turno'),
         ('overtime', 'Tiempo Extra'),
-        ('forgot_checkout', 'Olvido Checar Salida'),
+        ('LunchS','Salida de Planta'),
+        ('LunchE','Regreso a Planta'),
         ('n/a','Checada desde Quiosco'),
+        ('forgot_checkout', 'Olvido Checar Salida'),
     ] + NEW_LEAVE_STATUSES, string='Estatus de Puntualidad', default='n/a')
 
     check_in_time_only = fields.Char(

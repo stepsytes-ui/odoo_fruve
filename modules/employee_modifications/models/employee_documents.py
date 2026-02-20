@@ -55,6 +55,12 @@ class EmployeeDocuments(models.Model):
     )
     buro_credito_filename = fields.Char(string='Nombre Buró de Crédito')
 
+    constancia_situacion_fiscal = fields.Binary(
+        string='Constancia de Situación Fiscal',
+        attachment=True
+    )
+    constancia_situacion_fiscal_filename = fields.Char(string='Nombre Constancia Situación Fiscal')
+
     carta_antecedentes = fields.Binary(
         string='Carta no Antecedentes Penales',
         attachment=True

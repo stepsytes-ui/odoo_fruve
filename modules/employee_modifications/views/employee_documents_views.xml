@@ -30,6 +30,12 @@
                                                widget="pdf_viewer" options="{'open_in_new_window': true}"/>
                                         <field name="constancia_situacion_fiscal_filename" invisible="1"/>
                                     </div>
+                                    <label for="constancia_nss" string="Constancia de Numero de Seguro Social"/>
+                                    <div>
+                                        <field name="constancia_nss" filename="constancia_nss_filename" 
+                                               widget="pdf_viewer" options="{'open_in_new_window': true}"/>
+                                        <field name="constancia_nss_filename" invisible="1"/>
+                                    </div>
                                     <label for="carta_antecedentes" string="Carta no Antecedentes Penales"/>
                                     <div>
                                         <field name="carta_antecedentes" filename="carta_antecedentes_filename" 
@@ -51,7 +57,7 @@
                                         <field name="buro_credito_filename" invisible="1"/>
                                     </div>
                                 </group>
-                                
+
                                 <group string="Identificación">
                                     <label for="identificacion_frente" string="Identificación (Frente)"/>
                                     <div>

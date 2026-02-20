@@ -61,6 +61,12 @@ class EmployeeDocuments(models.Model):
     )
     constancia_situacion_fiscal_filename = fields.Char(string='Nombre Constancia Situación Fiscal')
 
+    constancia_nss = fields.Binary(
+        string='Constancia de Numero de Seguro Social',
+        attachment=True
+    )
+    constancia_nss_filename = fields.Char(string='Constancia de Numero de Seguro Social')
+
     carta_antecedentes = fields.Binary(
         string='Carta no Antecedentes Penales',
         attachment=True

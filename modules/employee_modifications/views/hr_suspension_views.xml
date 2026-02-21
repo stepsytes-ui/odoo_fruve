@@ -178,7 +178,8 @@
                     <button name="action_view_suspensions"
                             type="object"
                             string="Suspensiones"
-                            class="btn-secondary"/>
+                            class="btn-secondary"
+                            groups="hr.group_hr_user"/>
                 </button>
             </field>
         </record>

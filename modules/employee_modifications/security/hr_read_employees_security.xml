@@ -9,4 +9,32 @@
         <field name="implied_ids" eval="[(6, 0, [ref('base.group_user')])]"/>
     </record>
 
+    <!-- Grupo de Supervisores -->
+    <record id="group_supervisor" model="res.groups">
+        <field name="name">Supervisores</field>
+        <field name="category_id" ref="base.module_category_human_resources_employees"/>
+        <field name="comment">Supervisores que pueden ver amonestaciones pero no pueden editar, crear o eliminar empleados.</field>
+        <field name="implied_ids" eval="[(6, 0, [ref('base.group_user')])]"/>
+    </record>
+
+    <!-- Grupo de Guardias -->
+    <record id="group_guardia" model="res.groups">
+        <field name="name">Guardias de Seguridad</field>
+        <field name="category_id" ref="base.module_category_human_resources_employees"/>
+        <field name="comment">Guardias de seguridad que pueden ver amonestaciones pero no pueden editar, crear o eliminar empleados.</field>
+        <field name="implied_ids" eval="[(6, 0, [ref('base.group_user'), ref('security_view_time_off.group_time_off_security')])]"/>
+    </record>
+
+    <!-- Regla de registro: Supervisores y Guardias no pueden crear ni eliminar empleados -->
+    <record id="hr_employee_rule_supervisor_guardia_no_create_delete" model="ir.rule">
+        <field name="name">Empleados: Supervisores/Guardias - No crear/eliminar</field>
+        <field name="model_id" ref="hr.model_hr_employee"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_supervisor')), (4, ref('group_guardia'))]"/>
+        <field name="perm_read">1</field>
+        <field name="perm_write">1</field>
+        <field name="perm_create">0</field>
+        <field name="perm_unlink">0</field>
+    </record>
+
 </odoo>

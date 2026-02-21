@@ -178,6 +178,62 @@ class HrEmployeeExtension(models.Model):
         help='Marca si el empleado ha sido finiquitado después de su baja'
     )
 
+    # Redefinir current_leave_id para permitir acceso a supervisores y guardias
+    current_leave_id = fields.Many2one(
+        'hr.leave.type',
+        compute='_compute_current_leave',
+        string="Current Time Off Type",
+        groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
+    )
+
+    # Redefinir activity_ids para permitir acceso a supervisores y guardias
+    activity_ids = fields.One2many(
+        'mail.activity',
+        'res_id',
+        string='Activities',
+        groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
+    )
+
+    # Redefinir campos relacionados con actividades para permitir acceso
+    activity_state = fields.Selection(
+        selection=[
+            ('overdue', 'Overdue'),
+            ('today', 'Today'),
+            ('planned', 'Planned')
+        ],
+        compute='_compute_activity_state',
+        groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
+    )
+    
+    activity_type_id = fields.Many2one(
+        'mail.activity.type',
+        string='Activity Type',
+        groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
+    )
+    
+    activity_summary = fields.Char(
+        string='Activity Summary',
+        groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
+    )
+    
+    activity_exception_decoration = fields.Selection(
+        selection=[
+            ('warning', 'Warning'),
+            ('danger', 'Danger')
+        ],
+        groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
+    )
+    
+    activity_exception_icon = fields.Char(
+        string='Activity Exception Icon',
+        groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
+    )
+    
+    activity_type_icon = fields.Char(
+        string='Activity Type Icon',
+        groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
+    )
+
     @api.depends('suspension_ids')
     def _compute_suspension_count(self):
         """Calcula el número de suspensiones del empleado"""
@@ -206,6 +262,16 @@ class HrEmployeeExtension(models.Model):
         """Override para archivar el empleado cuando se marca como finiquitado"""
         _logger.info(f"🔵 write() llamado con vals: {vals}")
         
+        # Verificar si el usuario es supervisor o guardia
+        is_supervisor = self.env.user.has_group('employee_modifications.group_supervisor')
+        is_guardia = self.env.user.has_group('employee_modifications.group_guardia')
+        is_hr = self.env.user.has_group('hr.group_hr_user')
+        
+        # Si es supervisor o guardia (pero no RRHH), bloquear la edición
+        if (is_supervisor or is_guardia) and not is_hr:
+            from odoo.exceptions import AccessError
+            raise AccessError('No tiene permisos para modificar información de empleados. Solo el personal de RRHH puede realizar cambios.')
+        
         # Si se marca como finiquitado, verificar si el empleado está inactivo
         if vals.get('finiquitado') == True:
             for employee in self:
@@ -223,6 +289,17 @@ class HrEmployeeExtension(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        """Override para crear expediente inicial y verificar permisos"""
+        # Verificar si el usuario es supervisor o guardia
+        is_supervisor = self.env.user.has_group('employee_modifications.group_supervisor')
+        is_guardia = self.env.user.has_group('employee_modifications.group_guardia')
+        is_hr = self.env.user.has_group('hr.group_hr_user')
+        
+        # Si es supervisor o guardia (pero no RRHH), bloquear la creación
+        if (is_supervisor or is_guardia) and not is_hr:
+            from odoo.exceptions import AccessError
+            raise AccessError('No tiene permisos para crear empleados. Solo el personal de RRHH puede realizar esta acción.')
+        
         employees = super().create(vals_list)
         for employee, vals in zip(employees, vals_list):
             fecha_alta = vals.get('fecha_ingreso_manual') or fields.Date.today()
@@ -234,6 +311,20 @@ class HrEmployeeExtension(models.Model):
                     'company_id': employee.company_id.id,
                 })
         return employees
+    
+    def unlink(self):
+        """Override para verificar permisos antes de eliminar"""
+        # Verificar si el usuario es supervisor o guardia
+        is_supervisor = self.env.user.has_group('employee_modifications.group_supervisor')
+        is_guardia = self.env.user.has_group('employee_modifications.group_guardia')
+        is_hr = self.env.user.has_group('hr.group_hr_user')
+        
+        # Si es supervisor o guardia (pero no RRHH), bloquear la eliminación
+        if (is_supervisor or is_guardia) and not is_hr:
+            from odoo.exceptions import AccessError
+            raise AccessError('No tiene permisos para eliminar empleados. Solo el personal de RRHH puede realizar esta acción.')
+        
+        return super().unlink()
     
     def action_open_expedient_baja_wizard(self):
         self.ensure_one()

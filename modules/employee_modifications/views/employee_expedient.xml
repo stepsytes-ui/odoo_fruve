@@ -167,7 +167,8 @@
                     <button name="action_view_expedient"
                             type="object"
                             string="Ver Expediente"
-                            class="btn-secondary"/>
+                            class="btn-secondary"
+                            groups="hr.group_hr_user"/>
                     <button name="action_view_warnings"
                             type="object"
                             string="Amonestaciones"
@@ -175,11 +176,13 @@
                     <button name="action_view_overtime"
                             type="object"
                             string="Tiempo Extra"
-                            class="btn-secondary"/>
+                            class="btn-secondary"
+                            groups="hr.group_hr_user"/>
                     <button name="action_view_documents"
                             type="object"
                             string="Archivos"
-                            class="btn-secondary"/>
+                            class="btn-secondary"
+                            groups="hr.group_hr_user"/>
                 </xpath>
 
             </field>
@@ -196,7 +199,8 @@
                             type="object"
                             string="Registrar Baja"
                             class="btn-primary"
-                            invisible="employee_status == 'inactive'"/>
+                            invisible="employee_status == 'inactive'"
+                            groups="hr.group_hr_user"/>
                 </xpath>
 
             </field>
@@ -213,7 +217,8 @@
                             type="object"
                             string="Registrar Reingreso"
                             class="btn-primary"
-                            invisible="employee_status == 'active'"/>
+                            invisible="employee_status == 'active'"
+                            groups="hr.group_hr_user"/>
                 </xpath>
 
             </field>

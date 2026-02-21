@@ -181,7 +181,8 @@
                     <button name="action_view_vacations"
                             type="object"
                             string="Vacaciones"
-                            class="btn-secondary"/>
+                            class="btn-secondary"
+                            groups="hr.group_hr_user"/>
                 </xpath>
             </field>
         </record>
@@ -197,7 +198,8 @@
                     <button name="%(employee_modifications.report_carta_laboral)d"
                             type="action"
                             string="Imprimir Carta Laboral"
-                            class="btn-primary"/>
+                            class="btn-primary"
+                            groups="hr.group_hr_user"/>
                 </xpath>
             </field>
         </record>

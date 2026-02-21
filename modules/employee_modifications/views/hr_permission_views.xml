@@ -205,7 +205,8 @@
                     <button name="action_view_permissions"
                             type="object"
                             string="Permisos"
-                            class="btn-secondary"/>
+                            class="btn-secondary"
+                            groups="hr.group_hr_user"/>
                 </xpath>
             </field>
         </record>

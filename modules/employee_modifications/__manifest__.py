@@ -27,7 +27,6 @@ Fruvemex requests for employee's module
             'reports/carta_laboral_report.xml',
             'views/employee_expedient.xml', 
             'views/employee_disciplinary.xml',
-            'views/hr_employee_views_inherit.xml',
             'views/employee_attendance_buttons_hide.xml',
             'views/employee_warning_views.xml',
             'views/employee_documents_views.xml',

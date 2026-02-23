@@ -1,5 +1,27 @@
 <odoo>
     <data>
+        <!-- Acción para supervisores y guardias para ver la lista de empleados -->
+        <record id="action_employee_list_supervisor" model="ir.actions.act_window">
+            <field name="name">Empleados</field>
+            <field name="res_model">hr.employee</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_ids" eval="[
+                (0, 0, {'view_mode': 'list', 'view_id': ref('hr.view_employee_tree'), 'sequence': 1}),
+                (0, 0, {'view_mode': 'form', 'view_id': ref('hr.view_employee_form'), 'sequence': 2}),
+            ]"/>
+            <field name="domain">[]</field>
+            <field name="context">{}</field>
+        </record>
+
+        <!-- Menú específico para supervisores: Lista de empleados -->
+        <menuitem 
+            id="menu_hr_employee_list_supervisor" 
+            name="Empleados" 
+            parent="hr.menu_hr_root"
+            action="action_employee_list_supervisor"
+            groups="employee_modifications.group_supervisor,employee_modifications.group_guardia"
+            sequence="3"/>
+        
         <!-- Menú Principal: Herramientas -->
         <menuitem 
             id="menu_hr_herramientas" 

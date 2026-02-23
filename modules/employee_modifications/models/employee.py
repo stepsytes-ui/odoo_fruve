@@ -234,6 +234,23 @@ class HrEmployeeExtension(models.Model):
         groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
     )
 
+    # Redefinir category_ids y employee_properties para permitir acceso
+    category_ids = fields.Many2many(
+        'hr.employee.category',
+        'employee_category_rel',
+        'employee_id',
+        'category_id',
+        string='Tags',
+        groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
+    )
+
+    employee_properties = fields.Properties(
+        'Properties',
+        definition='company_id.employee_properties_definition',
+        precompute=False,
+        groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
+    )
+
     @api.depends('suspension_ids')
     def _compute_suspension_count(self):
         """Calcula el número de suspensiones del empleado"""

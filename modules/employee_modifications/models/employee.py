@@ -166,7 +166,7 @@ class HrEmployeeExtension(models.Model):
     # Campo para RFC (Odoo 18 no usa address_home_id, se maneja directamente)
     rfc = fields.Char(
         string='RFC',
-        groups='hr.group_hr_user',
+        groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia',
         tracking=True,
         help='Registro Federal de Contribuyentes del empleado'
     )

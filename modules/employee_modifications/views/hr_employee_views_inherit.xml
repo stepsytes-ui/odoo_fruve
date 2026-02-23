@@ -1,22 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     
-    <!-- Vista heredada del formulario para ocultar pestañas del grupo read_employees -->
+    <!-- Vista heredada del formulario - solo agregar campos, sin restricciones de grupos -->
     <record id="view_employee_form_read_only_inherit" model="ir.ui.view">
         <field name="name">hr.employee.form.read_only.inherit</field>
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="arch" type="xml">
-            
-            <!-- Ocultar la pestaña de Información Privada para read_employees -->
-            <page name="personal_information" position="attributes">
-                <attribute name="groups">hr.group_hr_user,!employee_modifications.group_hr_read_employees</attribute>
-            </page>
-            
-            <!-- Ocultar la pestaña de Ajustes para read_employees -->
-            <page name="hr_settings" position="attributes">
-                <attribute name="groups">hr.group_hr_user,!employee_modifications.group_hr_read_employees</attribute>
-            </page>
             
             <!-- Ocultar botón Iniciar Plan -->
             <xpath expr="//header/button[@name='%(hr.plan_wizard_action)d']" position="attributes">

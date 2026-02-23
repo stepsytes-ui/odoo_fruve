@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Regla de seguridad para restringir los cumpleaños por empresas permitidas del usuario -->
+    <!-- Regla de seguridad para restringir los cumpleaños por empresa actual seleccionada -->
     <record id="employee_birthday_company_rule" model="ir.rule">
-        <field name="name">Employee Birthday - User Companies</field>
+        <field name="name">Employee Birthday - Current Company</field>
         <field name="model_id" ref="model_employee_birthday"/>
-        <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+        <field name="domain_force">[('company_id', '=', user.company_id.id)]</field>
         <field name="global" eval="True"/>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>

@@ -4,10 +4,12 @@
         <record id="action_employee_list_supervisor" model="ir.actions.act_window">
             <field name="name">Empleados</field>
             <field name="res_model">hr.employee</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">kanban,list,form</field>
             <field name="view_ids" eval="[
-                (0, 0, {'view_mode': 'list', 'view_id': ref('hr.view_employee_tree'), 'sequence': 1}),
-                (0, 0, {'view_mode': 'form', 'view_id': ref('hr.view_employee_form'), 'sequence': 2}),
+                (5, 0, 0),
+                (0, 0, {'view_mode': 'kanban', 'view_id': ref('hr.hr_kanban_view_employees'), 'sequence': 1}),
+                (0, 0, {'view_mode': 'list', 'view_id': ref('hr.view_employee_tree'), 'sequence': 2}),
+                (0, 0, {'view_mode': 'form', 'view_id': ref('hr.view_employee_form'), 'sequence': 3}),
             ]"/>
             <field name="domain">[]</field>
             <field name="context">{}</field>

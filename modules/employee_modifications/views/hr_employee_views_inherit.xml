@@ -109,4 +109,35 @@
         </field>
     </record>
 
+    <record id="view_employee_form_guardia_supervisor" model="ir.ui.view">
+        <field name="name">hr.employee.form.guard.supervisor</field>
+        <field name="model">hr.employee</field>
+        <field name="priority" eval="100"/>
+        <field name="groups_id" eval="[(4, ref('employee_modifications.group_guardia')), (4, ref('employee_modifications.group_supervisor'))]"/>
+        <field name="arch" type="xml">
+            <form string="Empleado">
+                <header>
+                    <button name="action_view_warnings"
+                            type="object"
+                            string="Amonestaciones"
+                            class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="biometric_id" readonly="1"/>
+                            <field name="turno_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="employee_status" readonly="1"/>
+                            <field name="department_id" readonly="1"/>
+                            <field name="job_id" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
 </odoo>

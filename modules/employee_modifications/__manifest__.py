@@ -29,6 +29,7 @@ Fruvemex requests for employee's module
             'views/employee_disciplinary.xml',
             'views/employee_attendance_buttons_hide.xml',
             'views/employee_warning_views.xml',
+            'views/employee_warning_data.xml',
             'views/employee_documents_views.xml',
             'views/hr_leave_supervisor_field.xml',
             'views/hr_suspension_views.xml',
@@ -38,6 +39,7 @@ Fruvemex requests for employee's module
             'views/employee_menus.xml',
             'wizard/employee_expedient_wizard_views.xml',
             'wizard/import_curp_rfc_wizard_views.xml',
+            'wizard/employee_warning_reject_wizard_views.xml',
         ],
     'demo': [
         'demo/demo.xml',

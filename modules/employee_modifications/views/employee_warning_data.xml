@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Template de Correo para Notificación de Amonestación Enviada -->
+    <record id="email_template_warning_notification" model="mail.template">
+        <field name="name">Notificación de Amonestación Enviada</field>
+        <field name="email_from">${object.env.user.email or 'noreply@example.com'}</field>
+        <field name="email_to">${object.notification_user_id.email}</field>
+        <field name="subject">Amonestación Enviada para Aprobación - ${object.name}</field>
+        <field name="model_id" ref="employee_modifications.model_employee_warning"/>
+        <field name="body_html" type="html">
+<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5; padding: 20px;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h2 style="color: #333; border-bottom: 3px solid #007bff; padding-bottom: 10px;">
+            Amonestación Enviada para Aprobación
+        </h2>
+        
+        <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            Estimado/a <strong>${object.notification_user_id.name}</strong>,
+        </p>
+
+        <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            Se ha enviado una nueva amonestación que requiere su aprobación o rechazo:
+        </p>
+
+        <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0; border-radius: 4px;">
+            <p style="margin: 5px 0; color: #333;">
+                <strong>Folio:</strong> ${object.name}
+            </p>
+            <p style="margin: 5px 0; color: #333;">
+                <strong>Empleado:</strong> ${object.employee_name} (${object.biometric_id})
+            </p>
+            <p style="margin: 5px 0; color: #333;">
+                <strong>Departamento:</strong> ${object.department_id.name}
+            </p>
+            <p style="margin: 5px 0; color: #333;">
+                <strong>Supervisor:</strong> ${object.supervisor_id.name}
+            </p>
+            <p style="margin: 5px 0; color: #333;">
+                <strong>Fecha:</strong> ${object.warning_date.strftime('%d/%m/%Y') if object.warning_date else 'N/A'}
+            </p>
+            <p style="margin: 5px 0; color: #333;">
+                <strong>Motivo:</strong> ${object.causa}
+            </p>
+        </div>
+
+        <div style="text-align: center; margin: 25px 0;">
+            <a href="${object.get_record_url()}" style="display: inline-block; background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 14px;">
+                Ver Amonestación para Aprobar/Rechazar →
+            </a>
+        </div>
+
+        <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; border-radius: 4px;">
+            <p style="margin: 0; color: #856404; font-size: 13px;">
+                <strong>Nota:</strong> Esta amonestación está en estado <strong>Solicitud Enviada</strong> y espera su revisión para ser aprobada o rechazada.
+            </p>
+        </div>
+
+        <p style="color: #777; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px;">
+            Este es un correo automático. Por favor, no responda directamente a este correo.
+        </p>
+    </div>
+</div>
+        </field>
+    </record>
+
+</odoo>
+

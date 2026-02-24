@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista de Formulario para Wizard de Rechazo -->
+    <record id="view_employee_warning_reject_wizard_form" model="ir.ui.view">
+        <field name="name">employee.warning.reject.wizard.form</field>
+        <field name="model">employee.warning.reject.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Rechazar Amonestación">
+                <group>
+                    <field name="warning_id" readonly="1"/>
+                    <field name="rejection_reason" placeholder="Ingrese el motivo de rechazo..."/>
+                </group>
+                <footer>
+                    <button name="action_reject" string="Confirmar Rechazo" type="object" class="btn-danger"/>
+                    <button string="Cancelar" class="btn-default" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

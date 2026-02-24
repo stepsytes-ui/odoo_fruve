@@ -13,7 +13,8 @@
                 <field name="department_id" string="Departamento"/>
                 <field name="turno_id" string="Turno"/>
                 <field name="supervisor_id" string="Supervisor"/>
-                <field name="registered_by_id" string="Registrado por"/>
+                <field name="notification_user_id" string="Usuario Notificado"/>
+                <field name="state" string="Estado" decoration-success="state=='approved'" decoration-danger="state=='rejected'" decoration-warning="state=='submitted'" decoration-muted="state=='draft'"/>
             </list>
         </field>
     </record>
@@ -24,6 +25,32 @@
         <field name="model">employee.warning</field>
         <field name="arch" type="xml">
             <form string="Amonestación">
+                <header>
+                        <button name="action_submit" 
+                            string="Enviar Solicitud" 
+                            type="object" 
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                        <button name="action_approve" 
+                            string="✓ Aprobar" 
+                            type="object" 
+                            class="btn-success"
+                            groups="hr.group_hr_user"
+                            invisible="state != 'submitted'"/>
+                        <button name="action_reject" 
+                            string="✗ Rechazar" 
+                            type="object" 
+                            class="btn-danger"
+                            groups="hr.group_hr_user"
+                            invisible="state != 'submitted'"/>
+                        <button name="action_reset_to_draft" 
+                            string="Volver a Borrador" 
+                            type="object" 
+                            class="btn-warning"
+                            groups="hr.group_hr_user"
+                            invisible="state in ['draft', 'submitted']"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,rejected"/>
+                </header>
                 <sheet>
                     <div class="oe_title">
                         <h1>
@@ -44,6 +71,8 @@
                             <field name="turno_id" string="Turno"/>
                             <field name="supervisor_id" string="Supervisor" 
                                    options="{'no_create': True, 'no_create_edit': True}"/>
+                            <field name="notification_user_id" string="Usuario a Notificar"
+                                   options="{'no_create': True, 'no_create_edit': True}"/>
                         </group>
                     </group>
                     <notebook>
@@ -55,6 +84,13 @@
                             <group>
                                 <field name="supervisor_comments" string="Comentarios del Supervisor"
                                        placeholder="Comentarios adicionales del supervisor..."/>
+                            </group>
+                        </page>
+                        <page string="Información de Aprobación">
+                            <group>
+                                <field name="rejection_reason" string="Motivo del Rechazo"
+                                       placeholder="Motivo por el cual se rechaza la amonestación..."
+                                       invisible="state != 'rejected'"/>
                             </group>
                         </page>
                     </notebook>
@@ -76,6 +112,16 @@
                        filter_domain="[('employee_name', 'ilike', self)]"/>
                 <field name="department_id" string="Departamento"/>
                 <field name="supervisor_id" string="Supervisor"/>
+                <field name="notification_user_id" string="Usuario Notificado"/>
+                <separator/>
+                <filter string="Aprobadas" name="approved"
+                    domain="[('state', '=', 'approved')]"/>
+                <filter string="Solicitud Enviada" name="submitted"
+                    domain="[('state', '=', 'submitted')]"/>
+                <filter string="Borrador" name="draft"
+                    domain="[('state', '=', 'draft')]"/>
+                <filter string="Rechazadas" name="rejected"
+                    domain="[('state', '=', 'rejected')]"/>
                 <separator/>
                 <filter string="Este Mes" name="this_month"
                         domain="[('warning_date', '&gt;=', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d')),
@@ -87,24 +133,40 @@
                     <filter string="Empleado" name="group_employee" context="{'group_by': 'employee_id'}"/>
                     <filter string="Departamento" name="group_department" context="{'group_by': 'department_id'}"/>
                     <filter string="Supervisor" name="group_supervisor" context="{'group_by': 'supervisor_id'}"/>
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
                     <filter string="Fecha" name="group_date" context="{'group_by': 'warning_date'}"/>
                 </group>
             </search>
         </field>
     </record>
 
-    <!-- Acción de Ventana para Amonestaciones -->
+    <!-- Acción de Ventana para Amonestaciones (General - desde menú) -->
     <record id="action_employee_warning" model="ir.actions.act_window">
         <field name="name">Amonestaciones</field>
         <field name="res_model">employee.warning</field>
         <field name="view_mode">list,form</field>
-        <field name="context">{}</field>
+        <field name="domain">[]</field>
+        <field name="context">{'search_default_approved': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Crear una nueva amonestación
             </p>
             <p>
                 Registre las amonestaciones de los empleados con toda la información necesaria.
+            </p>
+        </field>
+    </record>
+
+    <!-- Acción de Ventana para Amonestaciones del Empleado (desde botón en empleado) -->
+    <record id="action_employee_warning_from_employee" model="ir.actions.act_window">
+        <field name="name">Amonestaciones</field>
+        <field name="res_model">employee.warning</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('employee_id', '=', active_id)]</field>
+        <field name="context">{'default_employee_id': active_id, 'search_default_approved': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Amonestaciones del empleado
             </p>
         </field>
     </record>

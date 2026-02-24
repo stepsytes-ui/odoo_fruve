@@ -2,6 +2,9 @@
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class EmployeeWarning(models.Model):
     _name = 'employee.warning'
@@ -167,13 +170,112 @@ class EmployeeWarning(models.Model):
         return self._search(domain, limit=limit, order=order)
 
     def _send_notification_email(self):
-        """Enviar correo de notificación al usuario designado"""
+        """Enviar correo de notificación y crear actividad para el usuario designado"""
         if not self.notification_user_id:
+            _logger.warning(f"[AMONESTACIONES] No hay usuario a notificar para la amonestación {self.name}")
             return
         
-        mail_template = self.env.ref('employee_modifications.email_template_warning_notification', raise_if_not_found=False)
-        if mail_template:
-            mail_template.send_mail(self.id, force_send=True)
+        # Verificar que el usuario tenga email
+        if not self.notification_user_id.partner_id or not self.notification_user_id.partner_id.email:
+            _logger.warning(f"[AMONESTACIONES] El usuario {self.notification_user_id.name} no tiene email configurado")
+            return
+        
+        try:
+            # Construir la URL del registro
+            base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+            warning_url = f"{base_url}/web#id={self.id}&view_type=form&model=employee.warning"
+            
+            # Construir el asunto y cuerpo del correo
+            subject = _("🔔 Amonestación Pendiente de Aprobación - %s") % self.name
+            
+            body = _("""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #007bff; border-bottom: 3px solid #007bff; padding-bottom: 10px;">
+                        🔔 Amonestación Pendiente de Aprobación
+                    </h2>
+                    
+                    <p>Estimado/a <strong>%s</strong>,</p>
+                    
+                    <p>Se ha enviado una nueva amonestación que requiere su aprobación o rechazo:</p>
+                    
+                    <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0; border-radius: 4px;">
+                        <p style="margin: 5px 0;"><strong>Folio:</strong> %s</p>
+                        <p style="margin: 5px 0;"><strong>Empleado:</strong> %s (%s)</p>
+                        <p style="margin: 5px 0;"><strong>Departamento:</strong> %s</p>
+                        <p style="margin: 5px 0;"><strong>Supervisor:</strong> %s</p>
+                        <p style="margin: 5px 0;"><strong>Fecha:</strong> %s</p>
+                        <p style="margin: 5px 0;"><strong>Motivo:</strong> %s</p>
+                    </div>
+                    
+                    <div style="text-align: center; margin: 25px 0;">
+                        <a href="%s" 
+                           style="display: inline-block; 
+                                  padding: 12px 30px; 
+                                  text-decoration: none; 
+                                  background-color: #007bff; 
+                                  color: white; 
+                                  border-radius: 5px; 
+                                  font-weight: bold;">
+                            Ver Amonestación para Aprobar/Rechazar →
+                        </a>
+                    </div>
+                    
+                    <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; border-radius: 4px;">
+                        <p style="margin: 0; color: #856404; font-size: 13px;">
+                            <strong>Nota:</strong> Esta amonestación está en estado <strong>Solicitud Enviada</strong> 
+                            y espera su revisión para ser aprobada o rechazada.
+                        </p>
+                    </div>
+                    
+                    <p style="color: #777; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px;">
+                        Este es un correo automático. Por favor, no responda directamente a este correo.
+                    </p>
+                </div>
+            """) % (
+                self.notification_user_id.name,
+                self.name,
+                self.employee_name,
+                self.biometric_id or 'N/A',
+                self.department_id.name if self.department_id else 'N/A',
+                self.supervisor_id.name,
+                self.warning_date.strftime('%d/%m/%Y') if self.warning_date else 'N/A',
+                self.causa[:100] + '...' if len(self.causa) > 100 else self.causa,
+                warning_url
+            )
+            
+            # Enviar el correo
+            mail = self.env['mail.mail'].sudo().create({
+                'subject': subject,
+                'body_html': body,
+                'recipient_ids': [(4, self.notification_user_id.partner_id.id)],
+                'email_from': self.env['ir.config_parameter'].sudo().get_param('mail.catchall.domain') or 'noreply@fruvemex.com',
+                'auto_delete': True,
+            })
+            mail.send()
+            _logger.info(f"[AMONESTACIONES] ✅ Correo enviado a {self.notification_user_id.name} para la amonestación {self.name}")
+            
+            # Crear actividad para el usuario notificado
+            activity_type = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+            
+            if not activity_type:
+                activity_type = self.env['mail.activity.type'].search([('name', 'in', ['To Do', 'Para hacer'])], limit=1)
+            
+            if activity_type:
+                warning_model_id = self.env['ir.model']._get('employee.warning').id
+                
+                self.env['mail.activity'].sudo().create({
+                    'res_id': self.id,
+                    'res_model_id': warning_model_id,
+                    'activity_type_id': activity_type.id,
+                    'summary': _("🔔 Revisar: Amonestación Pendiente"),
+                    'note': _("La amonestación **%s** del empleado **%s** requiere aprobación o rechazo.") % (self.name, self.employee_name),
+                    'date_deadline': fields.Date.today(),
+                    'user_id': self.notification_user_id.id,
+                })
+                _logger.info(f"[AMONESTACIONES] ✅ Actividad creada para {self.notification_user_id.name}")
+            
+        except Exception as e:
+            _logger.error(f"[AMONESTACIONES] ❌ Error al enviar notificación para la amonestación {self.name}: {e}", exc_info=True)
 
     def action_submit(self):
         """Enviar la solicitud para aprobación"""

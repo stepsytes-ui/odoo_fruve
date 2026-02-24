@@ -134,15 +134,20 @@ class ZkTecoAttendanceLog(models.Model):
             try:
                 naive_datetime = fields.Datetime.from_string(log.timestamp)
                 
-                # Validar si la fecha está más de 1 mes en el pasado o futuro
-                now_utc = datetime.utcnow()
-                time_diff = abs((naive_datetime - now_utc).days)
+                # Convertir la fecha del dispositivo (en zona local) a UTC para comparación correcta
+                device_datetime_local = FIXED_TIMEZONE.localize(naive_datetime, is_dst=None)
+                device_datetime_utc = device_datetime_local.astimezone(UTC_TIMEZONE)
                 
-                if time_diff > 30:  # Más de 1 mes de diferencia
+                # Validar si la fecha tiene más de 30 minutos de diferencia
+                now_utc = UTC_TIMEZONE.localize(datetime.utcnow())
+                time_diff_seconds = abs((device_datetime_utc - now_utc).total_seconds())
+                time_diff_minutes = time_diff_seconds / 60
+                
+                if time_diff_minutes > 10:  # Más de 30 minutos de diferencia
                     _logger.warning(
                         "⚠️ Fecha de checada inválida detectada para log %s (Employee: %s, Device: %s). "
-                        "Fecha del dispositivo: %s, Diferencia: %d días. Usando hora actual.",
-                        log.id, employee.name, device_serial, naive_datetime, time_diff
+                        "Fecha del dispositivo (local): %s, Diferencia: %.1f minutos. Usando hora actual.",
+                        log.id, employee.name, device_serial, naive_datetime, time_diff_minutes
                     )
                     
                     # Obtener zona horaria de la empresa
@@ -158,7 +163,7 @@ class ZkTecoAttendanceLog(models.Model):
                     _logger.info("✅ Usando hora actual de la empresa (%s): %s", company_tz_name, check_datetime_local)
                 else:
                     # Fecha válida, procesar normalmente
-                    check_datetime_local = FIXED_TIMEZONE.localize(naive_datetime, is_dst=None)
+                    check_datetime_local = device_datetime_local
                 
                 check_datetime_utc_dt = check_datetime_local.astimezone(UTC_TIMEZONE) 
                 check_datetime_utc = fields.Datetime.to_string(check_datetime_utc_dt)

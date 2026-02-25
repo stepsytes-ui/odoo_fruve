@@ -29,7 +29,7 @@ class ZkTecoAttendanceLog(models.Model):
     
     hr_attendance_id = fields.Many2one('hr.attendance', string='Odoo Attendance Record', readonly=True)
 
-    def _get_shift_times(self, employee, check_datetime_local):
+    def _get_shift_times(self, employee, check_datetime_local, device_timezone):
         shift = employee.turno_id
         if not shift:
             return None, None
@@ -39,26 +39,21 @@ class ZkTecoAttendanceLog(models.Model):
 
         if not entrada_config or not salida_config:
             return None, None
-            
-        try:
-            FIXED_TIMEZONE = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
-        except pytz.UnknownTimeZoneError: 
-            return None, None
 
         # Convertir de la base de datos (UTC) a la zona local del dispositivo
         entrada_naive = fields.Datetime.from_string(entrada_config)
         salida_naive = fields.Datetime.from_string(salida_config)
         
-        shift_in_local_dt = pytz.utc.localize(entrada_naive).astimezone(FIXED_TIMEZONE)
-        shift_out_local_dt = pytz.utc.localize(salida_naive).astimezone(FIXED_TIMEZONE)
+        shift_in_local_dt = pytz.utc.localize(entrada_naive).astimezone(device_timezone)
+        shift_out_local_dt = pytz.utc.localize(salida_naive).astimezone(device_timezone)
 
         # Usar solo la hora y aplicarla a la fecha de la checada
         shift_in_time = shift_in_local_dt.time()
         shift_out_time = shift_out_local_dt.time()
         shift_date = check_datetime_local.date()
         
-        shift_in_datetime_local = FIXED_TIMEZONE.localize(datetime.combine(shift_date, shift_in_time))
-        shift_out_datetime_local = FIXED_TIMEZONE.localize(datetime.combine(shift_date, shift_out_time))
+        shift_in_datetime_local = device_timezone.localize(datetime.combine(shift_date, shift_in_time))
+        shift_out_datetime_local = device_timezone.localize(datetime.combine(shift_date, shift_out_time))
 
         # Manejo de cruce de medianoche (turno nocturno)
         if shift_out_time <= shift_in_time:
@@ -93,12 +88,6 @@ class ZkTecoAttendanceLog(models.Model):
             return
             
         UTC_TIMEZONE = pytz.utc
-        try:
-            FIXED_TIMEZONE = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
-        except pytz.UnknownTimeZoneError:
-            _logger.error("Configuration Error: The defined timezone '%s' is invalid. All logs set to 'error'.", FIXED_DEVICE_TIMEZONE_NAME)
-            records_to_process.write({'state': 'error'})
-            return
             
         for log in records_to_process:
 
@@ -119,6 +108,15 @@ class ZkTecoAttendanceLog(models.Model):
             company_id = device.company_id.id
             company = device.company_id
 
+            # Obtener zona horaria de la empresa (o usar por defecto si no está configurada)
+            company_tz_name = company.timezone or FIXED_DEVICE_TIMEZONE_NAME
+            try:
+                DEVICE_TIMEZONE = pytz.timezone(company_tz_name)
+            except pytz.UnknownTimeZoneError:
+                _logger.error("Configuration Error: The timezone '%s' for company '%s' is invalid. Log set to 'error'.", company_tz_name, company.name)
+                log.state = 'error'
+                continue
+
             search_id = str(log.user_id)
             employee = Employee.search([
                 ('biometric_id', '=', search_id),
@@ -135,7 +133,7 @@ class ZkTecoAttendanceLog(models.Model):
                 naive_datetime = fields.Datetime.from_string(log.timestamp)
                 
                 # Convertir la fecha del dispositivo (en zona local) a UTC para comparación correcta
-                device_datetime_local = FIXED_TIMEZONE.localize(naive_datetime, is_dst=None)
+                device_datetime_local = DEVICE_TIMEZONE.localize(naive_datetime, is_dst=None)
                 device_datetime_utc = device_datetime_local.astimezone(UTC_TIMEZONE)
                 
                 # Validar si la fecha tiene más de 30 minutos de diferencia
@@ -143,23 +141,15 @@ class ZkTecoAttendanceLog(models.Model):
                 time_diff_seconds = abs((device_datetime_utc - now_utc).total_seconds())
                 time_diff_minutes = time_diff_seconds / 60
                 
-                if time_diff_minutes > 10:  # Más de 30 minutos de diferencia
+                if time_diff_minutes > 10:  # Más de 10 minutos de diferencia
                     _logger.warning(
                         "⚠️ Fecha de checada inválida detectada para log %s (Employee: %s, Device: %s). "
                         "Fecha del dispositivo (local): %s, Diferencia: %.1f minutos. Usando hora actual.",
                         log.id, employee.name, device_serial, naive_datetime, time_diff_minutes
                     )
                     
-                    # Obtener zona horaria de la empresa
-                    company_tz_name = company.timezone or FIXED_DEVICE_TIMEZONE_NAME
-                    try:
-                        COMPANY_TIMEZONE = pytz.timezone(company_tz_name)
-                    except pytz.UnknownTimeZoneError:
-                        _logger.warning("Zona horaria '%s' de la empresa no válida, usando %s", company_tz_name, FIXED_DEVICE_TIMEZONE_NAME)
-                        COMPANY_TIMEZONE = FIXED_TIMEZONE
-                    
                     # Usar hora actual en la zona horaria de la empresa
-                    check_datetime_local = datetime.now(COMPANY_TIMEZONE)
+                    check_datetime_local = datetime.now(DEVICE_TIMEZONE)
                     _logger.info("✅ Usando hora actual de la empresa (%s): %s", company_tz_name, check_datetime_local)
                 else:
                     # Fecha válida, procesar normalmente
@@ -175,7 +165,7 @@ class ZkTecoAttendanceLog(models.Model):
 
             last_attendance = employee.last_attendance_id.sudo()
             
-            shift_in_utc_dt, shift_out_utc_dt = self._get_shift_times(employee, check_datetime_local)
+            shift_in_utc_dt, shift_out_utc_dt = self._get_shift_times(employee, check_datetime_local, DEVICE_TIMEZONE)
 
             if not last_attendance or last_attendance.check_out:
                 

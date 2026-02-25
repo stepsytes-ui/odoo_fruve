@@ -96,11 +96,15 @@ class HrAttendance(models.Model):
                 record.biometric_id_display = 0
 
     def _compute_check_in_time_only(self):
-        user_tz = self.env.user.tz or pytz.utc
-        local_tz = pytz.timezone(user_tz)
-        
         for record in self:
             if record.check_in:
+                # Usar la zona horaria de la empresa del empleado
+                company_tz_name = record.employee_id.company_id.timezone or FIXED_DEVICE_TIMEZONE_NAME
+                try:
+                    local_tz = pytz.timezone(company_tz_name)
+                except pytz.UnknownTimeZoneError:
+                    local_tz = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+                
                 utc_datetime = pytz.utc.localize(record.check_in)
                 local_datetime = utc_datetime.astimezone(local_tz)
 
@@ -109,12 +113,16 @@ class HrAttendance(models.Model):
                     record.check_in_time_only = False
 
     def _compute_check_out_time_only(self):
-        user_tz = self.env.user.tz or pytz.utc
-        local_tz = pytz.timezone(user_tz)
-        
         for record in self:
             if record.check_out:
-                utc_datetime = pytz.utc.localize(record.check_in)
+                # Usar la zona horaria de la empresa del empleado
+                company_tz_name = record.employee_id.company_id.timezone or FIXED_DEVICE_TIMEZONE_NAME
+                try:
+                    local_tz = pytz.timezone(company_tz_name)
+                except pytz.UnknownTimeZoneError:
+                    local_tz = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+                
+                utc_datetime = pytz.utc.localize(record.check_out)
                 local_datetime = utc_datetime.astimezone(local_tz)
 
                 record.check_out_time_only = local_datetime.strftime("%d/%m/%Y, %H:%M:%S")

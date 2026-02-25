@@ -186,12 +186,12 @@ class EmployeeWarning(models.Model):
             warning_url = f"{base_url}/web#id={self.id}&view_type=form&model=employee.warning"
             
             # Construir el asunto y cuerpo del correo
-            subject = _("🔔 Amonestación Pendiente de Aprobación - %s") % self.name
+            subject = _(" Amonestación Pendiente de Aprobación - %s") % self.name
             
             body = _("""
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #007bff; border-bottom: 3px solid #007bff; padding-bottom: 10px;">
-                        🔔 Amonestación Pendiente de Aprobación
+                         Amonestación Pendiente de Aprobación
                     </h2>
                     
                     <p>Estimado/a <strong>%s</strong>,</p>
@@ -252,7 +252,7 @@ class EmployeeWarning(models.Model):
                 'auto_delete': True,
             })
             mail.send()
-            _logger.info(f"[AMONESTACIONES] ✅ Correo enviado a {self.notification_user_id.name} para la amonestación {self.name}")
+            _logger.info(f"[AMONESTACIONES] Correo enviado a {self.notification_user_id.name} para la amonestación {self.name}")
             
             # Crear actividad para el usuario notificado
             activity_type = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
@@ -267,15 +267,15 @@ class EmployeeWarning(models.Model):
                     'res_id': self.id,
                     'res_model_id': warning_model_id,
                     'activity_type_id': activity_type.id,
-                    'summary': _("🔔 Revisar: Amonestación Pendiente"),
+                    'summary': _("Revisar: Amonestación Pendiente"),
                     'note': _("La amonestación **%s** del empleado **%s** requiere aprobación o rechazo.") % (self.name, self.employee_name),
                     'date_deadline': fields.Date.today(),
                     'user_id': self.notification_user_id.id,
                 })
-                _logger.info(f"[AMONESTACIONES] ✅ Actividad creada para {self.notification_user_id.name}")
+                _logger.info(f"[AMONESTACIONES] Actividad creada para {self.notification_user_id.name}")
             
         except Exception as e:
-            _logger.error(f"[AMONESTACIONES] ❌ Error al enviar notificación para la amonestación {self.name}: {e}", exc_info=True)
+            _logger.error(f"[AMONESTACIONES] Error al enviar notificación para la amonestación {self.name}: {e}", exc_info=True)
 
     def action_submit(self):
         """Enviar la solicitud para aprobación"""

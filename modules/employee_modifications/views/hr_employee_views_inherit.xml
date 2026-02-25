@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista heredada del formulario para ocultar pestañas del grupo read_employees -->
+    <record id="view_employee_form_read_only_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.form.read_only.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Ocultar la pestaña de Información Privada para read_employees -->
+            <page name="personal_information" position="attributes">
+                <attribute name="groups">hr.group_hr_user,!employee_modifications.group_hr_read_employees</attribute>
+            </page>
+
+            <!-- Ocultar la pestaña de Ajustes para read_employees -->
+            <page name="hr_settings" position="attributes">
+                <attribute name="groups">hr.group_hr_user,!employee_modifications.group_hr_read_employees</attribute>
+            </page>
+
+            <!-- Ocultar botón Iniciar Plan -->
+            <xpath expr="//header/button[@name='%(hr.plan_wizard_action)d']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- Vista heredada de lista para agregar biometric_id -->
+    <record id="view_employee_list_biometric_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.list.biometric.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="arch" type="xml">
+
+            <!-- Agregar biometric_id después del nombre en la lista -->
+            <field name="name" position="after">
+                <field name="biometric_id" string="No. Empleado" optional="show"/>
+            </field>
+
+        </field>
+    </record>
+
+    <!-- Vista heredada de búsqueda para agregar biometric_id como campo de búsqueda -->
+    <record id="view_employee_filter_biometric_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.search.biometric.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_filter"/>
+        <field name="arch" type="xml">
+
+            <!-- Modificar el campo de búsqueda principal para incluir biometric_id -->
+            <field name="name" position="attributes">
+                <attribute name="filter_domain">['|', '|', ('work_email', 'ilike', self), ('name', 'ilike', self), ('biometric_id', 'ilike', self)]</attribute>
+            </field>
+
+        </field>
+    </record>
+
+    <!-- Vista heredada para agregar CURP y RFC en Información Privada -->
+    <record id="view_employee_form_private_info_curp_rfc_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.form.private.info.curp.rfc.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Cambiar etiqueta de identification_id a CURP -->
+            <xpath expr="//page[@name='personal_information']//field[@name='identification_id']" position="attributes">
+                <attribute name="string">CURP</attribute>
+                <attribute name="placeholder">Ej: AAGR850101HDFRNN05</attribute>
+            </xpath>
+
+            <!-- Agregar RFC después del campo identification_id en el grupo Citizenship -->
+            <xpath expr="//page[@name='personal_information']//field[@name='identification_id']" position="after">
+                <field name="rfc" string="RFC" placeholder="Ej: AAGR850101ABC"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- Vista heredada para agregar campo Finiquitado después de employee_status -->
+    <record id="view_employee_form_finiquitado_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.form.finiquitado.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Agregar campo Finiquitado después de employee_status -->
+            <xpath expr="//field[@name='employee_status']" position="after">
+                <field name="finiquitado" widget="boolean_toggle"
+                    invisible="employee_status != 'inactive'"/>
+            </xpath>
+
+            <!-- Agregar mensajes informativos después del campo finiquitado -->
+            <xpath expr="//field[@name='finiquitado']" position="after">
+                <div class="alert alert-warning" role="alert"
+                    invisible="employee_status != 'inactive' or finiquitado == True">
+                    <i class="fa fa-exclamation-triangle" title="Alerta"/>
+                    <strong>Empleado en proceso de finiquito.</strong><br/>
+                    Este empleado aparecerá en reportes como "En proceso de finiquito".<br/>
+                    Marque "Finiquitado" cuando complete el proceso para archivarlo definitivamente.
+                </div>
+                <div class="alert alert-success" role="alert"
+                    invisible="finiquitado != True">
+                    <i class="fa fa-check-circle" title="Completado"/>
+                    <strong>Empleado finiquitado y archivado.</strong>
+                </div>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

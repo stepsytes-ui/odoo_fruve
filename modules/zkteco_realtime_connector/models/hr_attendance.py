@@ -465,7 +465,7 @@ class HrAttendance(models.Model):
             ])
             
             if absence_count == 4:
-                        hr_group = self.env.ref('zkteco_realtime_connector.group_hr_manager_custom', raise_if_not_found=False)
+                        hr_group = self.env.ref('zkteco_realtime_connector.group_rh_absence_manager', raise_if_not_found=False)
 
                         if not hr_group:
                             _logger.warning("No se encontró el grupo de Recursos Humanos.")

@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime, time, date
 import math
+import pytz
 from odoo import models, fields, api
+from odoo.exceptions import UserError
 
 
 class security_view(models.Model):
@@ -12,6 +14,25 @@ class security_view(models.Model):
         related='employee_id.biometric_id',
         store=True,
         readonly=True
+    )
+
+    punctuality_status = fields.Selection([
+        ('leave_abscent', 'Permiso de ausencia'),
+        ('leave_hours', 'Permiso por horas'),
+        ('leave_hours_paid', 'Permiso pagado por horas'),
+        ('leave_delay_pass_paid', 'Permiso retardo'),
+        ('leave_partial_paid', 'Permiso parcial pagado'),
+        ('leave_partial_unpaid', 'Permiso parcial no pagado'),
+    ], string='Etiqueta de Permiso', default='leave_hours')
+
+    check_in_time = fields.Datetime(
+        string='Hora de Entrada (Verificación)',
+        help='Se captura cuando se registra la entrada del permiso'
+    )
+
+    check_out_time = fields.Datetime(
+        string='Hora de Salida (Verificación)',
+        help='Se captura cuando se registra la salida del permiso'
     )
 
     description_security = fields.Text(
@@ -29,16 +50,16 @@ class security_view(models.Model):
         store=False, # No es necesario almacenar ya que es related
     )
 
-    request_datetime_from = fields.Datetime(
+    request_datetime_from = fields.Char(
         string='Inicio (Fecha y Hora)',
         compute='_compute_request_datetime',
-        store=True  # Almacenar el resultado para que sea más rápido y se pueda ordenar
+        store=False
     )
 
-    request_datetime_to = fields.Datetime(
+    request_datetime_to = fields.Char(
         string='Fin (Fecha y Hora)',
         compute='_compute_request_datetime',
-        store=True
+        store=False
     )
 
     display_duration = fields.Char(
@@ -57,10 +78,11 @@ class security_view(models.Model):
                 minutes = int((record.request_hour_from - hours) * 60)
                 time_from = time(hours, minutes, 0)
                 
-                # Combinar fecha y hora
-                record.request_datetime_from = datetime.combine(record.request_date_from, time_from)
+                # Combinar fecha y hora y formatear como string
+                dt = datetime.combine(record.request_date_from, time_from)
+                record.request_datetime_from = dt.strftime('%d/%m/%Y %H:%M:%S')
             else:
-                record.request_datetime_from = False
+                record.request_datetime_from = ''
 
             # Combinar Fecha de Fin y Hora de Fin
             if record.request_date_to and record.request_hour_to is not False:
@@ -69,17 +91,29 @@ class security_view(models.Model):
                 minutes = int((record.request_hour_to - hours) * 60)
                 time_to = time(hours, minutes, 0)
                 
-                # Combinar fecha y hora
-                record.request_datetime_to = datetime.combine(record.request_date_to, time_to)
+                # Combinar fecha y hora y formatear como string
+                dt = datetime.combine(record.request_date_to, time_to)
+                record.request_datetime_to = dt.strftime('%d/%m/%Y %H:%M:%S')
             else:
-                record.request_datetime_to = False
+                record.request_datetime_to = ''
 
-    @api.depends('request_datetime_from', 'request_datetime_to', 'number_of_days', 'request_unit_half', 'request_unit_hours')
+    @api.depends('request_date_from', 'request_hour_from', 'request_date_to', 'request_hour_to', 'number_of_days', 'request_unit_half', 'request_unit_hours')
     def _compute_display_duration(self):
         for record in self:
 
-            if record.request_unit_hours and record.request_datetime_from and record.request_datetime_to:
-                time_delta = record.request_datetime_to - record.request_datetime_from
+            if record.request_unit_hours and record.request_date_from and record.request_date_to and record.request_hour_from is not False and record.request_hour_to is not False:
+                # Calcular diferencia usando los campos originales
+                hours_from = int(record.request_hour_from)
+                minutes_from = int((record.request_hour_from - hours_from) * 60)
+                time_from = time(hours_from, minutes_from, 0)
+                datetime_from = datetime.combine(record.request_date_from, time_from)
+                
+                hours_to = int(record.request_hour_to)
+                minutes_to = int((record.request_hour_to - hours_to) * 60)
+                time_to = time(hours_to, minutes_to, 0)
+                datetime_to = datetime.combine(record.request_date_to, time_to)
+                
+                time_delta = datetime_to - datetime_from
                 total_seconds = time_delta.total_seconds()
                 total_hours = total_seconds / 3600.0
                 
@@ -96,3 +130,23 @@ class security_view(models.Model):
             
             else:
                 record.display_duration = "0 día(s)"
+
+    def action_check_in(self):
+        """Registra la hora de entrada del permiso. Solo se puede hacer si no hay entrada registrada."""
+        self.ensure_one()
+        if self.check_in_time:
+            raise UserError('La entrada ya fue registrada. Hora: {}'.format(self.check_in_time))
+        self.sudo().write({
+            'check_in_time': fields.Datetime.now()
+        })
+
+    def action_check_out(self):
+        """Registra la hora de salida del permiso. Requiere que check_in haya sido registrado."""
+        self.ensure_one()
+        if not self.check_in_time:
+            raise UserError('Debe registrar la entrada antes de registrar la salida.')
+        if self.check_out_time:
+            raise UserError('La salida ya fue registrada. Hora: {}'.format(self.check_out_time))
+        self.sudo().write({
+            'check_out_time': fields.Datetime.now()
+        })

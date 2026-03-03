@@ -10,10 +10,14 @@ FIXED_DEVICE_TIMEZONE_NAME = 'America/Tijuana'
 
 NEW_LEAVE_STATUSES = [
     ('leave_paid', 'Permiso pagado'),
+    ('leave_abscent', 'Permiso de ausencia'),
+    ('leave_hours', 'Permiso por horas'),
+    ('leave_hours_paid', 'Permiso pagado por horas'),
     ('leave_vacation', 'Vacaciones'),
     ('leave_maternity', 'Maternidad'),
     ('leave_paternity', 'Paternidad'),
     ('leave_sickness', 'Incapacidad'),
+    ('leave_sickness_paid', 'Tiempo personal por enfermedad'),
     ('leave_suspension', 'Suspensión'),
     ('leave_unpaid', 'Permiso no pagado'),
     ('leave_payday', 'Permiso día pagado'),

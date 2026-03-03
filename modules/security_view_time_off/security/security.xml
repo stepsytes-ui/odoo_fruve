@@ -15,13 +15,12 @@
                 ('request_date_from', '&lt;=', time.strftime('%Y-%m-%d')),
                 ('request_date_to', '&gt;=', time.strftime('%Y-%m-%d')),
                 ('employee_id.company_id', 'in', company_ids),
-                ('punctuality_status', 'in', [
-                    'leave_abscent',
-                    'leave_hours',
-                    'leave_hours_paid',
-                    'leave_delay_pass_paid',
-                    'leave_partial_paid',
-                    'leave_partial_unpaid'
+                ('holiday_status_id.name', 'in', [
+                    'Permiso por horas',
+                    'Permiso pagado por horas',
+                    'Permiso retardo',
+                    'Permiso parcial pagado',
+                    'Permiso parcial no pagado'
                 ])
             ]</field>
 

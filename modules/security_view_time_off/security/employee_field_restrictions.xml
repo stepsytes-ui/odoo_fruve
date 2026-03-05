@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Restricción de acceso a hr.employee para Guardias/Supervisores
+        Las reglas ir.rule combinadas con vistas en los módulos employee_modifications 
+        se encargan de controlar visibilidad de campos privados -->
+    </data>
+</odoo>
+

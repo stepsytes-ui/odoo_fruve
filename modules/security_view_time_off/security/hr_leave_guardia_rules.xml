@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        
+        <!-- 
+        Nota: El grupo 'group_time_off_security' tiene una regla que filtra hr.leave a solo permisos aprobados de hoy.
+        El grupo 'group_guardia' (definido en employee_modifications) hereda automáticamente de 'group_time_off_security',
+        por lo que esta regla se aplica a los Guardias también.
+        
+        Esta regla asegura que SOLO pueden ver permisos aprobados para hoy, evitando acceso a otros registros.
+        -->
+        
+        <!-- Exceptuamos group_time_off_security de la regla de empleados para que usen su propia regla filtrada -->
+        <!-- Esto ya está hecho en security.xml con el campo groups que excluye group_time_off_security -->
+        
+    </data>
+</odoo>
+

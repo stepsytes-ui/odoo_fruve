@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Vistas heredadas para Guardias/Supervisores en hr.leave
+        Restricciones:
+        - Solo lectura
+        - Sin botones de acción
+        - Sin campos de administración
+        
+        Las reglas ir.rule filtran qué registros pueden ver (solo permisos de hoy)
+        -->
+    </data>
+</odoo>
+

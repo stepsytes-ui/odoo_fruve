@@ -54,31 +54,27 @@ class HrSuspension(models.Model):
     
     date_from = fields.Date(
         string='Fecha Inicio',
-        required=True,
         tracking=True
-    )
-    
-    total_days = fields.Integer(
-        string='Días Totales',
-        default=1,
-        required=True,
-        tracking=True,
-        help='Cantidad de días de la suspensión (considerando días laborables)'
     )
     
     date_to = fields.Date(
         string='Fecha Fin',
-        compute='_compute_date_to',
-        store=True,
         tracking=True,
-        help='Fecha de fin calculada automáticamente'
+        help='Fecha de fin de la suspensión'
     )
     
-    duration_days = fields.Float(
-        string='Duración (Días)',
-        compute='_compute_duration',
-        store=True,
-        help='Duración en días de la suspensión'
+    modality = fields.Selection([
+        ('continuous', 'Suspensión Continua'),
+        ('non_continuous', 'Suspensión No Continua')
+    ], string='Modalidad', default='continuous', required=True, tracking=True,
+        help='Tipo de suspensión: continua (rango de fechas) o no continua (fechas individuales)')
+    
+    suspension_line_ids = fields.One2many(
+        'hr.suspension.line',
+        'suspension_id',
+        string='Fechas de Suspensión',
+        tracking=True,
+        help='Fechas individuales de suspensión para suspensiones no continuas'
     )
     
     reason = fields.Text(
@@ -87,11 +83,23 @@ class HrSuspension(models.Model):
         tracking=True
     )
     
-    leave_id = fields.Many2one(
+    leave_ids = fields.One2many(
         'hr.leave',
-        string='Ausencia Relacionada',
+        'suspension_id',
+        string='Ausencias Relacionadas',
         readonly=True,
-        help='Ausencia de tipo Suspensión que creó este registro'
+        help='Ausencias de tipo Suspensión creadas por este registro'
+    )
+    
+    leave_count = fields.Integer(
+        string='Cantidad de Ausencias',
+        compute='_compute_leave_count',
+        help='Cantidad de ausencias relacionadas creadas'
+    )
+    
+    notes = fields.Html(
+        string='Notas Adicionales',
+        tracking=True
     )
     
     state = fields.Selection([
@@ -119,138 +127,145 @@ class HrSuspension(models.Model):
         default=True
     )
 
-    @api.depends('date_from', 'total_days', 'employee_id')
-    def _compute_date_to(self):
-        """Calcula la fecha de fin considerando días laborables, descansos y festivos"""
+    @api.depends('modality', 'suspension_line_ids', 'suspension_line_ids.suspension_date')
+    def _compute_leave_count(self):
+        """Calcula la cantidad de ausencias relacionadas"""
         for suspension in self:
-            if suspension.date_from and suspension.total_days and suspension.employee_id:
-                # Obtener el calendario laboral del empleado
-                calendar = suspension.employee_id.resource_calendar_id
-                
-                if not calendar:
-                    # Si no hay calendario configurado, usar cálculo simple
-                    suspension.date_to = suspension.date_from + timedelta(days=suspension.total_days - 1)
-                else:
-                    try:
-                        # Calcular la fecha final agregando días laborables
-                        # Iterar día a día desde date_from hasta contar total_days días laborables
-                        current_date = suspension.date_from
-                        days_counted = 0
-                        
-                        while days_counted < suspension.total_days:
-                            # Convertir a datetime con timezone para verificar si es día laboral
-                            tz = pytz.timezone(calendar.tz or 'UTC')
-                            check_datetime = tz.localize(datetime.combine(current_date, datetime.min.time()))
-                            
-                            is_working_day = False
-                            
-                            # Intentar obtener intervalos de trabajo
-                            try:
-                                intervals = calendar._get_working_intervals_data(
-                                    check_datetime,
-                                    check_datetime + timedelta(hours=24),
-                                    resource=suspension.employee_id.resource_id
-                                )
-                                
-                                # Verificar si hay horas de trabajo registradas
-                                if intervals:
-                                    for resource_id, interval_list in intervals.items():
-                                        if interval_list:  # Si hay intervalos, es un día laboral
-                                            is_working_day = True
-                                            break
-                            except:
-                                # Intentar método alternativo
-                                try:
-                                    day_data = calendar._get_work_hours_data(
-                                        check_datetime,
-                                        resources=suspension.employee_id.resource_id
-                                    )
-                                    if day_data:
-                                        work_hours = day_data.get(suspension.employee_id.resource_id.id, 0) if suspension.employee_id.resource_id else 0
-                                        if work_hours > 0:
-                                            is_working_day = True
-                                except:
-                                    # Si no hay calendario info, asumimos que es laboral
-                                    is_working_day = True
-                            
-                            # Contar el día si es laboral
-                            if is_working_day:
-                                days_counted += 1
-                                if days_counted >= suspension.total_days:
-                                    break
-                            
-                            current_date += timedelta(days=1)
-                        
-                        suspension.date_to = current_date
-                    except Exception:
-                        # Último fallback: cálculo simple sin considerar calendario
-                        suspension.date_to = suspension.date_from + timedelta(days=suspension.total_days - 1)
-            else:
-                suspension.date_to = None
+            suspension.leave_count = len(suspension.leave_ids)
 
-    @api.depends('date_from', 'date_to')
-    def _compute_duration(self):
-        """Calcula la duración en días de la suspensión"""
-        for suspension in self:
-            if suspension.date_from and suspension.date_to:
-                delta = suspension.date_to - suspension.date_from
-                suspension.duration_days = delta.days + 1  # +1 para incluir el día inicial
-            else:
-                suspension.duration_days = 0.0
-
-    @api.constrains('date_from', 'date_to')
+    @api.constrains('date_from', 'date_to', 'modality', 'suspension_line_ids')
     def _check_dates(self):
-        """Valida que la fecha de fin sea posterior a la fecha de inicio"""
+        """Valida las fechas según la modalidad"""
         for suspension in self:
-            if suspension.date_from and suspension.date_to:
+            if suspension.modality == 'continuous':
+                # Para suspensión continua, requiere fechas explícitas
+                if not suspension.date_from or not suspension.date_to:
+                    raise ValidationError(
+                        _('Para una suspensión continua debe especificar fecha de inicio y fin.')
+                    )
                 if suspension.date_to < suspension.date_from:
                     raise ValidationError(
                         _('La fecha de fin debe ser posterior a la fecha de inicio.')
                     )
+            elif suspension.modality == 'non_continuous':
+                # Para suspensión no continua, requiere al menos una línea
+                if not suspension.suspension_line_ids:
+                    raise ValidationError(
+                        _('Para una suspensión no continua debe agregar al menos una fecha en la tabla.')
+                    )
+                # date_from y date_to pueden estar vacíos en non_continuous
 
-    @api.constrains('employee_id', 'date_from', 'date_to')
+    @api.constrains('employee_id', 'date_from', 'date_to', 'suspension_line_ids', 'modality')
     def _check_overlapping_suspensions(self):
         """Valida que no existan suspensiones superpuestas para el mismo empleado"""
         for suspension in self:
             if suspension.state in ['cancel', 'refuse']:
                 continue
-                
-            domain = [
-                ('employee_id', '=', suspension.employee_id.id),
-                ('id', '!=', suspension.id),
-                ('state', 'not in', ['cancel', 'refuse']),
-                ('date_from', '<=', suspension.date_to),
-                ('date_to', '>=', suspension.date_from),
-            ]
             
-            overlapping = self.search(domain, limit=1)
-            if overlapping:
-                raise ValidationError(
-                    _('Ya existe una suspensión para %s en el período del %s al %s.') % (
-                        suspension.employee_id.name,
-                        overlapping.date_from,
-                        overlapping.date_to
+            if suspension.modality == 'continuous':
+                domain = [
+                    ('employee_id', '=', suspension.employee_id.id),
+                    ('id', '!=', suspension.id),
+                    ('state', 'not in', ['cancel', 'refuse']),
+                    ('modality', '=', 'continuous'),
+                    ('date_from', '<=', suspension.date_to),
+                    ('date_to', '>=', suspension.date_from),
+                ]
+                
+                overlapping = self.search(domain, limit=1)
+                if overlapping:
+                    raise ValidationError(
+                        _('Ya existe una suspensión para %s en el período del %s al %s.') % (
+                            suspension.employee_id.name,
+                            overlapping.date_from,
+                            overlapping.date_to
+                        )
                     )
-                )
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Generar el folio automáticamente al crear una suspensión"""
+        """Generar el folio automáticamente al crear una suspensión y llenar fechas para non_continuous"""
         for vals in vals_list:
             if vals.get('name', _('Nueva')) == _('Nueva'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('hr.suspension') or _('Nueva')
+            
+            # Para suspensiones no continuas, llenar automáticamente date_from y date_to con las fechas de las líneas
+            if vals.get('modality') == 'non_continuous':
+                lines = vals.get('suspension_line_ids', [])
+                dates = []
+                
+                # Extraer fechas de los comandos de creación
+                for line in lines:
+                    if line[0] == 0:  # Comando de creación (0, _, {...})
+                        suspension_date = line[2].get('suspension_date')
+                        if suspension_date:
+                            dates.append(suspension_date)
+                
+                # Si hay fechas, usar la mínima y máxima
+                if dates:
+                    vals['date_from'] = min(dates)
+                    vals['date_to'] = max(dates)
+        
         return super(HrSuspension, self).create(vals_list)
+
+    def write(self, vals):
+        """Override write para llenar automáticamente fechas en non_continuous"""
+        for suspension in self:
+            modality = vals.get('modality', suspension.modality)
+            
+            # Si es non_continuous y se están actualizando las líneas
+            if modality == 'non_continuous' and 'suspension_line_ids' in vals:
+                lines = vals.get('suspension_line_ids', [])
+                # Obtener fechas existentes (que no se están eliminando)
+                existing_dates = [
+                    line.suspension_date 
+                    for line in suspension.suspension_line_ids
+                    if not any(l[0] == 2 and l[1] == line.id for l in lines)  # Excluir eliminadas
+                ]
+                dates = list(existing_dates)
+                
+                # Agregar fechas nuevas
+                for line in lines:
+                    if line[0] == 0:  # Crear
+                        suspension_date = line[2].get('suspension_date')
+                        if suspension_date:
+                            dates.append(suspension_date)
+                    elif line[0] == 1:  # Actualizar
+                        suspension_date = line[2].get('suspension_date')
+                        if suspension_date:
+                            dates.append(suspension_date)
+                
+                # Llenar fechas si hay líneas
+                if dates:
+                    vals['date_from'] = min(dates)
+                    vals['date_to'] = max(dates)
+        
+        return super(HrSuspension, self).write(vals)
 
     def action_confirm(self):
         """Confirma la suspensión"""
+        # Para suspensiones no continuas, auto-llenar date_from y date_to si no están llenados
+        for suspension in self:
+            if suspension.modality == 'non_continuous' and (not suspension.date_from or not suspension.date_to):
+                valid_lines = [line for line in suspension.suspension_line_ids if line.suspension_date]
+                if valid_lines:
+                    dates = [line.suspension_date for line in valid_lines]
+                    suspension.write({
+                        'date_from': min(dates),
+                        'date_to': max(dates)
+                    })
+        
         self.write({'state': 'confirm'})
 
     def action_validate(self):
-        """Aprueba la suspensión y crea el registro en hr.leave"""
+        """Aprueba la suspensión y crea los registros en hr.leave"""
         self.write({'state': 'validate'})
-        # Crear el registro en hr.leave
+        # Crear los registros en hr.leave
         for suspension in self:
-            suspension._create_leave_record()
+            if suspension.modality == 'continuous':
+                suspension._create_leave_record_continuous()
+            elif suspension.modality == 'non_continuous':
+                suspension._create_leave_records_non_continuous()
 
     def action_refuse(self):
         """Rechaza la suspensión"""
@@ -264,15 +279,8 @@ class HrSuspension(models.Model):
         """Regresa la suspensión a borrador"""
         self.write({'state': 'draft'})
 
-    def _create_leave_record(self):
-        """Crea un registro de ausencia (hr.leave) de tipo Suspensión"""
-        self.ensure_one()
-        
-        # Evitar crear múltiples registros
-        if self.leave_id:
-            return self.leave_id
-        
-        # Obtener o crear el tipo de ausencia 'Suspensión'
+    def _get_suspension_holiday_status(self):
+        """Obtiene el tipo de ausencia para suspensiones"""
         holiday_status = self.env['hr.leave.type'].search([
             ('name', '=', 'Suspensión')
         ], limit=1)
@@ -282,12 +290,22 @@ class HrSuspension(models.Model):
                 _('No se encontró el tipo de ausencia "Suspensión". Por favor cree uno en Recursos Humanos > Configuración > Tipo de Ausencia.')
             )
         
-        # Convertir fechas a datetime naive (hora 00:00:00)
-        # Odoo espera datetimes sin timezone para los campos
-        date_from = datetime.combine(self.date_from, datetime.min.time())
-        date_to = datetime.combine(self.date_to, datetime.min.time())
+        return holiday_status
+
+    def _create_leave_record_continuous(self):
+        """Crea un registro de ausencia para suspensión continua"""
+        self.ensure_one()
         
-        # Crear el registro de ausencia con un contexto que evita crear una nueva suspensión
+        if self.leave_ids:
+            return  # Ya existen registros
+        
+        holiday_status = self._get_suspension_holiday_status()
+        
+        # Convertir fechas a datetime naive
+        date_from = datetime.combine(self.date_from, datetime.min.time())
+        date_to = datetime.combine(self.date_to, datetime.max.time())
+        
+        # Crear el registro de ausencia
         leave_vals = {
             'employee_id': self.employee_id.id,
             'holiday_status_id': holiday_status.id,
@@ -297,26 +315,64 @@ class HrSuspension(models.Model):
             'request_date_to': self.date_to,
             'name': self.reason or ('Suspensión - ' + self.name),
             'supervisor_id': self.supervisor_id.id if self.supervisor_id else False,
-            'suspension_id': self.id,  # Vincular el leave con esta suspensión
+            'suspension_id': self.id,
         }
         
         try:
-            # Usar contexto para evitar crear una nueva suspensión desde el leave
-            # y permitir la validación automática
             leave = self.env['hr.leave'].with_context(
                 skip_suspension_creation=True,
                 leave_skip_state_check=True
             ).sudo().create(leave_vals)
             
-            # Validar el leave automáticamente con el contexto preservado
             leave.with_context(skip_suspension_creation=True).sudo().action_validate()
-            
-            self.leave_id = leave.id
-            return leave
         except Exception as e:
             raise ValidationError(
                 _('Error al crear la ausencia: %s') % str(e)
             )
+
+    def _create_leave_records_non_continuous(self):
+        """Crea múltiples registros de ausencia para suspensión no continua"""
+        self.ensure_one()
+        
+        if self.leave_ids:
+            return  # Ya existen registros
+        
+        holiday_status = self._get_suspension_holiday_status()
+        
+        for line in self.suspension_line_ids:
+            if line.leave_id:
+                continue  # Ya existe registro
+            
+            # Para suspensión de un día
+            date_from = datetime.combine(line.suspension_date, datetime.min.time())
+            date_to = datetime.combine(line.suspension_date, datetime.max.time())
+            
+            leave_vals = {
+                'employee_id': self.employee_id.id,
+                'holiday_status_id': holiday_status.id,
+                'date_from': date_from,
+                'date_to': date_to,
+                'request_date_from': line.suspension_date,
+                'request_date_to': line.suspension_date,
+                'name': self.reason or ('Suspensión - ' + self.name),
+                'supervisor_id': self.supervisor_id.id if self.supervisor_id else False,
+                'suspension_id': self.id,
+            }
+            
+            try:
+                leave = self.env['hr.leave'].with_context(
+                    skip_suspension_creation=True,
+                    leave_skip_state_check=True
+                ).sudo().create(leave_vals)
+                
+                leave.with_context(skip_suspension_creation=True).sudo().action_validate()
+                
+                # Vincular el leave con la línea
+                line.leave_id = leave.id
+            except Exception as e:
+                raise ValidationError(
+                    _('Error al crear la ausencia para %s: %s') % (line.suspension_date, str(e))
+                )
 
     @api.model
     def _name_search(self, name, domain=None, operator='ilike', limit=None, order=None):

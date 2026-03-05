@@ -8,6 +8,7 @@ access_employee_expedient_history_movements,employee_expedient_history_movements
 access_employee_warning,employee_warning,model_employee_warning,base.group_user,1,1,1,1
 access_employee_documents,employee_documents,model_employee_documents,hr.group_hr_user,1,1,1,1
 access_hr_suspension,hr_suspension,model_hr_suspension,base.group_user,1,1,1,1
+access_hr_suspension_line,hr_suspension_line,model_hr_suspension_line,base.group_user,1,1,1,1
 access_hr_incapacity,hr_incapacity,model_hr_incapacity,base.group_user,1,1,1,1
 access_hr_permission,hr_permission,model_hr_permission,base.group_user,1,1,1,1
 access_hr_vacation,hr_vacation,model_hr_vacation,base.group_user,1,1,1,1
@@ -33,6 +34,8 @@ access_hr_leave_type_supervisor,hr.leave.type.supervisor,hr_holidays.model_hr_le
 access_hr_leave_allocation_supervisor,hr.leave.allocation.supervisor,hr_holidays.model_hr_leave_allocation,group_supervisor,1,0,0,0
 access_resource_resource_supervisor,resource.resource.supervisor,resource.model_resource_resource,group_supervisor,1,0,0,0
 access_hr_employee_category_supervisor,hr.employee.category.supervisor,hr.model_hr_employee_category,group_supervisor,1,0,0,0
+access_hr_suspension_supervisor,hr.suspension.supervisor,model_hr_suspension,group_supervisor,1,1,1,1
+access_hr_suspension_line_supervisor,hr.suspension.line.supervisor,model_hr_suspension_line,group_supervisor,1,1,1,1
 access_hr_employee_guardia,hr.employee.guardia,hr.model_hr_employee,group_guardia,1,1,0,0
 access_hr_employee_public_guardia,hr.employee.public.guardia,hr.model_hr_employee_public,group_guardia,1,1,0,0
 access_hr_department_guardia,hr.department.guardia,hr.model_hr_department,group_guardia,1,0,0,0
@@ -47,6 +50,8 @@ access_hr_leave_type_guardia,hr.leave.type.guardia,hr_holidays.model_hr_leave_ty
 access_hr_leave_allocation_guardia,hr.leave.allocation.guardia,hr_holidays.model_hr_leave_allocation,group_guardia,1,0,0,0
 access_resource_resource_guardia,resource.resource.guardia,resource.model_resource_resource,group_guardia,1,0,0,0
 access_hr_employee_category_guardia,hr.employee.category.guardia,hr.model_hr_employee_category,group_guardia,1,0,0,0
+access_hr_suspension_guardia,hr.suspension.guardia,model_hr_suspension,group_guardia,1,1,1,1
+access_hr_suspension_line_guardia,hr.suspension.line.guardia,model_hr_suspension_line,group_guardia,1,1,1,1
 access_shift_management_supervisor,shift.management.supervisor,zkteco_realtime_connector.model_shift_management,group_supervisor,1,0,0,0
 access_employee_warning_reject_wizard,employee_warning_reject_wizard,model_employee_warning_reject_wizard,base.group_user,1,1,1,1
 access_shift_management_guardia,shift.management.guardia,zkteco_realtime_connector.model_shift_management,group_guardia,1,0,0,0

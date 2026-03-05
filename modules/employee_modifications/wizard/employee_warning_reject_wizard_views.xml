@@ -8,7 +8,7 @@
             <form string="Rechazar Amonestación">
                 <group>
                     <field name="warning_id" readonly="1"/>
-                    <field name="rejection_reason" placeholder="Ingrese el motivo de rechazo..."/>
+                    <field name="rejection_reason"/>
                 </group>
                 <footer>
                     <button name="action_reject" string="Confirmar Rechazo" type="object" class="btn-danger"/>

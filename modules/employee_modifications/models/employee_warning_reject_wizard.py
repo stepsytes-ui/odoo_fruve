@@ -14,8 +14,7 @@ class EmployeeWarningRejectWizard(models.TransientModel):
 
     rejection_reason = fields.Text(
         string='Motivo del Rechazo',
-        required=True,
-        placeholder='Ingrese el motivo por el cual se rechaza esta amonestación...'
+        required=True
     )
 
     def action_reject(self):

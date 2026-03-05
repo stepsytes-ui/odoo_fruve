@@ -83,6 +83,13 @@ class HrSuspension(models.Model):
         tracking=True
     )
     
+    leave_id = fields.Many2one(
+        'hr.leave',
+        string='Ausencia Origen',
+        readonly=True,
+        help='Ausencia de hr.leave que originó esta suspensión'
+    )
+    
     leave_ids = fields.One2many(
         'hr.leave',
         'suspension_id',
@@ -258,14 +265,21 @@ class HrSuspension(models.Model):
         self.write({'state': 'confirm'})
 
     def action_validate(self):
-        """Aprueba la suspensión y crea los registros en hr.leave"""
+        """Aprueba la suspensión y crea los registros en hr.leave si no fueron creados desde hr.leave"""
         self.write({'state': 'validate'})
-        # Crear los registros en hr.leave
+        # Crear los registros en hr.leave SOLO si la suspensión no fue originada desde hr.leave
         for suspension in self:
-            if suspension.modality == 'continuous':
-                suspension._create_leave_record_continuous()
-            elif suspension.modality == 'non_continuous':
-                suspension._create_leave_records_non_continuous()
+            # Si leave_id está lleno, significa que fue creada desde hr.leave, así que no crear más registros
+            if suspension.leave_id:
+                # Solo validar el leave_id existente si no está validado
+                if suspension.leave_id.state not in ['validate', 'validate1']:
+                    suspension.leave_id.with_context(skip_suspension_creation=True).sudo().action_validate()
+            else:
+                # Si no tiene leave_id, crear los registros normalmente
+                if suspension.modality == 'continuous':
+                    suspension._create_leave_record_continuous()
+                elif suspension.modality == 'non_continuous':
+                    suspension._create_leave_records_non_continuous()
 
     def action_refuse(self):
         """Rechaza la suspensión"""

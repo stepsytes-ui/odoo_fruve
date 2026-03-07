@@ -14,18 +14,14 @@
                 ('state', 'in', ['validate', 'validate1']),
                 ('request_date_from', '&lt;=', time.strftime('%Y-%m-%d')),
                 ('request_date_to', '&gt;=', time.strftime('%Y-%m-%d')),
-                ('employee_id.company_id', 'in', company_ids),
-                ('holiday_status_id.name', 'in', [
-                    'Permiso por horas',
-                    'Permiso pagado por horas',
-                    'Permiso retardo',
-                    'Permiso parcial pagado',
-                    'Permiso parcial no pagado'
-                ])
+                ('company_id', 'in', company_ids)
             ]</field>
 
             <field name="groups" eval="[(4, ref('security_view_time_off.group_time_off_security'))]"/>
             <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
 
         <record id="hr_holidays.hr_leave_rule_employee" model="ir.rule">

@@ -55,3 +55,8 @@ access_hr_suspension_line_guardia,hr.suspension.line.guardia,model_hr_suspension
 access_shift_management_supervisor,shift.management.supervisor,zkteco_realtime_connector.model_shift_management,group_supervisor,1,0,0,0
 access_employee_warning_reject_wizard,employee_warning_reject_wizard,model_employee_warning_reject_wizard,base.group_user,1,1,1,1
 access_shift_management_guardia,shift.management.guardia,zkteco_realtime_connector.model_shift_management,group_guardia,1,0,0,0
+access_employee_resguardo_asset_hr,employee.resguardo.asset.hr,model_employee_resguardo_asset,hr.group_hr_user,1,1,1,1
+access_employee_resguardo_hr,employee.resguardo.hr,model_employee_resguardo,hr.group_hr_user,1,1,1,1
+access_employee_resguardo_line_hr,employee.resguardo.line.hr,model_employee_resguardo_line,hr.group_hr_user,1,1,1,1
+access_employee_resguardo_assign_wizard_hr,employee.resguardo.assign.wizard.hr,model_employee_resguardo_assign_wizard,hr.group_hr_user,1,1,1,1
+access_employee_resguardo_assign_wizard_line_hr,employee.resguardo.assign.wizard.line.hr,model_employee_resguardo_assign_wizard_line,hr.group_hr_user,1,1,1,1

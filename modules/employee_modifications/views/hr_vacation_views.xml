@@ -187,14 +187,29 @@
             </field>
         </record>
 
+        <record id="view_employee_form_inherit_resguardo_button" model="ir.ui.view">
+            <field name="name">hr.employee.form.inherit.resguardo.button</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="employee_modifications.view_employee_form_inherit_vacation_button"/>
+            <field name="arch" type="xml">
+                <xpath expr="//button[@name='action_view_vacations']" position="after">
+                    <button name="action_view_resguardos"
+                            type="object"
+                            string="Resguardo"
+                            class="btn-secondary"
+                            groups="hr.group_hr_user"/>
+                </xpath>
+            </field>
+        </record>
+
         <!-- Extender vista de hr.employee para agregar botón de Carta Laboral -->
         <record id="view_employee_form_inherit_carta_laboral_button" model="ir.ui.view">
             <field name="name">hr.employee.form.inherit.carta.laboral.button</field>
             <field name="model">hr.employee</field>
-            <field name="inherit_id" ref="employee_modifications.view_employee_form_inherit_vacation_button"/>
+            <field name="inherit_id" ref="employee_modifications.view_employee_form_inherit_resguardo_button"/>
             <field name="arch" type="xml">
-                <!-- Agregar botón de Carta Laboral después del botón de Vacaciones -->
-                <xpath expr="//button[@name='action_view_vacations']" position="after">
+                <!-- Agregar botón de Carta Laboral después del botón de Resguardo -->
+                <xpath expr="//button[@name='action_view_resguardos']" position="after">
                     <button name="%(employee_modifications.report_carta_laboral)d"
                             type="action"
                             string="Imprimir Carta Laboral"

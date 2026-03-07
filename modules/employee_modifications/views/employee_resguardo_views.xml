@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_employee_resguardo_asset_list" model="ir.ui.view">
+            <field name="name">employee.resguardo.asset.list</field>
+            <field name="model">employee.resguardo.asset</field>
+            <field name="arch" type="xml">
+                <list string="Catalogo de Objetos" editable="bottom">
+                    <field name="tipo_resguardo"/>
+                    <field name="nombre"/>
+                    <field name="color"/>
+                    <field name="marca" optional="show" invisible="tipo_resguardo != 'dispositivo'"/>
+                    <field name="modelo" optional="show" invisible="tipo_resguardo != 'dispositivo'"/>
+                    <field name="numero_serie" optional="show" invisible="tipo_resguardo != 'dispositivo'"/>
+                    <field name="almacenamiento" optional="show" invisible="tipo_resguardo != 'dispositivo'"/>
+                    <field name="funcionando_correctamente" widget="boolean_toggle"/>
+                    <field name="active" optional="show"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_employee_resguardo_asset_form" model="ir.ui.view">
+            <field name="name">employee.resguardo.asset.form</field>
+            <field name="model">employee.resguardo.asset</field>
+            <field name="arch" type="xml">
+                <form string="Objeto de Resguardo">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="tipo_resguardo"/>
+                                <field name="nombre"/>
+                                <field name="color"/>
+                                <field name="funcionando_correctamente"/>
+                                <field name="active"/>
+                            </group>
+                            <group string="Datos de Dispositivo" invisible="tipo_resguardo != 'dispositivo'">
+                                <field name="marca" required="tipo_resguardo == 'dispositivo'"/>
+                                <field name="modelo" required="tipo_resguardo == 'dispositivo'"/>
+                                <field name="numero_serie" required="tipo_resguardo == 'dispositivo'"/>
+                                <field name="almacenamiento" required="tipo_resguardo == 'dispositivo'"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="descripcion" placeholder="Descripcion opcional"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_employee_resguardo_asset_search" model="ir.ui.view">
+            <field name="name">employee.resguardo.asset.search</field>
+            <field name="model">employee.resguardo.asset</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Objetos de Resguardo">
+                    <field name="nombre"/>
+                    <field name="numero_serie"/>
+                    <field name="tipo_resguardo"/>
+                    <filter string="Activos" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
+                    <group expand="0" string="Agrupar por">
+                        <filter string="Tipo" name="group_tipo" context="{'group_by': 'tipo_resguardo'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_employee_resguardo_asset" model="ir.actions.act_window">
+            <field name="name">Catalogo de Objetos Resguardo</field>
+            <field name="res_model">employee.resguardo.asset</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_employee_resguardo_asset_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Registre herramientas, dispositivos o articulos generales para resguardo.
+                </p>
+            </field>
+        </record>
+
+        <record id="view_employee_resguardo_list" model="ir.ui.view">
+            <field name="name">employee.resguardo.list</field>
+            <field name="model">employee.resguardo</field>
+            <field name="arch" type="xml">
+                <list string="Resguardos"
+                      decoration-info="state == 'draft'"
+                      decoration-warning="state == 'partial'"
+                      decoration-success="state == 'returned'"
+                      decoration-danger="state == 'active'">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="biometric_id"/>
+                    <field name="fecha_entrega"/>
+                    <field name="fecha_devolucion"/>
+                    <field name="responsable_rh_id"/>
+                    <field name="total_items"/>
+                    <field name="returned_items"/>
+                    <field name="state" widget="badge"
+                           decoration-danger="state == 'active'"
+                           decoration-warning="state == 'partial'"
+                           decoration-success="state == 'returned'"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_employee_resguardo_form" model="ir.ui.view">
+            <field name="name">employee.resguardo.form</field>
+            <field name="model">employee.resguardo</field>
+            <field name="arch" type="xml">
+                <form string="Resguardo de Empleado">
+                    <header>
+                        <button name="action_mark_all_returned" type="object" string="Marcar Todo Devuelto"
+                                class="btn-primary" invisible="state == 'returned' or not line_ids"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,active,partial,returned"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name" readonly="1"/>
+                                <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
+                                <field name="biometric_id" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="fecha_entrega"/>
+                                <field name="fecha_devolucion"/>
+                                <field name="responsable_rh_id"/>
+                            </group>
+                        </group>
+
+                        <group>
+                            <group>
+                                <field name="total_items" readonly="1"/>
+                                <field name="returned_items" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+                            <page string="Checklist de Equipo">
+                                <field name="line_ids">
+                                    <list editable="bottom">
+                                        <field name="asset_id" options="{'no_create': False}"/>
+                                        <field name="tipo_resguardo" readonly="1"/>
+                                        <field name="numero_serie" readonly="1" optional="show"/>
+                                        <field name="funcionando_al_entregar"/>
+                                        <field name="devuelto"/>
+                                        <field name="fecha_devolucion"/>
+                                        <field name="funcionando_al_devolver"/>
+                                        <field name="check_rh"/>
+                                        <field name="observaciones" optional="show"/>
+                                    </list>
+                                    <form>
+                                        <group>
+                                            <group>
+                                                <field name="asset_id" options="{'no_create': False}"/>
+                                                <field name="tipo_resguardo" readonly="1"/>
+                                                <field name="nombre" readonly="1"/>
+                                                <field name="color" readonly="1"/>
+                                                <field name="marca" readonly="1" invisible="tipo_resguardo != 'dispositivo'"/>
+                                                <field name="modelo" readonly="1" invisible="tipo_resguardo != 'dispositivo'"/>
+                                                <field name="numero_serie" readonly="1" invisible="tipo_resguardo != 'dispositivo'"/>
+                                                <field name="almacenamiento" readonly="1" invisible="tipo_resguardo != 'dispositivo'"/>
+                                            </group>
+                                            <group>
+                                                <field name="funcionando_al_entregar"/>
+                                                <field name="devuelto"/>
+                                                <field name="fecha_devolucion"/>
+                                                <field name="funcionando_al_devolver"/>
+                                                <field name="check_rh"/>
+                                            </group>
+                                        </group>
+                                        <group>
+                                            <field name="observaciones"/>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+
+                            <page string="Documentacion Firmada">
+                                <group>
+                                    <group string="Entrega">
+                                        <field name="documento_entrega" filename="documento_entrega_filename"/>
+                                        <field name="documento_entrega_filename" invisible="1"/>
+                                    </group>
+                                    <group string="Devolucion">
+                                        <field name="documento_devolucion" filename="documento_devolucion_filename"/>
+                                        <field name="documento_devolucion_filename" invisible="1"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <page string="Notas">
+                                <field name="notas" placeholder="Notas de entrega o devolucion"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_employee_resguardo_search" model="ir.ui.view">
+            <field name="name">employee.resguardo.search</field>
+            <field name="model">employee.resguardo</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Resguardos">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="biometric_id"/>
+                    <filter string="Activo" name="state_active" domain="[('state', '=', 'active')]"/>
+                    <filter string="Parcial" name="state_partial" domain="[('state', '=', 'partial')]"/>
+                    <filter string="Devuelto" name="state_returned" domain="[('state', '=', 'returned')]"/>
+                    <group expand="0" string="Agrupar por">
+                        <filter string="Empleado" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                        <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                        <filter string="Fecha Entrega" name="group_fecha" context="{'group_by': 'fecha_entrega'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_employee_resguardo" model="ir.actions.act_window">
+            <field name="name">Resguardos</field>
+            <field name="res_model">employee.resguardo</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_employee_resguardo_search"/>
+        </record>
+
+        <record id="view_hr_employee_form_inherit_resguardo_fields" model="ir.ui.view">
+            <field name="name">hr.employee.form.inherit.resguardo.fields</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//sheet//group/group/field[@name='company_id' and @groups='base.group_multi_company']" position="after">
+                    <field name="has_resguardo" required="1"/>
+                    <button name="action_open_resguardo_assign_wizard"
+                            type="object"
+                            string="Asignar Resguardo"
+                            class="btn-secondary"
+                            invisible="has_resguardo != 'si'"
+                            groups="hr.group_hr_user"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="menu_hr_resguardo" model="ir.ui.menu">
+            <field name="name">Resguardos</field>
+            <field name="parent_id" ref="employee_modifications.menu_hr_herramientas"/>
+            <field name="action" ref="employee_modifications.action_employee_resguardo"/>
+            <field name="sequence">52</field>
+            <field name="groups_id" eval="[(6, 0, [ref('hr.group_hr_user')])]"/>
+        </record>
+
+        <record id="menu_hr_resguardo_asset" model="ir.ui.menu">
+            <field name="name">Catalogo de Objetos Resguardo</field>
+            <field name="parent_id" ref="employee_modifications.menu_hr_herramientas"/>
+            <field name="action" ref="employee_modifications.action_employee_resguardo_asset"/>
+            <field name="sequence">53</field>
+            <field name="groups_id" eval="[(6, 0, [ref('hr.group_hr_user')])]"/>
+        </record>
+    </data>
+</odoo>

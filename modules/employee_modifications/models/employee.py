@@ -1,5 +1,6 @@
 
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.exceptions import AccessError, ValidationError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -162,6 +163,34 @@ class HrEmployeeExtension(models.Model):
         compute='_compute_vacation_count',
         help='Cantidad de solicitudes de vacaciones del empleado'
     )
+
+    has_resguardo = fields.Selection(
+        [
+            ('no', 'No'),
+            ('si', 'Si'),
+        ],
+        string='Cuenta con Resguardo',
+        required=True,
+        default='no',
+        tracking=True,
+        help='Indica si el empleado cuenta con equipo o herramienta en resguardo.',
+    )
+
+    resguardo_ids = fields.One2many(
+        'employee.resguardo',
+        'employee_id',
+        string='Resguardos',
+    )
+
+    resguardo_count = fields.Integer(
+        string='Numero de Resguardos',
+        compute='_compute_resguardo_count',
+    )
+
+    active_resguardo_count = fields.Integer(
+        string='Resguardos Activos',
+        compute='_compute_resguardo_count',
+    )
     
     # Campo para RFC (Odoo 18 no usa address_home_id, se maneja directamente)
     rfc = fields.Char(
@@ -275,6 +304,48 @@ class HrEmployeeExtension(models.Model):
         for employee in self:
             employee.vacation_count = len(employee.vacation_ids)
 
+    @api.depends('resguardo_ids', 'resguardo_ids.state')
+    def _compute_resguardo_count(self):
+        for employee in self:
+            employee.resguardo_count = len(employee.resguardo_ids)
+            employee.active_resguardo_count = len(
+                employee.resguardo_ids.filtered(lambda r: r.state in ['active', 'partial'])
+            )
+
+    @api.onchange('has_resguardo')
+    def _onchange_has_resguardo(self):
+        self.ensure_one()
+        if self.has_resguardo != 'si':
+            return
+
+        # En onchange Odoo usa un registro virtual; _origin es el registro real en BD.
+        employee = self._origin if self._origin and self._origin.id else self
+
+        if not employee.id:
+            return {
+                'warning': {
+                    'title': _('Guardar empleado primero'),
+                    'message': _('Guarde el empleado para poder abrir el asistente de asignacion de resguardo.'),
+                }
+            }
+
+        # Si el empleado ya existe, persistir el cambio inmediatamente y continuar flujo.
+        if employee.has_resguardo != 'si':
+            employee.write({'has_resguardo': 'si'})
+
+        has_open_resguardo = bool(employee.resguardo_ids.filtered(lambda r: r.state in ['active', 'partial', 'draft']))
+        if not has_open_resguardo:
+            return employee.action_open_resguardo_assign_wizard()
+
+    @api.constrains('has_resguardo', 'resguardo_ids', 'resguardo_ids.state')
+    def _check_has_resguardo_consistency(self):
+        for employee in self:
+            has_pending = bool(employee.resguardo_ids.filtered(lambda r: r.state in ['active', 'partial']))
+            if employee.has_resguardo == 'no' and has_pending:
+                raise ValidationError(
+                    'No puede marcar "Cuenta con Resguardo" en "No" mientras existan resguardos activos o parciales.'
+                )
+
     def write(self, vals):
         """Override para archivar el empleado cuando se marca como finiquitado"""
         _logger.info(f"🔵 write() llamado con vals: {vals}")
@@ -286,7 +357,6 @@ class HrEmployeeExtension(models.Model):
         
         # Si es supervisor o guardia (pero no RRHH), bloquear la edición
         if (is_supervisor or is_guardia) and not is_hr:
-            from odoo.exceptions import AccessError
             raise AccessError('No tiene permisos para modificar información de empleados. Solo el personal de RRHH puede realizar cambios.')
         
         # Si se marca como finiquitado, verificar si el empleado está inactivo
@@ -314,7 +384,6 @@ class HrEmployeeExtension(models.Model):
         
         # Si es supervisor o guardia (pero no RRHH), bloquear la creación
         if (is_supervisor or is_guardia) and not is_hr:
-            from odoo.exceptions import AccessError
             raise AccessError('No tiene permisos para crear empleados. Solo el personal de RRHH puede realizar esta acción.')
         
         employees = super().create(vals_list)
@@ -338,7 +407,6 @@ class HrEmployeeExtension(models.Model):
         
         # Si es supervisor o guardia (pero no RRHH), bloquear la eliminación
         if (is_supervisor or is_guardia) and not is_hr:
-            from odoo.exceptions import AccessError
             raise AccessError('No tiene permisos para eliminar empleados. Solo el personal de RRHH puede realizar esta acción.')
         
         return super().unlink()
@@ -507,6 +575,37 @@ class HrEmployeeExtension(models.Model):
                 'default_employee_id': self.id,
             },
             'target': 'current',
+        }
+
+    def action_view_resguardos(self):
+        """Abre el historial de resguardos del empleado"""
+        self.ensure_one()
+        return {
+            'name': f"Resguardos de {self.name}",
+            'type': 'ir.actions.act_window',
+            'res_model': 'employee.resguardo',
+            'view_mode': 'list,form',
+            'domain': [('employee_id', '=', self.id)],
+            'context': {
+                'default_employee_id': self.id,
+                'default_responsable_rh_id': self.env.user.id,
+            },
+            'target': 'current',
+        }
+
+    def action_open_resguardo_assign_wizard(self):
+        self.ensure_one()
+        return {
+            'name': 'Asignar Resguardo',
+            'type': 'ir.actions.act_window',
+            'res_model': 'employee.resguardo.assign.wizard',
+            'view_mode': 'form',
+            'view_id': self.env.ref('employee_modifications.view_employee_resguardo_assign_wizard_form').id,
+            'target': 'new',
+            'context': {
+                'default_employee_id': self.id,
+                'default_responsable_rh_id': self.env.user.id,
+            },
         }
 
     def get_fecha_ingreso(self):

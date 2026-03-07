@@ -1,5 +1,6 @@
 
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 
 class EmployeeExpedientBajaWizard(models.TransientModel):
     _name = 'employee.expedient.baja.wizard'
@@ -33,6 +34,24 @@ class EmployeeExpedientBajaWizard(models.TransientModel):
     
     def action_confirm_baja(self):
         self.ensure_one()
+
+        pending_resguardos = self.env['employee.resguardo'].search([
+            ('employee_id', '=', self.employee_id.id),
+            ('state', 'in', ['active', 'partial'])
+        ])
+
+        if pending_resguardos:
+            pending_items = pending_resguardos.mapped('line_ids').filtered(lambda l: not l.devuelto)
+            pending_names = ', '.join(pending_items.mapped('asset_id.nombre')[:10])
+            if pending_names:
+                raise ValidationError(
+                    'No se puede registrar la baja. El empleado tiene resguardos activos pendientes de devolucion: %s'
+                    % pending_names
+                )
+            raise ValidationError(
+                'No se puede registrar la baja. El empleado tiene resguardos activos pendientes de devolucion.'
+            )
+
         # 1. Buscar el expediente único del empleado
         expedient = self.env['employee.expedient'].search([('employee_id', '=', self.employee_id.id)], limit=1)
         

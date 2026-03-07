@@ -13,3 +13,4 @@ from . import hr_suspension
 from . import hr_incapacity
 from . import hr_permission
 from . import hr_vacation
+from . import employee_resguardo

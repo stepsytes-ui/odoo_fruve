@@ -132,7 +132,7 @@ class security_view(models.Model):
                 record.display_duration = "0 día(s)"
 
     def action_check_in(self):
-        """Registra la hora de entrada del permiso. Solo se puede hacer si no hay entrada registrada."""
+        """Registra la hora de entrada del permiso una sola vez."""
         self.ensure_one()
         if self.check_in_time:
             raise UserError('La entrada ya fue registrada. Hora: {}'.format(self.check_in_time))
@@ -141,10 +141,8 @@ class security_view(models.Model):
         })
 
     def action_check_out(self):
-        """Registra la hora de salida del permiso. Requiere que check_in haya sido registrado."""
+        """Registra la hora de salida del permiso una sola vez."""
         self.ensure_one()
-        if not self.check_in_time:
-            raise UserError('Debe registrar la entrada antes de registrar la salida.')
         if self.check_out_time:
             raise UserError('La salida ya fue registrada. Hora: {}'.format(self.check_out_time))
         self.sudo().write({

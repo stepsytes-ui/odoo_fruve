@@ -198,9 +198,9 @@ class EmployeeResguardoLine(models.Model):
 
     funcionando_al_entregar = fields.Boolean(string='Funcionando al Entregar', default=True)
     devuelto = fields.Boolean(string='Devuelto')
-    fecha_devolucion = fields.Date(string='Fecha de Devolucion')
+    fecha_devolucion = fields.Date(string='Fecha de Devolucion/Objeto')
     funcionando_al_devolver = fields.Boolean(string='Funcionando al Devolver', default=True)
-    check_rh = fields.Boolean(string='Checklist RH Validado')
+    check_rh = fields.Boolean(string='Objeto Validado')
     observaciones = fields.Text(string='Observaciones')
 
     @api.onchange('asset_id')

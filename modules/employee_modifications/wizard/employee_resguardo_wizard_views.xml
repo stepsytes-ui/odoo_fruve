@@ -28,9 +28,6 @@
                             </field>
                         </group>
 
-                        <group>
-                            <field name="notas" placeholder="Notas generales de entrega"/>
-                        </group>
                     </sheet>
                     <footer>
                         <button name="action_confirm_assign" string="Crear Resguardo" type="object" class="btn-primary"/>

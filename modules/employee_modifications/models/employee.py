@@ -414,6 +414,23 @@ class HrEmployeeExtension(models.Model):
     def action_open_expedient_baja_wizard(self):
         self.ensure_one()
         _logger.info("🟢 Abriendo wizard de baja para el empleado %s", self.name)
+
+        pending_resguardos = self.env['employee.resguardo'].search([
+            ('employee_id', '=', self.id),
+            ('state', 'in', ['active', 'partial']),
+        ])
+        if pending_resguardos:
+            pending_items = pending_resguardos.mapped('line_ids').filtered(lambda l: not l.devuelto)
+            pending_names = ', '.join(pending_items.mapped('asset_id.nombre')[:10])
+            if pending_names:
+                raise ValidationError(
+                    _('No se puede registrar la baja. El empleado tiene resguardos activos pendientes de devolucion: %s')
+                    % pending_names
+                )
+            raise ValidationError(
+                _('No se puede registrar la baja. El empleado tiene resguardos activos pendientes de devolucion.')
+            )
+
         return {
             'name': "Registro de Baja de empleado",
             'type': 'ir.actions.act_window',

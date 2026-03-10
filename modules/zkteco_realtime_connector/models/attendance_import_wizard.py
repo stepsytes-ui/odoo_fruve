@@ -193,6 +193,12 @@ class AttendanceImportWizard(models.TransientModel):
         for fecha in date_list:
             count = sum(1 for emp_num in checadas_por_empleado if fecha in checadas_por_empleado[emp_num])
             dias_con_checadas[fecha] = count
+
+        descanso_dates, incapacidad_dates, public_holiday_dates = self._get_special_day_maps(
+            employee_info,
+            date_list,
+            COMPANY_TZ
+        )
         
         # Crear workbook de salida
         wb = Workbook()
@@ -272,7 +278,10 @@ class AttendanceImportWizard(models.TransientModel):
                     date_obj,
                     checadas_por_empleado,
                     info,
-                    dias_con_checadas[date_obj]
+                    dias_con_checadas[date_obj],
+                    descanso_dates,
+                    incapacidad_dates,
+                    public_holiday_dates
                 )
                 
                 cell = ws.cell(row=row_num, column=col_num, value=cell_data['text'])
@@ -320,19 +329,141 @@ class AttendanceImportWizard(models.TransientModel):
             'target': 'self',
         }
 
-    def _get_cell_data(self, numero_empleado, fecha, checadas_por_empleado, employee_info, empleados_con_checadas_en_dia):
+    def _get_special_day_maps(self, employee_info, date_list, company_tz):
+        """Construye mapas de fechas por empleado para Descanso/Incapacidad y festivos globales."""
+        descanso_dates = {emp_num: set() for emp_num in employee_info.keys()}
+        incapacidad_dates = {emp_num: set() for emp_num in employee_info.keys()}
+        public_holiday_dates = set()
+
+        if not date_list:
+            return descanso_dates, incapacidad_dates, public_holiday_dates
+
+        employee_ids = [
+            info['employee_record'].id
+            for info in employee_info.values()
+            if info.get('employee_record')
+        ]
+        emp_id_to_num = {
+            info['employee_record'].id: emp_num
+            for emp_num, info in employee_info.items()
+            if info.get('employee_record')
+        }
+
+        range_start_local = company_tz.localize(datetime.combine(self.date_from, time.min))
+        range_end_local = company_tz.localize(datetime.combine(self.date_to, time.max))
+        range_start_utc_str = fields.Datetime.to_string(range_start_local.astimezone(pytz.utc))
+        range_end_utc_str = fields.Datetime.to_string(range_end_local.astimezone(pytz.utc))
+
+        date_set = set(date_list)
+
+        global_holidays = self.env['resource.calendar.leaves'].search([
+            ('resource_id', '=', False),
+            ('date_from', '<=', range_end_utc_str),
+            ('date_to', '>=', range_start_utc_str),
+        ])
+
+        for holiday in global_holidays:
+            start_local = holiday.date_from.astimezone(company_tz).date()
+            end_local = holiday.date_to.astimezone(company_tz).date()
+            current = start_local
+            while current <= end_local:
+                if current in date_set:
+                    public_holiday_dates.add(current)
+                current += timedelta(days=1)
+
+        if employee_ids:
+            approved_leaves = self.env['hr.leave'].sudo().search([
+                ('employee_id', 'in', employee_ids),
+                ('state', '=', 'validate'),
+                ('date_from', '<=', range_end_utc_str),
+                ('date_to', '>=', range_start_utc_str),
+            ])
+
+            for leave in approved_leaves:
+                emp_num = emp_id_to_num.get(leave.employee_id.id)
+                if not emp_num:
+                    continue
+
+                leave_name = (leave.holiday_status_id.name or '').strip().lower()
+                is_descanso = leave_name == 'descanso'
+                is_incapacidad = leave_name == 'incapacidad'
+
+                if not is_descanso and not is_incapacidad:
+                    continue
+
+                leave_start_local = leave.date_from.astimezone(company_tz).date()
+                leave_end_local = leave.date_to.astimezone(company_tz).date()
+
+                current = leave_start_local
+                while current <= leave_end_local:
+                    if current in date_set:
+                        if is_descanso:
+                            descanso_dates.setdefault(emp_num, set()).add(current)
+                        if is_incapacidad:
+                            incapacidad_dates.setdefault(emp_num, set()).add(current)
+                    current += timedelta(days=1)
+
+            descanso_statuses = ['leave_day_off', 'Descanso', 'descanso']
+            incapacidad_statuses = ['leave_sickness', 'leave_sickness_paid', 'Incapacidad', 'incapacidad']
+
+            attendance_special_days = self.env['hr.attendance'].sudo().search([
+                ('employee_id', 'in', employee_ids),
+                ('check_in', '>=', range_start_utc_str),
+                ('check_in', '<=', range_end_utc_str),
+                ('punctuality_status', 'in', descanso_statuses + incapacidad_statuses),
+            ])
+
+            for attendance in attendance_special_days:
+                emp_num = emp_id_to_num.get(attendance.employee_id.id)
+                if not emp_num or not attendance.check_in:
+                    continue
+
+                day_local = attendance.check_in.astimezone(company_tz).date()
+                if day_local not in date_set:
+                    continue
+
+                if attendance.punctuality_status in descanso_statuses:
+                    descanso_dates.setdefault(emp_num, set()).add(day_local)
+                if attendance.punctuality_status in incapacidad_statuses:
+                    incapacidad_dates.setdefault(emp_num, set()).add(day_local)
+
+        return descanso_dates, incapacidad_dates, public_holiday_dates
+
+    def _get_cell_data(
+        self,
+        numero_empleado,
+        fecha,
+        checadas_por_empleado,
+        employee_info,
+        empleados_con_checadas_en_dia,
+        descanso_dates,
+        incapacidad_dates,
+        public_holiday_dates,
+    ):
         """
         Determina qué mostrar en la celda y su color.
         
         Lógica:
         - Verde: Más de 8 horas entre primera y última checada
         - Amarillo: Solo una checada o menos de 8 horas
-        - "Descanso": Domingo sin checada (excepto guardias)
+        - "Descanso": Si existe en hr.leave/hr.attendance o es día no laboral del turno
         - "Pendiente de comprobar" (azul claro): Otros días sin checada cuando otros sí tienen
         """
-        turno = employee_info.get('turno', 'N/A')
-        es_guardia = turno and 'Seguridad' in turno
+        employee_record = employee_info.get('employee_record')
         es_domingo = fecha.weekday() == 6
+        es_dia_laboral_turno = self._is_scheduled_workday(employee_record, fecha)
+        es_descanso_por_turno = es_dia_laboral_turno is False
+        es_descanso_registrado = fecha in descanso_dates.get(numero_empleado, set())
+        es_incapacidad = fecha in incapacidad_dates.get(numero_empleado, set())
+        es_festivo = fecha in public_holiday_dates
+
+        if es_descanso_registrado and not es_incapacidad and not es_festivo:
+            return {
+                'text': 'Descanso',
+                'color': None,
+                'font_color': '808080',  # Gris
+                'bold': False
+            }
         
         # Verificar si el empleado tiene checadas ese día
         tiene_checadas = numero_empleado in checadas_por_empleado and fecha in checadas_por_empleado[numero_empleado]
@@ -377,24 +508,14 @@ class AttendanceImportWizard(models.TransientModel):
                 }
         else:
             # No tiene checadas
-            if es_domingo:
-                # Domingo sin checada
-                if es_guardia:
-                    # Para guardias, si no tienen checada el domingo, también es descanso
-                    return {
-                        'text': 'Descanso',
-                        'color': None,
-                        'font_color': '808080',  # Gris
-                        'bold': False
-                    }
-                else:
-                    # Para otros empleados, domingo es descanso
-                    return {
-                        'text': 'Descanso',
-                        'color': None,
-                        'font_color': '808080',  # Gris
-                        'bold': False
-                    }
+            if (es_descanso_por_turno or (es_dia_laboral_turno is None and es_domingo)) and not es_incapacidad and not es_festivo:
+                # Día de descanso por turno. Domingo queda como fallback si no hay turno.
+                return {
+                    'text': 'Descanso',
+                    'color': None,
+                    'font_color': '808080',  # Gris
+                    'bold': False
+                }
             else:
                 # Otro día sin checada
                 # Si hay otros empleados con checadas ese día (es probable que sea día laboral)
@@ -413,3 +534,24 @@ class AttendanceImportWizard(models.TransientModel):
                         'font_color': None,
                         'bold': False
                     }
+
+    def _is_scheduled_workday(self, employee, target_date):
+        """Retorna True/False según el turno del empleado, o None si no se puede determinar."""
+        if not employee or not employee.turno_id:
+            return None
+
+        weekday_to_field = {
+            0: 'work_monday',
+            1: 'work_tuesday',
+            2: 'work_wednesday',
+            3: 'work_thursday',
+            4: 'work_friday',
+            5: 'work_saturday',
+            6: 'work_sunday',
+        }
+
+        work_field = weekday_to_field.get(target_date.weekday())
+        if not work_field:
+            return None
+
+        return bool(getattr(employee.turno_id, work_field, False))

@@ -197,7 +197,7 @@ class EmployeeResguardoLine(models.Model):
     almacenamiento = fields.Char(string='Almacenamiento', related='asset_id.almacenamiento', readonly=True)
 
     funcionando_al_entregar = fields.Boolean(string='Funcionando al Entregar', default=True)
-    devuelto = fields.Boolean(string='Devuelto')
+    devuelto = fields.Boolean(string='Devuelto') 
     fecha_devolucion = fields.Date(string='Fecha de Devolucion/Objeto')
     funcionando_al_devolver = fields.Boolean(string='Funcionando al Devolver', default=True)
     check_rh = fields.Boolean(string='Objeto Validado')

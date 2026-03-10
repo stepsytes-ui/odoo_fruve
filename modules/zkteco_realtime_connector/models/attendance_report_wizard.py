@@ -219,6 +219,9 @@ class AttendanceReportWizard(models.TransientModel):
         start_utc_str = fields.Datetime.to_string(start_of_day_utc)
         end_utc_str = fields.Datetime.to_string(end_of_day_utc)
 
+        descanso_statuses = ['leave_day_off', 'Descanso', 'descanso']
+        incapacidad_statuses = ['leave_sickness', 'leave_sickness_paid', 'Incapacidad', 'incapacidad']
+
         # 1. Verificar si es día festivo global PRIMERO (tiene prioridad sobre todo)
         CalendarLeaves = self.env['resource.calendar.leaves']
         public_holiday = CalendarLeaves.search([
@@ -242,6 +245,37 @@ class AttendanceReportWizard(models.TransientModel):
         
         # Manejo especial para turno "ESPECIAL" (gerentes/dueños)
         if shift.turno_name == 'ESPECIAL':
+            # Respetar Incapacidad/Descanso registrados en attendance.
+            sickness_attendance = Attendance.search([
+                ('employee_id', '=', employee.id),
+                ('check_in', '>=', start_utc_str),
+                ('check_in', '<=', end_utc_str),
+                ('punctuality_status', 'in', incapacidad_statuses)
+            ], limit=1)
+
+            if sickness_attendance:
+                return {
+                    'text': 'Incapacidad',
+                    'color': 'FFC000',
+                    'font_color': 'FFFFFF',
+                    'bold': True
+                }
+
+            descanso_attendance = Attendance.search([
+                ('employee_id', '=', employee.id),
+                ('check_in', '>=', start_utc_str),
+                ('check_in', '<=', end_utc_str),
+                ('punctuality_status', 'in', descanso_statuses)
+            ], limit=1)
+
+            if descanso_attendance:
+                return {
+                    'text': 'Descanso',
+                    'color': None,
+                    'font_color': '808080',
+                    'bold': False
+                }
+
             # Verificar si hay checadas válidas
             valid_attendances = Attendance.search([
                 ('employee_id', '=', employee.id),
@@ -291,13 +325,35 @@ class AttendanceReportWizard(models.TransientModel):
                 ('date_from', '<=', end_utc_str),
                 ('date_to', '>=', start_utc_str)
             ], limit=1)
+
+            sickness_attendance = Attendance.search([
+                ('employee_id', '=', employee.id),
+                ('check_in', '>=', start_utc_str),
+                ('check_in', '<=', end_utc_str),
+                ('punctuality_status', 'in', incapacidad_statuses)
+            ], limit=1)
             
-            if sickness_leave:
+            if sickness_leave or sickness_attendance:
                 return {
                     'text': 'Incapacidad',
                     'color': 'FFC000',  
                     'font_color': 'FFFFFF',  
                     'bold': True
+                }
+
+            descanso_attendance = Attendance.search([
+                ('employee_id', '=', employee.id),
+                ('check_in', '>=', start_utc_str),
+                ('check_in', '<=', end_utc_str),
+                ('punctuality_status', 'in', descanso_statuses)
+            ], limit=1)
+
+            if descanso_attendance:
+                return {
+                    'text': 'Descanso',
+                    'color': None,
+                    'font_color': '808080',
+                    'bold': False
                 }
             
             approved_leave = Leave.search([
@@ -309,6 +365,13 @@ class AttendanceReportWizard(models.TransientModel):
             
             if approved_leave:
                 leave_name = approved_leave.holiday_status_id.name
+                if leave_name.strip().lower() == 'descanso':
+                    return {
+                        'text': 'Descanso',
+                        'color': None,
+                        'font_color': '808080',  # Gris
+                        'bold': False
+                    }
                 return {
                     'text': leave_name,
                     'color': 'FFC7CE',  # Rosa claro
@@ -379,16 +442,39 @@ class AttendanceReportWizard(models.TransientModel):
             ('date_from', '<=', end_utc_str),
             ('date_to', '>=', start_utc_str)
         ], limit=1)
+
+        sickness_attendance = Attendance.search([
+            ('employee_id', '=', employee.id),
+            ('check_in', '>=', start_utc_str),
+            ('check_in', '<=', end_utc_str),
+            ('punctuality_status', 'in', incapacidad_statuses)
+        ], limit=1)
         
-        if sickness_leave:
+        if sickness_leave or sickness_attendance:
             return {
                 'text': 'Incapacidad',
                 'color': 'FFC000',  # Amarillo/Oro
                 'font_color': 'FFFFFF',  # Blanco
                 'bold': True
             }
+
+        # 3. Verificar Descanso en hr.attendance (si existe, marcar descanso)
+        descanso_attendance = Attendance.search([
+            ('employee_id', '=', employee.id),
+            ('check_in', '>=', start_utc_str),
+            ('check_in', '<=', end_utc_str),
+            ('punctuality_status', 'in', descanso_statuses)
+        ], limit=1)
+
+        if descanso_attendance:
+            return {
+                'text': 'Descanso',
+                'color': None,
+                'font_color': '808080',  # Gris
+                'bold': False
+            }
         
-        # 3. Verificar otros tipos de permiso/licencia
+        # 4. Verificar otros tipos de permiso/licencia
         approved_leave = Leave.search([
             ('employee_id', '=', employee.id),
             ('state', '=', 'validate'),
@@ -397,16 +483,15 @@ class AttendanceReportWizard(models.TransientModel):
         ], limit=1)
         
         if approved_leave:
-            # Si es domingo y NO es del departamento de seguridad, mostrar "Descanso"
-            if day_of_week == 6:  # Domingo
+            leave_name = approved_leave.holiday_status_id.name
+            # Descanso desde hr.leave → cuadro blanco, texto gris
+            if leave_name.strip().lower() == 'descanso' or day_of_week == 6:
                 return {
                     'text': 'Descanso',
                     'color': None,
                     'font_color': '808080',  # Gris
                     'bold': False
                 }
-            # Si no es domingo, mostrar el tipo de permiso
-            leave_name = approved_leave.holiday_status_id.name
             return {
                 'text': leave_name,
                 'color': 'FFC7CE',  # Rosa claro

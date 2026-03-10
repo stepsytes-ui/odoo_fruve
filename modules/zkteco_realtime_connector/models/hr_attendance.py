@@ -9,6 +9,7 @@ _logger = logging.getLogger(__name__)
 FIXED_DEVICE_TIMEZONE_NAME = 'America/Tijuana'
 
 NEW_LEAVE_STATUSES = [
+    ('leave_day_off', 'Descanso'),
     ('leave_paid', 'Permiso pagado'),
     ('leave_abscent', 'Permiso de ausencia'),
     ('leave_hours', 'Permiso por horas'),
@@ -27,7 +28,7 @@ NEW_LEAVE_STATUSES = [
     ('leave_no_payday', 'Permiso día no pagado'),
     ('leave_other', 'Ausencia Justificada (Otro)'),
     ('leave_partial_paid', 'Permiso parcial pagado'),
-    ('leave_partial_unpaid', 'Permiso parcial no pagado'),
+    ('leave_partial_unpaid', 'Permiso parcial no pagado'), 
 ]
 
 LEAVE_STATUS_KEYS = [key for key, label in NEW_LEAVE_STATUSES]

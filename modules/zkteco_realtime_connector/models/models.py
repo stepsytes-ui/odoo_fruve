@@ -129,6 +129,8 @@ class ZkTecoAttendanceLog(models.Model):
                 log.state = 'error'
                 continue
 
+            is_historical = False
+
             try:
                 naive_datetime = fields.Datetime.from_string(log.timestamp)
                 
@@ -136,23 +138,91 @@ class ZkTecoAttendanceLog(models.Model):
                 device_datetime_local = DEVICE_TIMEZONE.localize(naive_datetime, is_dst=None)
                 device_datetime_utc = device_datetime_local.astimezone(UTC_TIMEZONE)
                 
-                # Validar si la fecha tiene más de 30 minutos de diferencia
+                # Validar si la fecha tiene más de 10 minutos de diferencia
                 now_utc = UTC_TIMEZONE.localize(datetime.utcnow())
                 time_diff_seconds = abs((device_datetime_utc - now_utc).total_seconds())
                 time_diff_minutes = time_diff_seconds / 60
                 
-                if time_diff_minutes > 10:  # Más de 10 minutos de diferencia
-                    _logger.warning(
-                        "⚠️ Fecha de checada inválida detectada para log %s (Employee: %s, Device: %s). "
-                        "Fecha del dispositivo (local): %s, Diferencia: %.1f minutos. Usando hora actual.",
-                        log.id, employee.name, device_serial, naive_datetime, time_diff_minutes
-                    )
-                    
-                    # Usar hora actual en la zona horaria de la empresa
-                    check_datetime_local = datetime.now(DEVICE_TIMEZONE)
-                    _logger.info("✅ Usando hora actual de la empresa (%s): %s", company_tz_name, check_datetime_local)
+                if time_diff_minutes > 10:
+                    if device_datetime_utc > now_utc:
+                        # Reloj del dispositivo adelantado — usar hora actual
+                        _logger.warning(
+                            "⚠️ Fecha FUTURA detectada para log %s (Employee: %s, Device: %s). "
+                            "Fecha dispositivo (local): %s, Diferencia: %.1f min. Usando hora actual.",
+                            log.id, employee.name, device_serial, naive_datetime, time_diff_minutes
+                        )
+                        check_datetime_local = datetime.now(DEVICE_TIMEZONE)
+                        _logger.info("✅ Usando hora actual (%s): %s", company_tz_name, check_datetime_local)
+                    else:
+                        # Timestamp en el pasado — podría ser checada histórica de dispositivo sin internet
+                        days_in_past = (now_utc - device_datetime_utc).total_seconds() / 86400
+                        if days_in_past > 8:
+                            # Fuera del rango histórico permitido — tratar como desfase de reloj
+                            _logger.warning(
+                                "⚠️ Fecha pasada mayor a 8 días para log %s (Employee: %s, Device: %s). "
+                                "Fecha dispositivo (local): %s, Días de diferencia: %.1f. Usando hora actual.",
+                                log.id, employee.name, device_serial, naive_datetime, days_in_past
+                            )
+                            check_datetime_local = datetime.now(DEVICE_TIMEZONE)
+                            _logger.info("✅ Usando hora actual (%s): %s", company_tz_name, check_datetime_local)
+                        else:
+                            # Dentro de los últimos 8 días — verificar si es checada histórica válida
+                            original_date = device_datetime_local.date()
+                            orig_day_start = DEVICE_TIMEZONE.localize(
+                                datetime.combine(original_date, time.min)
+                            ).astimezone(UTC_TIMEZONE)
+                            orig_day_end = DEVICE_TIMEZONE.localize(
+                                datetime.combine(original_date, time.max)
+                            ).astimezone(UTC_TIMEZONE)
+                            orig_start_str = fields.Datetime.to_string(orig_day_start)
+                            orig_end_str = fields.Datetime.to_string(orig_day_end)
+
+                            # Check 1: falta auto-generada para esa fecha
+                            absence_on_orig_date = Attendance.search([
+                                ('employee_id', '=', employee.id),
+                                ('punctuality_status', '=', 'absence'),
+                                ('check_in', '>=', orig_start_str),
+                                ('check_in', '<=', orig_end_str),
+                            ], limit=1)
+
+                            # Check 2: asistencia real ABIERTA en esa fecha (2da+ checada del mismo día,
+                            # creada en este mismo batch — nunca una asistencia ya cerrada/completa)
+                            checkin_on_orig_date = Attendance.search([
+                                ('employee_id', '=', employee.id),
+                                ('punctuality_status', '!=', 'absence'),
+                                ('check_in', '>=', orig_start_str),
+                                ('check_in', '<=', orig_end_str),
+                                ('check_out', '=', False),
+                            ], limit=1)
+
+                            if absence_on_orig_date:
+                                _logger.info(
+                                    "📋 Checada histórica detectada para %s (Log %s). Fecha original: %s, "
+                                    "Diferencia: %.1f min. Falta auto-generada encontrada — eliminando y usando timestamp original.",
+                                    employee.name, log.id, original_date, time_diff_minutes
+                                )
+                                absence_on_orig_date.unlink()
+                                check_datetime_local = device_datetime_local
+                                is_historical = True
+                            elif checkin_on_orig_date:
+                                _logger.info(
+                                    "📋 Checada histórica (2da+ del día) para %s (Log %s). Fecha original: %s, "
+                                    "Diferencia: %.1f min. Asistencia previa encontrada — usando timestamp original.",
+                                    employee.name, log.id, original_date, time_diff_minutes
+                                )
+                                check_datetime_local = device_datetime_local
+                                is_historical = True
+                            else:
+                                # Sin evidencia de checada histórica válida — probable desfase de reloj
+                                _logger.warning(
+                                    "⚠️ Fecha pasada sin contexto histórico para log %s (Employee: %s, Device: %s). "
+                                    "Fecha dispositivo (local): %s, Diferencia: %.1f min. Usando hora actual.",
+                                    log.id, employee.name, device_serial, naive_datetime, time_diff_minutes
+                                )
+                                check_datetime_local = datetime.now(DEVICE_TIMEZONE)
+                                _logger.info("✅ Usando hora actual (%s): %s", company_tz_name, check_datetime_local)
                 else:
-                    # Fecha válida, procesar normalmente
+                    # Fecha válida (dentro de ±10 min), procesar normalmente
                     check_datetime_local = device_datetime_local
                 
                 check_datetime_utc_dt = check_datetime_local.astimezone(UTC_TIMEZONE) 
@@ -164,6 +234,22 @@ class ZkTecoAttendanceLog(models.Model):
                 continue
 
             last_attendance = employee.last_attendance_id.sudo()
+
+            # Para checadas históricas, usar la última asistencia del mismo día histórico
+            # (no la global, que podría ser del día actual y causaría cierres/aperturas incorrectos)
+            if is_historical:
+                check_date = check_datetime_local.date()
+                hist_day_start = DEVICE_TIMEZONE.localize(
+                    datetime.combine(check_date, time.min)
+                ).astimezone(UTC_TIMEZONE)
+                hist_day_end = DEVICE_TIMEZONE.localize(
+                    datetime.combine(check_date, time.max)
+                ).astimezone(UTC_TIMEZONE)
+                last_attendance = Attendance.search([
+                    ('employee_id', '=', employee.id),
+                    ('check_in', '>=', fields.Datetime.to_string(hist_day_start)),
+                    ('check_in', '<=', fields.Datetime.to_string(hist_day_end)),
+                ], order='check_in desc', limit=1)
             
             shift_in_utc_dt, shift_out_utc_dt = self._get_shift_times(employee, check_datetime_local, DEVICE_TIMEZONE)
 

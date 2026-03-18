@@ -59,6 +59,13 @@ class ShiftManagement(models.Model):
         required=True
     )
 
+    resource_calendar_id = fields.Many2one(
+        comodel_name='resource.calendar',
+        string='Horario Laboral',
+        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        help='Calendario laboral que se asignará automáticamente al empleado cuando se seleccione este turno.'
+    )
+
     hora_entrada_str = fields.Char(
         string='Hora de Entrada:',
         compute='_compute_hora_str',

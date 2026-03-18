@@ -25,6 +25,45 @@ class hr_employee(models.Model):
         help='Selecciona el turno definido en la gestión de turnos.'
     )
 
+    @api.onchange('company_id')
+    def _onchange_company_id_set_timezone(self):
+        for employee in self:
+            if employee.company_id and employee.company_id.timezone:
+                employee.tz = employee.company_id.timezone
+
+    @api.onchange('turno_id')
+    def _onchange_turno_id_set_resource_calendar(self):
+        for employee in self:
+            employee.resource_calendar_id = employee.turno_id.resource_calendar_id
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('tz'):
+                company_id = vals.get('company_id') or self.env.company.id
+                company = self.env['res.company'].browse(company_id)
+                if company.timezone:
+                    vals['tz'] = company.timezone
+
+            turno_id = vals.get('turno_id')
+            if turno_id and not vals.get('resource_calendar_id'):
+                turno = self.env['shift.management'].browse(turno_id)
+                if turno.resource_calendar_id:
+                    vals['resource_calendar_id'] = turno.resource_calendar_id.id
+        return super().create(vals_list)
+
+    def write(self, vals):
+        vals = dict(vals)
+
+        if 'company_id' in vals and 'tz' not in vals:
+            company = self.env['res.company'].browse(vals.get('company_id')) if vals.get('company_id') else False
+            vals['tz'] = company.timezone if company and company.timezone else False
+
+        if 'turno_id' in vals and 'resource_calendar_id' not in vals:
+            turno = self.env['shift.management'].browse(vals.get('turno_id')) if vals.get('turno_id') else False
+            vals['resource_calendar_id'] = turno.resource_calendar_id.id if turno else False
+        return super().write(vals)
+
     @api.depends('biometric_id')
     def _compute_biometric_id_numeric(self):
         """Convierte biometric_id a valor numérico para ordenamiento"""

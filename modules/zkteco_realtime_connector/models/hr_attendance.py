@@ -461,14 +461,31 @@ class HrAttendance(models.Model):
             _logger.error(f"[CRON AUTO-CLOSE] Error crítico en el cron: {e}", exc_info=True)
 
     def _check_and_alert_four_absences(self, employee, new_attendance):
-            """Verifica si el empleado tiene 4 faltas no justificadas y notifica al grupo de RRHH de su empresa."""
-            
-            # Dominio para contar solo las faltas (absence)
+            """Verifica si el empleado acumula 4 faltas en una ventana móvil de 31 días."""
+
+            reference_dt = new_attendance.check_in or fields.Datetime.now()
+            if reference_dt.tzinfo is None:
+                reference_dt = pytz.utc.localize(reference_dt)
+
+            window_start_dt = reference_dt - timedelta(days=31)
+            window_start_str = fields.Datetime.to_string(window_start_dt)
+            window_end_str = fields.Datetime.to_string(reference_dt)
+
             absence_count = self.search_count([
                 ('employee_id', '=', employee.id),
-                ('punctuality_status', '=', 'absence')
+                ('punctuality_status', '=', 'absence'),
+                ('check_in', '>=', window_start_str),
+                ('check_in', '<=', window_end_str),
             ])
-            
+
+            _logger.info(
+                "[ABSENCE ALERT] %s acumula %s faltas entre %s y %s",
+                employee.name,
+                absence_count,
+                window_start_str,
+                window_end_str,
+            )
+
             if absence_count == 4:
                         hr_group = self.env.ref('zkteco_realtime_connector.group_rh_absence_manager', raise_if_not_found=False)
 

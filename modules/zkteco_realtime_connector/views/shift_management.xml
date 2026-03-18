@@ -7,6 +7,7 @@
                 <list>
                     <field name="turno_name"/>
                     <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="resource_calendar_id"/>
                     <field name="hora_entrada_str" string="Entrada Gral."/>
                     <field name="hora_salida_str" string="Salida Gral."/>
                     <field name="special_monday" string="L-Esp." widget="boolean_toggle"/>
@@ -29,6 +30,7 @@
                         <group>
                             <group string="Horario General (Base)">
                                 <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="resource_calendar_id"/>
                                 <field name="hora_entrada"/>
                                 <field name="hora_salida"/>
                             </group>

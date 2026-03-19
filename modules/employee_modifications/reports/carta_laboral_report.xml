@@ -60,10 +60,10 @@
                                     margin: 1in 0.5in 0.5in 0.5in;
                                 }
 
-                                /* Ajuste visual equivalente a Scale 90% del navegador */
-                                .carta-laboral {
+                                /* Ajuste visual equivalente a Scale 90% aplicado a todo el reporte */
+                                .article {
                                     transform: scale(0.9);
-                                    transform-origin: top center;
+                                    transform-origin: top left;
                                     width: 111.11%;
                                 }
 

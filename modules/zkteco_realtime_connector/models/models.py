@@ -11,6 +11,9 @@ _logger = logging.getLogger(__name__)
 FIXED_DEVICE_TIMEZONE_NAME = 'America/Tijuana'
 TIME_OFFSET_MINUTES = 5
 SECOND_DIFFERENCE = 1
+RECOVERY_LOOKBACK_DAYS = 8
+BACKLOG_RECENT_WINDOW_MINUTES = 10
+BACKLOG_ON_TIME_WINDOW_HOURS = 4
 
 class ZkTecoAttendanceLog(models.Model):
     _name = 'zkteco.attendance.log'
@@ -28,6 +31,103 @@ class ZkTecoAttendanceLog(models.Model):
     raw_data = fields.Text(string='Raw Data')
     
     hr_attendance_id = fields.Many2one('hr.attendance', string='Odoo Attendance Record', readonly=True)
+
+    def _get_day_bounds_utc(self, target_date, device_timezone):
+        day_start_local = device_timezone.localize(datetime.combine(target_date, time.min))
+        day_end_local = device_timezone.localize(datetime.combine(target_date, time.max))
+        return day_start_local.astimezone(pytz.utc), day_end_local.astimezone(pytz.utc)
+
+    def _has_workday_shift(self, employee, target_date):
+        shift = employee.turno_id
+        if not shift:
+            return False
+        entrada_config, salida_config = shift.get_times_for_date(target_date)
+        return bool(entrada_config and salida_config)
+
+    def _get_day_attendance_context(self, employee, attendance_model, device_timezone, target_date):
+        """Devuelve contexto de asistencia para una fecha específica del empleado."""
+        day_start_utc, day_end_utc = self._get_day_bounds_utc(target_date, device_timezone)
+        day_start_str = fields.Datetime.to_string(day_start_utc)
+        day_end_str = fields.Datetime.to_string(day_end_utc)
+
+        has_absence = bool(attendance_model.search([
+            ('employee_id', '=', employee.id),
+            ('punctuality_status', '=', 'absence'),
+            ('check_in', '>=', day_start_str),
+            ('check_in', '<=', day_end_str),
+        ], limit=1))
+
+        has_real_attendance = bool(attendance_model.search([
+            ('employee_id', '=', employee.id),
+            ('punctuality_status', '!=', 'absence'),
+            ('check_in', '>=', day_start_str),
+            ('check_in', '<=', day_end_str),
+        ], limit=1))
+
+        return {
+            'is_workday': self._has_workday_shift(employee, target_date),
+            'has_absence': has_absence,
+            'has_real_attendance': has_real_attendance,
+        }
+
+    def _delete_absence_for_day(self, employee, attendance_model, device_timezone, target_date):
+        day_start_utc, day_end_utc = self._get_day_bounds_utc(target_date, device_timezone)
+        day_start_str = fields.Datetime.to_string(day_start_utc)
+        day_end_str = fields.Datetime.to_string(day_end_utc)
+        absence = attendance_model.search([
+            ('employee_id', '=', employee.id),
+            ('punctuality_status', '=', 'absence'),
+            ('check_in', '>=', day_start_str),
+            ('check_in', '<=', day_end_str),
+        ], limit=1)
+        if absence:
+            absence.unlink()
+            return True
+        return False
+
+    def _get_shift_in_local_for_date(self, employee, target_date, device_timezone):
+        shift = employee.turno_id
+        if not shift:
+            return None
+
+        entrada_config, salida_config = shift.get_times_for_date(target_date)
+        if not entrada_config or not salida_config:
+            return None
+
+        entrada_naive = fields.Datetime.from_string(entrada_config)
+        entrada_local_dt = pytz.utc.localize(entrada_naive).astimezone(device_timezone)
+        shift_in_time = entrada_local_dt.time()
+        return device_timezone.localize(datetime.combine(target_date, shift_in_time))
+
+    def _device_backlog_mode_active(self, device_serial, now_utc, device_timezone):
+        """
+        Detecta si este dispositivo acaba de procesar checadas reubicadas a días anteriores
+        en una ventana corta; se usa para evitar retardo falso en la primera checada de hoy.
+        """
+        cutoff_utc = now_utc - timedelta(minutes=BACKLOG_RECENT_WINDOW_MINUTES)
+        today_local = now_utc.astimezone(device_timezone).date()
+        today_start_utc, _ = self._get_day_bounds_utc(today_local, device_timezone)
+
+        recent_logs = self.search([
+            ('device_id', '=', device_serial),
+            ('state', '=', 'processed'),
+            ('create_date', '>=', fields.Datetime.to_string(cutoff_utc)),
+            ('hr_attendance_id', '!=', False),
+        ], order='id desc', limit=50)
+
+        for log in recent_logs:
+            attendance = log.hr_attendance_id
+            if not attendance or not attendance.check_in:
+                continue
+
+            attendance_check_in = attendance.check_in
+            if attendance_check_in.tzinfo is None:
+                attendance_check_in = pytz.utc.localize(attendance_check_in)
+
+            if attendance_check_in < today_start_utc:
+                return True
+
+        return False
 
     def _get_shift_times(self, employee, check_datetime_local, device_timezone):
         shift = employee.turno_id
@@ -142,88 +242,122 @@ class ZkTecoAttendanceLog(models.Model):
                 now_utc = UTC_TIMEZONE.localize(datetime.utcnow())
                 time_diff_seconds = abs((device_datetime_utc - now_utc).total_seconds())
                 time_diff_minutes = time_diff_seconds / 60
-                
-                if time_diff_minutes > 10:
-                    if device_datetime_utc > now_utc:
-                        # Reloj del dispositivo adelantado — usar hora actual
+
+                reported_date_local = device_datetime_local.date()
+                today_local = now_utc.astimezone(DEVICE_TIMEZONE).date()
+
+                # Regla principal: si la fecha del dispositivo es HOY (desfasado o exacto),
+                # siempre usar la hora actual de la empresa para el registro.
+                # Solo respetamos el timestamp original cuando la fecha es un día PASADO.
+                if reported_date_local >= today_local:
+                    # Hoy o futuro → siempre hora actual
+                    if time_diff_minutes > 10:
+                        if device_datetime_utc > now_utc:
+                            _logger.warning(
+                                "⚠️ Fecha FUTURA para log %s (Employee: %s, Device: %s). "
+                                "Hora dispositivo: %s, Diferencia: %.1f min. Usando hora actual.",
+                                log.id, employee.name, device_serial, naive_datetime, time_diff_minutes
+                            )
+                        else:
+                            _logger.warning(
+                                "⚠️ Reloj desfasado (mismo día) para log %s (Employee: %s, Device: %s). "
+                                "Hora dispositivo: %s, Diferencia: %.1f min. Usando hora actual.",
+                                log.id, employee.name, device_serial, naive_datetime, time_diff_minutes
+                            )
+                    check_datetime_local = datetime.now(DEVICE_TIMEZONE)
+                    # Si había falta generada para hoy, eliminarla
+                    reported_day_ctx = self._get_day_attendance_context(
+                        employee, Attendance, DEVICE_TIMEZONE, reported_date_local
+                    )
+                    if reported_day_ctx['has_absence']:
+                        self._delete_absence_for_day(employee, Attendance, DEVICE_TIMEZONE, reported_date_local)
+                    _logger.info("✅ Usando hora actual (%s): %s", company_tz_name, check_datetime_local)
+
+                else:
+                    # Fecha PASADA — intentar recuperación histórica
+                    days_in_past = (now_utc - device_datetime_utc).total_seconds() / 86400
+                    if days_in_past > 8:
+                        # Fuera del rango histórico permitido — tratar como desfase
                         _logger.warning(
-                            "⚠️ Fecha FUTURA detectada para log %s (Employee: %s, Device: %s). "
-                            "Fecha dispositivo (local): %s, Diferencia: %.1f min. Usando hora actual.",
-                            log.id, employee.name, device_serial, naive_datetime, time_diff_minutes
+                            "⚠️ Fecha pasada mayor a 8 días para log %s (Employee: %s, Device: %s). "
+                            "Fecha dispositivo: %s, Días de diferencia: %.1f. Usando hora actual.",
+                            log.id, employee.name, device_serial, naive_datetime, days_in_past
                         )
                         check_datetime_local = datetime.now(DEVICE_TIMEZONE)
                         _logger.info("✅ Usando hora actual (%s): %s", company_tz_name, check_datetime_local)
                     else:
-                        # Timestamp en el pasado — podría ser checada histórica de dispositivo sin internet
-                        days_in_past = (now_utc - device_datetime_utc).total_seconds() / 86400
-                        if days_in_past > 8:
-                            # Fuera del rango histórico permitido — tratar como desfase de reloj
-                            _logger.warning(
-                                "⚠️ Fecha pasada mayor a 8 días para log %s (Employee: %s, Device: %s). "
-                                "Fecha dispositivo (local): %s, Días de diferencia: %.1f. Usando hora actual.",
-                                log.id, employee.name, device_serial, naive_datetime, days_in_past
+                        # Dentro de los últimos 8 días — checada histórica válida
+                        original_date = device_datetime_local.date()
+                        orig_day_start = DEVICE_TIMEZONE.localize(
+                            datetime.combine(original_date, time.min)
+                        ).astimezone(UTC_TIMEZONE)
+                        orig_day_end = DEVICE_TIMEZONE.localize(
+                            datetime.combine(original_date, time.max)
+                        ).astimezone(UTC_TIMEZONE)
+                        orig_start_str = fields.Datetime.to_string(orig_day_start)
+                        orig_end_str = fields.Datetime.to_string(orig_day_end)
+
+                        # Check 1: falta auto-generada para esa fecha
+                        absence_on_orig_date = Attendance.search([
+                            ('employee_id', '=', employee.id),
+                            ('punctuality_status', '=', 'absence'),
+                            ('check_in', '>=', orig_start_str),
+                            ('check_in', '<=', orig_end_str),
+                        ], limit=1)
+
+                        # Check 2: asistencia real ABIERTA en esa fecha (2da+ checada del mismo día,
+                        # creada en este mismo batch — nunca una asistencia ya cerrada/completa)
+                        checkin_on_orig_date = Attendance.search([
+                            ('employee_id', '=', employee.id),
+                            ('punctuality_status', '!=', 'absence'),
+                            ('check_in', '>=', orig_start_str),
+                            ('check_in', '<=', orig_end_str),
+                            ('check_out', '=', False),
+                        ], limit=1)
+
+                        if absence_on_orig_date:
+                            _logger.info(
+                                "📋 Checada histórica detectada para %s (Log %s). Fecha: %s — "
+                                "falta auto-generada encontrada, eliminando y usando timestamp original.",
+                                employee.name, log.id, original_date
                             )
-                            check_datetime_local = datetime.now(DEVICE_TIMEZONE)
-                            _logger.info("✅ Usando hora actual (%s): %s", company_tz_name, check_datetime_local)
+                            absence_on_orig_date.unlink()
+                            check_datetime_local = device_datetime_local
+                            is_historical = True
+                        elif checkin_on_orig_date:
+                            _logger.info(
+                                "📋 Checada histórica (2da+ del día) para %s (Log %s). Fecha: %s — "
+                                "asistencia abierta encontrada, usando timestamp original.",
+                                employee.name, log.id, original_date
+                            )
+                            check_datetime_local = device_datetime_local
+                            is_historical = True
                         else:
-                            # Dentro de los últimos 8 días — verificar si es checada histórica válida
-                            original_date = device_datetime_local.date()
-                            orig_day_start = DEVICE_TIMEZONE.localize(
-                                datetime.combine(original_date, time.min)
-                            ).astimezone(UTC_TIMEZONE)
-                            orig_day_end = DEVICE_TIMEZONE.localize(
-                                datetime.combine(original_date, time.max)
-                            ).astimezone(UTC_TIMEZONE)
-                            orig_start_str = fields.Datetime.to_string(orig_day_start)
-                            orig_end_str = fields.Datetime.to_string(orig_day_end)
-
-                            # Check 1: falta auto-generada para esa fecha
-                            absence_on_orig_date = Attendance.search([
-                                ('employee_id', '=', employee.id),
-                                ('punctuality_status', '=', 'absence'),
-                                ('check_in', '>=', orig_start_str),
-                                ('check_in', '<=', orig_end_str),
-                            ], limit=1)
-
-                            # Check 2: asistencia real ABIERTA en esa fecha (2da+ checada del mismo día,
-                            # creada en este mismo batch — nunca una asistencia ya cerrada/completa)
-                            checkin_on_orig_date = Attendance.search([
-                                ('employee_id', '=', employee.id),
-                                ('punctuality_status', '!=', 'absence'),
-                                ('check_in', '>=', orig_start_str),
-                                ('check_in', '<=', orig_end_str),
-                                ('check_out', '=', False),
-                            ], limit=1)
-
-                            if absence_on_orig_date:
-                                _logger.info(
-                                    "📋 Checada histórica detectada para %s (Log %s). Fecha original: %s, "
-                                    "Diferencia: %.1f min. Falta auto-generada encontrada — eliminando y usando timestamp original.",
-                                    employee.name, log.id, original_date, time_diff_minutes
-                                )
-                                absence_on_orig_date.unlink()
+                            # Sin falta ni asistencia abierta en esa fecha
+                            reported_day_ctx = self._get_day_attendance_context(
+                                employee, Attendance, DEVICE_TIMEZONE, original_date
+                            )
+                            if reported_day_ctx['is_workday'] and not reported_day_ctx['has_real_attendance']:
                                 check_datetime_local = device_datetime_local
+                                if reported_day_ctx['has_absence']:
+                                    self._delete_absence_for_day(
+                                        employee, Attendance, DEVICE_TIMEZONE, original_date
+                                    )
                                 is_historical = True
-                            elif checkin_on_orig_date:
                                 _logger.info(
-                                    "📋 Checada histórica (2da+ del día) para %s (Log %s). Fecha original: %s, "
-                                    "Diferencia: %.1f min. Asistencia previa encontrada — usando timestamp original.",
-                                    employee.name, log.id, original_date, time_diff_minutes
+                                    "📋 Checada histórica sin falta previa para %s (Log %s). "
+                                    "Fecha: %s — usando timestamp original.",
+                                    employee.name, log.id, original_date
                                 )
-                                check_datetime_local = device_datetime_local
-                                is_historical = True
                             else:
-                                # Sin evidencia de checada histórica válida — probable desfase de reloj
+                                # Día no laborable o ya tiene asistencia cerrada — usar hora actual
                                 _logger.warning(
-                                    "⚠️ Fecha pasada sin contexto histórico para log %s (Employee: %s, Device: %s). "
-                                    "Fecha dispositivo (local): %s, Diferencia: %.1f min. Usando hora actual.",
-                                    log.id, employee.name, device_serial, naive_datetime, time_diff_minutes
+                                    "⚠️ Fecha pasada sin contexto válido para log %s (Employee: %s, Device: %s). "
+                                    "Fecha dispositivo: %s. Usando hora actual.",
+                                    log.id, employee.name, device_serial, naive_datetime
                                 )
                                 check_datetime_local = datetime.now(DEVICE_TIMEZONE)
                                 _logger.info("✅ Usando hora actual (%s): %s", company_tz_name, check_datetime_local)
-                else:
-                    # Fecha válida (dentro de ±10 min), procesar normalmente
-                    check_datetime_local = device_datetime_local
                 
                 check_datetime_utc_dt = check_datetime_local.astimezone(UTC_TIMEZONE) 
                 check_datetime_utc = fields.Datetime.to_string(check_datetime_utc_dt)
@@ -234,6 +368,7 @@ class ZkTecoAttendanceLog(models.Model):
                 continue
 
             last_attendance = employee.last_attendance_id.sudo()
+            shift_in_utc_dt, shift_out_utc_dt = self._get_shift_times(employee, check_datetime_local, DEVICE_TIMEZONE)
 
             # Para checadas históricas, usar la última asistencia del mismo día histórico
             # (no la global, que podría ser del día actual y causaría cierres/aperturas incorrectos)
@@ -250,50 +385,48 @@ class ZkTecoAttendanceLog(models.Model):
                     ('check_in', '>=', fields.Datetime.to_string(hist_day_start)),
                     ('check_in', '<=', fields.Datetime.to_string(hist_day_end)),
                 ], order='check_in desc', limit=1)
-            
-            shift_in_utc_dt, shift_out_utc_dt = self._get_shift_times(employee, check_datetime_local, DEVICE_TIMEZONE)
 
             if not last_attendance or last_attendance.check_out:
-                
+
                 status = 'n/a'
                 if shift_in_utc_dt:
 
                     max_on_time = shift_in_utc_dt + timedelta(minutes=TIME_OFFSET_MINUTES)
-                    
+
                     if check_datetime_utc_dt <= max_on_time:
                         status = 'on_time'
                     else:
                         status = 'late'
-                        
+
                 attendance_record = self._create_attendance(employee, check_datetime_utc, status)
                 _logger.info("CHECK-IN (Primera Checada) processed for %s at %s. Status: %s", employee.name, log.timestamp, status)
 
             else:
-                self._close_attendance(last_attendance, check_datetime_utc) 
+                self._close_attendance(last_attendance, check_datetime_utc)
 
                 is_end_of_shift = False
                 if shift_out_utc_dt and check_datetime_utc_dt >= (shift_out_utc_dt - timedelta(minutes=10)):
                     is_end_of_shift = True
-                
-                if not is_end_of_shift: 
-                    
+
+                if not is_end_of_shift:
+
                     previous_status = last_attendance.punctuality_status
-                    
-                    if previous_status in ('on_time', 'late', 'LunchE'): 
+
+                    if previous_status in ('on_time', 'late', 'LunchE'):
                         new_status = 'LunchS'
-                    else: 
+                    else:
                         new_status = 'LunchE'
 
                     attendance_record = self._create_attendance(employee, check_datetime_utc, new_status)
                     _logger.info("CHECK-OUT y Nuevo CHECK-IN Intermedio processed for %s at %s. Status: %s", employee.name, log.timestamp, new_status)
 
                 else:
-                    check_in_end = check_datetime_utc_dt 
+                    check_in_end = check_datetime_utc_dt
                     check_out_end = check_datetime_utc_dt + timedelta(seconds=SECOND_DIFFERENCE)
-                    
+
                     attendance_record = self._create_attendance(employee, fields.Datetime.to_string(check_in_end), 'end')
                     self._close_attendance(attendance_record, fields.Datetime.to_string(check_out_end))
-                    
+
                     _logger.info("CHECK-OUT y CHECK-IN/OUT (Fin de Turno) processed for %s at %s.", employee.name, log.timestamp)
             
             if attendance_record:

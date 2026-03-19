@@ -626,14 +626,10 @@ class HrEmployeeExtension(models.Model):
         }
 
     def action_print_carta_laboral(self):
-        """Abre la carta laboral en HTML para impresión rápida y más estable."""
+        """Genera la carta laboral en PDF (servidor) para un resultado consistente."""
         self.ensure_one()
         report = self.env.ref('employee_modifications.report_carta_laboral')
-        return {
-            'type': 'ir.actions.act_url',
-            'url': f'/report/html/{report.report_name}/{self.id}',
-            'target': 'self',
-        }
+        return report.report_action(self)
 
     def get_fecha_ingreso(self):
         """Obtiene la fecha de ingreso del empleado"""

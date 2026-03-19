@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="paperformat_carta_laboral" model="report.paperformat">
+        <field name="name">Carta Laboral A4</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">25</field>
+        <field name="margin_bottom">13</field>
+        <field name="margin_left">13</field>
+        <field name="margin_right">13</field>
+        <field name="header_line" eval="False"/>
+        <field name="dpi">96</field>
+        <field name="disable_shrinking" eval="True"/>
+    </record>
+
     <!-- Definición del reporte -->
     <record id="report_carta_laboral" model="ir.actions.report">
         <field name="name">Carta Laboral</field>
@@ -10,6 +24,7 @@
         <field name="binding_model_id" ref="hr.model_hr_employee"/>
         <field name="binding_type">report</field>
         <field name="print_report_name">'Carta_Laboral_%s' % (object.name)</field>
+        <field name="paperformat_id" ref="employee_modifications.paperformat_carta_laboral"/>
     </record>
 
     <!-- Template QWeb -->
@@ -35,48 +50,7 @@
                             .article + .footer {
                                 display: none !important;
                             }
-                            .pdf-download-button {
-                                position: fixed;
-                                bottom: 20px;
-                                left: 50%;
-                                transform: translateX(-50%);
-                                z-index: 9999;
-                                background: #1f6fb2;
-                                color: #ffffff;
-                                border: none;
-                                border-radius: 6px;
-                                padding: 12px 24px;
-                                font-size: 14px;
-                                font-weight: 600;
-                                cursor: pointer;
-                                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-                            }
-                            .pdf-download-button:hover {
-                                background: #185a96;
-                            }
-                            @media print {
-                                @page {
-                                    size: A4 portrait;
-                                    margin: 1in 0.5in 0.5in 0.5in;
-                                }
-
-                                /* Ajuste visual equivalente a Scale 90% aplicado a todo el reporte */
-                                .article {
-                                    transform: scale(0.9);
-                                    transform-origin: top left;
-                                    width: 111.11%;
-                                }
-
-                                .pdf-download-button {
-                                    display: none !important;
-                                }
-                            }
                         </style>
-                        <script type="text/javascript">
-                            function abrirImpresora() {
-                                window.print();
-                            }
-                        </script>
                     <div class="page carta-laboral">
                         
                         <!-- Encabezado con ubicación y fecha -->
@@ -129,10 +103,6 @@
                                 <p style="font-weight: bold;" t-esc="employee.company_id.name"/>
                             </div>
                         </div>
-
-                        <button type="button" class="pdf-download-button" onclick="abrirImpresora();">
-                            Imprimir
-                        </button>
 
                     </div>
                 </t>

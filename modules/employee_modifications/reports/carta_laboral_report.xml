@@ -25,10 +25,22 @@
                             .carta-laboral {
                                 font-family: Arial, sans-serif;
                                 font-size: 12pt;
-                                width: 210mm;
-                                min-height: 297mm;
-                                margin: 0 auto;
+                                width: 190mm;
+                                min-height: 277mm;
+                                margin: 10mm auto;
+                                padding: 0 8mm 8mm 8mm;
                                 box-sizing: border-box;
+                                display: flex;
+                                flex-direction: column;
+                                background: #ffffff;
+                            }
+                            .carta-main-content {
+                                flex: 1 1 auto;
+                            }
+                            .carta-signature {
+                                margin-top: auto;
+                                text-align: center;
+                                padding-top: 12mm;
                             }
                             .carta-laboral strong {
                                 display: inline-block;
@@ -82,10 +94,10 @@
                                     margin: 0 !important;
                                     padding: 0 !important;
                                 }
-                                body.carta-print-a4 .carta-laboral {
-                                    transform: scale(0.8);
-                                    transform-origin: top center;
-                                    width: 125%;
+                                .carta-laboral {
+                                    width: 190mm;
+                                    min-height: 277mm;
+                                    margin: 10mm auto;
                                 }
                                 .carta-print-button,
                                 .carta-print-actions {
@@ -104,6 +116,7 @@
                             });
                         </script>
                     <div class="page carta-laboral">
+                        <div class="carta-main-content">
                         
                         <!-- Encabezado con ubicación y fecha -->
                         <t t-set="meses" t-value="{'1': 'ENERO', '2': 'FEBRERO', '3': 'MARZO', '4': 'ABRIL', '5': 'MAYO', '6': 'JUNIO', '7': 'JULIO', '8': 'AGOSTO', '9': 'SEPTIEMBRE', '10': 'OCTUBRE', '11': 'NOVIEMBRE', '12': 'DICIEMBRE'}"/>
@@ -145,8 +158,10 @@
                             </p>
                         </div>
 
+                        </div>
+
                         <!-- Firma -->
-                        <div style="text-align: center; margin-top: 80px;">
+                        <div class="carta-signature">
                             <p style="font-weight: bold;">ATENTAMENTE:</p>
                             <div style="margin-top: 60px;">
                                 <p>____________________________________</p>

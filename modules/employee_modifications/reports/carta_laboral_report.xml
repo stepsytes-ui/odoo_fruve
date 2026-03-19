@@ -63,7 +63,7 @@
                         <t t-set="mes" t-value="meses[hoy.strftime('%m').lstrip('0')]"/>
                         <t t-set="anio" t-value="hoy.strftime('%Y')"/>
                         
-                        <div style="text-align: right; margin-bottom: 60px;">
+                        <div style="text-align: right; margin-top: 12px; margin-bottom: 60px;">
                             <span t-esc="employee.get_company_location()"/>, A <t t-esc="dia"/> DE <t t-esc="mes"/> DE <t t-esc="anio"/>
                         </div>
 

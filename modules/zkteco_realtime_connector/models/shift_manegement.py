@@ -78,6 +78,12 @@ class ShiftManagement(models.Model):
         store=False
     )
 
+    horario_carta_laboral = fields.Char(
+        string='Horario para Carta Laboral',
+        help='Texto del horario que aparecerá en la Carta Laboral. '
+             'Ejemplo: LUNES A VIERNES DE 08:00 A 17:00 Y SÁBADO DE 08:00 A 13:00'
+    )
+
     def get_times_for_date(self, target_date):
         """
         Retorna (entrada, salida) según el día de la semana y si es especial.

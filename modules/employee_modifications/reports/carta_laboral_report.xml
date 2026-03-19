@@ -25,9 +25,13 @@
                             .carta-laboral strong {
                                 display: inline-block;
                                 font-weight: bold;
-                                padding-right: 2px;    /* Reducido de 4px a 2px */
+                                padding-right: 2px;
                                 white-space: pre-wrap;
-                                letter-spacing: -0.2px; /* Hace que la negrita sea más compacta */
+                                letter-spacing: -0.2px;
+                            }
+                            /* Fix para logos PNG con fondo transparente en wkhtmltopdf */
+                            img.company_logo, .o_company_logo, img[src*="/web/image"] {
+                                background-color: #ffffff !important;
                             }
                         </style>
                     <div class="page carta-laboral">

@@ -34,6 +34,11 @@
                                 <field name="hora_entrada"/>
                                 <field name="hora_salida"/>
                             </group>
+                            <group string="Carta Laboral">
+                                <field name="horario_carta_laboral"
+                                       placeholder="Ej. LUNES A VIERNES DE 08:00 A 17:00 Y SÁBADO DE 08:00 A 13:00"
+                                       help="Si se deja vacío se usará el nombre del turno en la Carta Laboral."/>
+                            </group>
                         </group>
 
                         <notebook>

@@ -663,7 +663,7 @@ class HrEmployeeExtension(models.Model):
         """Obtiene el horario de trabajo del empleado"""
         self.ensure_one()
         if hasattr(self, 'turno_id') and self.turno_id:
-            return self.turno_id.turno_name or 'N/A'
+            return self.turno_id.horario_carta_laboral or self.turno_id.turno_name or 'N/A'
         return 'N/A'
 
     def get_company_location(self):

@@ -18,44 +18,26 @@
             <t t-foreach="docs" t-as="employee">
                 <t t-call="web.external_layout">
                         <style>
-                            @page {
-                                size: A4 portrait;
-                                margin: 0;
-                            }
                             .carta-laboral {
                                 font-family: Arial, sans-serif;
                                 font-size: 12pt;
-                                width: 190mm;
-                                min-height: 277mm;
-                                margin: 10mm auto;
-                                padding: 0 8mm 8mm 8mm;
-                                box-sizing: border-box;
-                                display: flex;
-                                flex-direction: column;
-                                background: #ffffff;
-                            }
-                            .carta-main-content {
-                                flex: 1 1 auto;
-                            }
-                            .carta-signature {
-                                margin-top: auto;
-                                text-align: center;
-                                padding-top: 12mm;
                             }
                             .carta-laboral strong {
                                 display: inline-block;
                                 font-weight: bold;
-                                padding-right: 2px;
+                                padding-right: 2px;    /* Reducido de 4px a 2px */
                                 white-space: pre-wrap;
-                                letter-spacing: -0.2px;
+                                letter-spacing: -0.2px; /* Hace que la negrita sea más compacta */
                             }
-                            /* Fix para logos PNG con fondo transparente en wkhtmltopdf */
-                            img.company_logo, .o_company_logo, img[src*="/web/image"] {
-                                background-color: #ffffff !important;
+                            /* Ocultar footer de Odoo en pantalla y al imprimir */
+                            .footer, footer, #footer,
+                            .o_report_layout_standard .footer,
+                            .article + .footer {
+                                display: none !important;
                             }
-                            .carta-print-button {
+                            .pdf-download-button {
                                 position: fixed;
-                                bottom: 16px;
+                                bottom: 20px;
                                 left: 50%;
                                 transform: translateX(-50%);
                                 z-index: 9999;
@@ -63,60 +45,28 @@
                                 color: #ffffff;
                                 border: none;
                                 border-radius: 6px;
-                                padding: 10px 16px;
+                                padding: 12px 24px;
                                 font-size: 14px;
                                 font-weight: 600;
                                 cursor: pointer;
-                                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+                                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
                             }
-                            .carta-print-actions {
-                                margin-top: 24px;
-                                text-align: center;
-                            }
-                            .carta-print-link {
-                                display: inline-block;
-                                background: #1f6fb2;
-                                color: #ffffff !important;
-                                text-decoration: none;
-                                border-radius: 6px;
-                                padding: 10px 16px;
-                                font-size: 14px;
-                                font-weight: 600;
-                            }
-                            @media screen {
-                                body {
-                                    background: #f4f6f8;
-                                }
+                            .pdf-download-button:hover {
+                                background: #185a96;
                             }
                             @media print {
-                                html,
-                                body {
-                                    margin: 0 !important;
-                                    padding: 0 !important;
-                                }
-                                .carta-laboral {
-                                    width: 190mm;
-                                    min-height: 277mm;
-                                    margin: 10mm auto;
-                                }
-                                .carta-print-button,
-                                .carta-print-actions {
+                                .pdf-download-button {
                                     display: none !important;
                                 }
                             }
                         </style>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
                         <script type="text/javascript">
-                            function printCartaLaboral() {
-                                document.body.classList.add('carta-print-a4');
+                            function abrirImpresora() {
                                 window.print();
                             }
-
-                            window.addEventListener('afterprint', function () {
-                                document.body.classList.remove('carta-print-a4');
-                            });
                         </script>
                     <div class="page carta-laboral">
-                        <div class="carta-main-content">
                         
                         <!-- Encabezado con ubicación y fecha -->
                         <t t-set="meses" t-value="{'1': 'ENERO', '2': 'FEBRERO', '3': 'MARZO', '4': 'ABRIL', '5': 'MAYO', '6': 'JUNIO', '7': 'JULIO', '8': 'AGOSTO', '9': 'SEPTIEMBRE', '10': 'OCTUBRE', '11': 'NOVIEMBRE', '12': 'DICIEMBRE'}"/>
@@ -158,10 +108,8 @@
                             </p>
                         </div>
 
-                        </div>
-
                         <!-- Firma -->
-                        <div class="carta-signature">
+                        <div style="text-align: center; margin-top: 80px;">
                             <p style="font-weight: bold;">ATENTAMENTE:</p>
                             <div style="margin-top: 60px;">
                                 <p>____________________________________</p>
@@ -171,15 +119,9 @@
                             </div>
                         </div>
 
-                        <button type="button"
-                                class="carta-print-button"
-                                onclick="printCartaLaboral();">
+                        <button type="button" class="pdf-download-button" onclick="abrirImpresora();">
                             Imprimir
                         </button>
-
-                        <div class="carta-print-actions">
-                            <a href="#" class="carta-print-link" onclick="printCartaLaboral(); return false;">Imprimir carta</a>
-                        </div>
 
                     </div>
                 </t>

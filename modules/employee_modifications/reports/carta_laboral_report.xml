@@ -55,12 +55,23 @@
                                 background: #185a96;
                             }
                             @media print {
+                                @page {
+                                    size: A4 portrait;
+                                    margin: 1in 0.5in 0.5in 0.5in;
+                                }
+
+                                /* Ajuste visual equivalente a Scale 90% del navegador */
+                                .carta-laboral {
+                                    transform: scale(0.9);
+                                    transform-origin: top center;
+                                    width: 111.11%;
+                                }
+
                                 .pdf-download-button {
                                     display: none !important;
                                 }
                             }
                         </style>
-                        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
                         <script type="text/javascript">
                             function abrirImpresora() {
                                 window.print();

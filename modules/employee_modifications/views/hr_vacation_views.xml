@@ -210,8 +210,8 @@
             <field name="arch" type="xml">
                 <!-- Agregar botón de Carta Laboral después del botón de Resguardo -->
                 <xpath expr="//button[@name='action_view_resguardos']" position="after">
-                    <button name="%(employee_modifications.report_carta_laboral)d"
-                            type="action"
+                    <button name="action_print_carta_laboral"
+                            type="object"
                             string="Imprimir Carta Laboral"
                             class="btn-primary"
                             groups="hr.group_hr_user"/>

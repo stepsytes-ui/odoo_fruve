@@ -18,9 +18,17 @@
             <t t-foreach="docs" t-as="employee">
                 <t t-call="web.external_layout">
                         <style>
+                            @page {
+                                size: A4 portrait;
+                                margin: 0;
+                            }
                             .carta-laboral {
                                 font-family: Arial, sans-serif;
                                 font-size: 12pt;
+                                width: 210mm;
+                                min-height: 297mm;
+                                margin: 0 auto;
+                                box-sizing: border-box;
                             }
                             .carta-laboral strong {
                                 display: inline-block;
@@ -33,7 +41,68 @@
                             img.company_logo, .o_company_logo, img[src*="/web/image"] {
                                 background-color: #ffffff !important;
                             }
+                            .carta-print-button {
+                                position: fixed;
+                                bottom: 16px;
+                                left: 50%;
+                                transform: translateX(-50%);
+                                z-index: 9999;
+                                background: #1f6fb2;
+                                color: #ffffff;
+                                border: none;
+                                border-radius: 6px;
+                                padding: 10px 16px;
+                                font-size: 14px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+                            }
+                            .carta-print-actions {
+                                margin-top: 24px;
+                                text-align: center;
+                            }
+                            .carta-print-link {
+                                display: inline-block;
+                                background: #1f6fb2;
+                                color: #ffffff !important;
+                                text-decoration: none;
+                                border-radius: 6px;
+                                padding: 10px 16px;
+                                font-size: 14px;
+                                font-weight: 600;
+                            }
+                            @media screen {
+                                body {
+                                    background: #f4f6f8;
+                                }
+                            }
+                            @media print {
+                                html,
+                                body {
+                                    margin: 0 !important;
+                                    padding: 0 !important;
+                                }
+                                body.carta-print-a4 .carta-laboral {
+                                    transform: scale(0.8);
+                                    transform-origin: top center;
+                                    width: 125%;
+                                }
+                                .carta-print-button,
+                                .carta-print-actions {
+                                    display: none !important;
+                                }
+                            }
                         </style>
+                        <script type="text/javascript">
+                            function printCartaLaboral() {
+                                document.body.classList.add('carta-print-a4');
+                                window.print();
+                            }
+
+                            window.addEventListener('afterprint', function () {
+                                document.body.classList.remove('carta-print-a4');
+                            });
+                        </script>
                     <div class="page carta-laboral">
                         
                         <!-- Encabezado con ubicación y fecha -->
@@ -85,6 +154,16 @@
                                 <p style="font-weight: bold;">RECURSOS HUMANOS</p>
                                 <p style="font-weight: bold;" t-esc="employee.company_id.name"/>
                             </div>
+                        </div>
+
+                        <button type="button"
+                                class="carta-print-button"
+                                onclick="printCartaLaboral();">
+                            Imprimir
+                        </button>
+
+                        <div class="carta-print-actions">
+                            <a href="#" class="carta-print-link" onclick="printCartaLaboral(); return false;">Imprimir carta</a>
                         </div>
 
                     </div>

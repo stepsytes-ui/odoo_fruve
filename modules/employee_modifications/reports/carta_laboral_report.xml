@@ -5,10 +5,11 @@
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">25</field>
+        <field name="margin_top">40</field>
         <field name="margin_bottom">13</field>
         <field name="margin_left">13</field>
         <field name="margin_right">13</field>
+        <field name="header_spacing">8</field>
         <field name="header_line" eval="False"/>
         <field name="dpi">96</field>
         <field name="disable_shrinking" eval="True"/>
@@ -36,6 +37,8 @@
                             .carta-laboral {
                                 font-family: Arial, sans-serif;
                                 font-size: 12pt;
+                                padding-top: 22mm;
+                                box-sizing: border-box;
                             }
                             .carta-laboral strong {
                                 display: inline-block;

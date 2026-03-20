@@ -5,6 +5,7 @@ class ShiftManagement(models.Model):
     _name = 'shift.management'
     _description = 'Gestión de Turnos de Empleados'
     _rec_name = 'turno_name'
+    _order = 'turno_name asc, id asc'
 
     turno_name = fields.Char(string='Nombre del Turno')
     hora_entrada = fields.Datetime(string='Hora de Entrada')

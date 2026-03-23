@@ -77,6 +77,69 @@
         </field>
     </record>
 
+    <record id="view_employee_form_required_fields_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.form.required.fields.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='company_id']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+
+            <xpath expr="//page[@name='personal_information']//field[@name='identification_id']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+
+            <xpath expr="//page[@name='personal_information']//field[@name='ssnid']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+
+            <xpath expr="//page[@name='personal_information']//field[@name='gender']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+
+            <xpath expr="//page[@name='personal_information']//field[@name='birthday']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='rfc']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+    <record id="view_employee_form_biometric_required_fields_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.form.biometric.required.fields.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="zkteco_realtime_connector.view_employee_form_biometric"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='biometric_id']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='turno_id']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+    <record id="view_employee_form_daily_rate_required_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.form.daily.rate.required.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="overtime.view_employee_form_daily_rate"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='daily_rate']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
     <!-- Vista heredada para agregar campo Finiquitado después de employee_status -->
     <record id="view_employee_form_finiquitado_inherit" model="ir.ui.view">
         <field name="name">hr.employee.form.finiquitado.inherit</field>

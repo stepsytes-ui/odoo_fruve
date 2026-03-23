@@ -231,7 +231,7 @@
             <field name="arch" type="xml">
                 
                 <xpath expr="//field[@name='parent_id']" position="after">
-                    <field name="fecha_ingreso_manual" invisible="context.get('active_id')"/>
+                    <field name="fecha_ingreso_manual" invisible="context.get('active_id')" required="1"/>
                 </xpath>
 
                 </field>

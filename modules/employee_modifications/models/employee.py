@@ -171,7 +171,6 @@ class HrEmployeeExtension(models.Model):
         ],
         string='Cuenta con Resguardo',
         required=True,
-        default='no',
         tracking=True,
         help='Indica si el empleado cuenta con equipo o herramienta en resguardo.',
     )
@@ -344,6 +343,14 @@ class HrEmployeeExtension(models.Model):
             if employee.has_resguardo == 'no' and has_pending:
                 raise ValidationError(
                     'No puede marcar "Cuenta con Resguardo" en "No" mientras existan resguardos activos o parciales.'
+                )
+
+    @api.constrains('daily_rate')
+    def _check_daily_rate_required_value(self):
+        for employee in self:
+            if employee.daily_rate is False or employee.daily_rate <= 0:
+                raise ValidationError(
+                    'El campo "Salario Diario" debe capturarse con un valor mayor a 0.'
                 )
 
     def write(self, vals):

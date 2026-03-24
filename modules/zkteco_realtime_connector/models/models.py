@@ -11,7 +11,7 @@ _logger = logging.getLogger(__name__)
 FIXED_DEVICE_TIMEZONE_NAME = 'America/Tijuana'
 TIME_OFFSET_MINUTES = 5
 SECOND_DIFFERENCE = 1
-RECOVERY_LOOKBACK_DAYS = 8
+RECOVERY_LOOKBACK_DAYS = 16
 BACKLOG_RECENT_WINDOW_MINUTES = 10
 BACKLOG_ON_TIME_WINDOW_HOURS = 4
 
@@ -276,17 +276,17 @@ class ZkTecoAttendanceLog(models.Model):
                 else:
                     # Fecha PASADA — intentar recuperación histórica
                     days_in_past = (now_utc - device_datetime_utc).total_seconds() / 86400
-                    if days_in_past > 8:
+                    if days_in_past > RECOVERY_LOOKBACK_DAYS:
                         # Fuera del rango histórico permitido — tratar como desfase
                         _logger.warning(
-                            "⚠️ Fecha pasada mayor a 8 días para log %s (Employee: %s, Device: %s). "
+                            "⚠️ Fecha pasada mayor a %s días para log %s (Employee: %s, Device: %s). "
                             "Fecha dispositivo: %s, Días de diferencia: %.1f. Usando hora actual.",
-                            log.id, employee.name, device_serial, naive_datetime, days_in_past
+                            RECOVERY_LOOKBACK_DAYS, log.id, employee.name, device_serial, naive_datetime, days_in_past
                         )
                         check_datetime_local = datetime.now(DEVICE_TIMEZONE)
                         _logger.info("✅ Usando hora actual (%s): %s", company_tz_name, check_datetime_local)
                     else:
-                        # Dentro de los últimos 8 días — checada histórica válida
+                        # Dentro de los últimos días permitidos — checada histórica válida
                         original_date = device_datetime_local.date()
                         orig_day_start = DEVICE_TIMEZONE.localize(
                             datetime.combine(original_date, time.min)

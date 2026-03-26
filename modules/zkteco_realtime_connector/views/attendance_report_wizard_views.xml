@@ -9,6 +9,7 @@
                 <form string="Reporte Personalizado de Asistencia">
                     <group>
                         <group>
+                            <field name="company_id" readonly="1" />
                             <field name="date_from" />
                             <field name="date_to" />
                         </group>

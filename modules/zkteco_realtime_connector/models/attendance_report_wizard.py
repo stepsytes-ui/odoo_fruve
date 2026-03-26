@@ -23,11 +23,19 @@ class AttendanceReportWizard(models.TransientModel):
     _name = 'attendance.report.wizard'
     _description = 'Wizard para Generar Reporte de Asistencia Personalizado'
 
+    company_id = fields.Many2one(
+        'res.company',
+        string='Empresa',
+        required=True,
+        readonly=True,
+        default=lambda self: self.env.company,
+    )
     date_from = fields.Date(string='Fecha Desde', required=True)
     date_to = fields.Date(string='Fecha Hasta', required=True)
     employee_id = fields.Many2one(
         'hr.employee',
         string='Empleado (Opcional)',
+        domain="[('company_id', '=', company_id)]",
         help='Dejar en blanco para incluir todos los empleados'
     )
 
@@ -65,8 +73,16 @@ class AttendanceReportWizard(models.TransientModel):
 
         date_from = self.date_from
         date_to = self.date_to
+        report_company = self.company_id or self.env.company
+
+        if self.employee_id and self.employee_id.company_id != report_company:
+            raise ValueError(
+                _('El empleado seleccionado no pertenece a la empresa activa: %s')
+                % report_company.display_name
+            )
 
         employee_domain = [
+            ('company_id', '=', report_company.id),
             '|',
             ('employee_status', '=', 'active'),
             '&',
@@ -119,6 +135,7 @@ class AttendanceReportWizard(models.TransientModel):
             'rows': rows,
             'date_from': date_from,
             'date_to': date_to,
+            'company': report_company,
             'company_tz': COMPANY_TZ,
         }
 

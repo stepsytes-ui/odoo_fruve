@@ -70,3 +70,53 @@ class ZkTecoWebhook(http.Controller):
             response_command = "GET ATTLOG" 
 
             return f"OK\r\n{response_command}\r\n"
+
+
+class AttendanceReportController(http.Controller):
+
+    @http.route('/attendance/report/preview/<int:wizard_id>', auth='user', type='http', methods=['GET'], csrf=False)
+    def preview_attendance_report(self, wizard_id, **kwargs):
+        """Renderiza una vista previa HTML del reporte de asistencia sin crear archivos."""
+        wizard = request.env['attendance.report.wizard'].browse(wizard_id)
+        if not wizard.exists():
+            return request.not_found()
+        try:
+            html_content = wizard._build_preview_html()
+        except Exception as e:
+            _logger.exception("Error generando vista previa del reporte %s", wizard_id)
+            error_html = (
+                '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Error</title>'
+                '<style>body{font-family:Arial,sans-serif;padding:40px;color:#c00}</style></head>'
+                f'<body><h2>Error al generar la vista previa</h2><pre>{str(e)}</pre></body></html>'
+            )
+            return request.make_response(
+                error_html,
+                headers=[('Content-Type', 'text/html; charset=utf-8')],
+            )
+        return request.make_response(
+            html_content,
+            headers=[('Content-Type', 'text/html; charset=utf-8')],
+        )
+
+    @http.route('/attendance/report/download/<int:wizard_id>', auth='user', type='http', methods=['GET'], csrf=False)
+    def download_attendance_report(self, wizard_id, **kwargs):
+        """Descarga el Excel del reporte de asistencia directamente sin crear archivos adjuntos."""
+        wizard = request.env['attendance.report.wizard'].browse(wizard_id)
+        if not wizard.exists():
+            return request.not_found()
+        try:
+            file_bytes, filename = wizard._generate_excel_file()
+        except Exception as e:
+            _logger.exception("Error generando Excel del reporte %s", wizard_id)
+            return request.make_response(
+                str(e),
+                headers=[('Content-Type', 'text/plain; charset=utf-8')],
+            )
+        return request.make_response(
+            file_bytes,
+            headers=[
+                ('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+                ('Content-Disposition', f'attachment; filename="{filename}"'),
+                ('Content-Length', str(len(file_bytes))),
+            ],
+        )

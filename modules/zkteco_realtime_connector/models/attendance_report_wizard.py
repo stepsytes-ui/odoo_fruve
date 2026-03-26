@@ -4,6 +4,7 @@ import pytz
 import logging
 from io import BytesIO
 import base64
+import html as _html
 
 _logger = logging.getLogger(__name__)
 
@@ -36,19 +37,35 @@ class AttendanceReportWizard(models.TransientModel):
             if record.date_from > record.date_to:
                 raise ValueError(_('La fecha "Desde" no puede ser posterior a la fecha "Hasta"'))
 
+    def action_preview_report(self):
+        """Abre una vista previa HTML del reporte en una nueva pestaña del navegador"""
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/attendance/report/preview/{self.id}',
+            'target': 'new',
+        }
+
     def action_generate_report(self):
-        """Genera el reporte en Excel"""
+        """Descarga el reporte en Excel directamente sin crear archivos adjuntos"""
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/attendance/report/download/{self.id}',
+            'target': 'self',
+        }
+
+    def _get_report_data(self):
+        """
+        Construye y retorna la estructura de datos del reporte.
+        Usada tanto por la vista previa HTML como por la generación de Excel.
+        """
         try:
             COMPANY_TZ = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
         except pytz.UnknownTimeZoneError:
-            _logger.error(f"Error: Zona horaria '{FIXED_DEVICE_TIMEZONE_NAME}' es inválida.")
-            return
+            raise ValueError(_(f"Zona horaria inválida: {FIXED_DEVICE_TIMEZONE_NAME}"))
 
         date_from = self.date_from
         date_to = self.date_to
-        
-        # Construir dominio de empleados
-        # Incluir empleados activos Y empleados inactivos que NO han sido finiquitados
+
         employee_domain = [
             '|',
             ('employee_status', '=', 'active'),
@@ -59,32 +76,194 @@ class AttendanceReportWizard(models.TransientModel):
         ]
         if self.employee_id:
             employee_domain.append(('id', '=', self.employee_id.id))
-        
+
         employees = self.env['hr.employee'].search(employee_domain)
-        
-        # Ordenar numéricamente por biometric_id (convertiendo a número)
+
         try:
             employees = sorted(employees, key=lambda e: int(e.biometric_id) if e.biometric_id else 0)
         except (ValueError, TypeError):
-            # Si algún biometric_id no es válido como número, ordenar alfabéticamente
             employees = sorted(employees, key=lambda e: e.biometric_id or '')
-        
+
         if not employees:
             raise ValueError(_('No se encontraron empleados con los criterios especificados.'))
 
-        # Generar lista de fechas
         date_list = []
         current_date = date_from
         while current_date <= date_to:
             date_list.append(current_date)
             current_date += timedelta(days=1)
 
-        # Crear workbook
+        day_names = {
+            0: 'Lunes', 1: 'Martes', 2: 'Miércoles', 3: 'Jueves',
+            4: 'Viernes', 5: 'Sábado', 6: 'Domingo',
+        }
+
+        Attendance = self.env['hr.attendance']
+        rows = []
+        for employee in employees:
+            cells = {}
+            for date_obj in date_list:
+                cells[date_obj] = self._get_cell_data_for_employee_date(
+                    employee, date_obj, COMPANY_TZ, Attendance
+                )
+            rows.append({
+                'biometric_id': employee.biometric_id or '',
+                'name': employee.name or '',
+                'turno': employee.sudo().turno_id.turno_name or '',
+                'cells': cells,
+            })
+
+        return {
+            'date_list': date_list,
+            'day_names': day_names,
+            'rows': rows,
+            'date_from': date_from,
+            'date_to': date_to,
+            'company_tz': COMPANY_TZ,
+        }
+
+    def _build_preview_html(self):
+        """Genera el HTML completo de la vista previa del reporte"""
+        data = self._get_report_data()
+        date_list = data['date_list']
+        day_names = data['day_names']
+        rows = data['rows']
+        date_from = data['date_from']
+        date_to = data['date_to']
+
+        def cell_style(color, font_color, bold):
+            styles = [
+                'padding:4px 6px',
+                'border:1px solid #ccc',
+                'white-space:pre-line',
+                'font-size:11px',
+                'vertical-align:top',
+                'line-height:1.4',
+            ]
+            if color:
+                styles.append(f'background-color:#{color}')
+            if font_color:
+                styles.append(f'color:#{font_color}')
+            if bold:
+                styles.append('font-weight:bold')
+            return '; '.join(styles)
+
+        def esc(val):
+            return _html.escape(str(val or ''))
+
+        parts = []
+        parts.append(f'''<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vista Previa Asistencia {esc(str(date_from))} – {esc(str(date_to))}</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ font-family: Arial, sans-serif; font-size: 13px; background: #f0f2f5; }}
+  .toolbar {{
+    position: sticky; top: 0; z-index: 200;
+    background: #fff; padding: 8px 16px;
+    border-bottom: 2px solid #4472C4;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  }}
+  .toolbar h2 {{ flex: 1; font-size: 14px; color: #1a2b4a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+  .toolbar .meta {{ font-size: 11px; color: #6c757d; white-space: nowrap; }}
+  .btn {{ padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; font-weight: 600; }}
+  .btn-primary {{ background: #4472C4; color: #fff; }}
+  .btn-primary:hover {{ background: #2e57a8; }}
+  .legend {{
+    background: #fff; padding: 6px 16px; position: sticky; top: 44px; z-index: 190;
+    border-bottom: 1px solid #dde;
+    display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+    font-size: 11px; color: #444;
+  }}
+  .legend-item {{ display: flex; align-items: center; gap: 5px; }}
+  .lswatch {{ width: 13px; height: 13px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.2); display: inline-block; flex-shrink: 0; }}
+  .table-wrap {{ overflow: auto; max-height: calc(100vh - 92px); }}
+  table {{ border-collapse: collapse; background: #fff; min-width: 100%; }}
+  th, td {{ border: 1px solid #ccc; font-size: 11px; }}
+  th {{
+    background: #4472C4; color: #fff;
+    padding: 5px 7px; white-space: nowrap;
+    position: sticky; top: 0; z-index: 10;
+    text-align: center;
+  }}
+  td {{ padding: 4px 6px; vertical-align: top; }}
+  .s0 {{ position: sticky; left: 0;   z-index: 5; background: inherit; min-width: 75px;  max-width: 75px; }}
+  .s1 {{ position: sticky; left: 75px; z-index: 5; background: inherit; min-width: 170px; max-width: 170px; }}
+  .s2 {{ position: sticky; left: 245px; z-index: 5; background: inherit; min-width: 110px; max-width: 110px; }}
+  th.s0, th.s1, th.s2 {{ z-index: 20; }}
+  .day-cell {{ min-width: 95px; max-width: 130px; }}
+  tr:nth-child(even) td {{ background-color: #f9f9fb; }}
+  tr:hover td {{ background-color: #eef3ff !important; }}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <h2>&#128203; Vista Previa &mdash; Reporte de Asistencia</h2>
+  <span class="meta">{esc(str(date_from))} al {esc(str(date_to))} &bull; {len(rows)} empleado(s)</span>
+  <a class="btn btn-primary" href="/attendance/report/download/{self.id}">&#11015; Descargar Excel</a>
+</div>
+<div class="legend">
+  <strong>Leyenda:</strong>
+  <div class="legend-item"><span class="lswatch" style="background:#00B050"></span>Asistencia</div>
+  <div class="legend-item"><span class="lswatch" style="background:#FF0000"></span>Falta</div>
+  <div class="legend-item"><span class="lswatch" style="background:#FFC000"></span>Incapacidad</div>
+  <div class="legend-item"><span class="lswatch" style="background:#FFC7CE"></span><span style="color:#FF6600">Permiso</span></div>
+  <div class="legend-item"><span class="lswatch" style="background:#4472C4"></span>Festivo</div>
+  <div class="legend-item"><span class="lswatch" style="background:#FF6600"></span>En finiquito</div>
+  <div class="legend-item"><span class="lswatch" style="background:#fff"></span><span style="color:#808080">Descanso</span></div>
+</div>
+<div class="table-wrap">
+<table>
+<thead><tr>
+  <th class="s0">No. Emp.</th>
+  <th class="s1">Nombre</th>
+  <th class="s2">Turno</th>
+''')
+
+        for date_obj in date_list:
+            day_name = day_names[date_obj.weekday()]
+            parts.append(
+                f'  <th class="day-cell">{esc(day_name)}<br>'
+                f'<span style="font-weight:normal;font-size:10px">{date_obj.strftime("%d/%m")}</span></th>\n'
+            )
+
+        parts.append('</tr></thead>\n<tbody>\n')
+
+        for row in rows:
+            parts.append('<tr>\n')
+            parts.append(f'  <td class="s0">{esc(row["biometric_id"])}</td>\n')
+            parts.append(f'  <td class="s1">{esc(row["name"])}</td>\n')
+            parts.append(f'  <td class="s2">{esc(row["turno"])}</td>\n')
+            for date_obj in date_list:
+                cell = row['cells'].get(date_obj, {})
+                style = cell_style(cell.get('color'), cell.get('font_color'), cell.get('bold', False))
+                text = esc(cell.get('text', '') or '')
+                parts.append(f'  <td class="day-cell" style="{style}">{text}</td>\n')
+            parts.append('</tr>\n')
+
+        parts.append('</tbody>\n</table>\n</div>\n</body>\n</html>')
+        return ''.join(parts)
+
+    def _generate_excel_file(self):
+        """Genera el archivo Excel y retorna (bytes_data, filename) sin crear adjuntos."""
+        if Workbook is None:
+            raise ImportError('openpyxl no está instalado. Instálelo con: pip install openpyxl')
+
+        data = self._get_report_data()
+        date_list = data['date_list']
+        day_names = data['day_names']
+        rows = data['rows']
+        date_from = data['date_from']
+        date_to = data['date_to']
+
         wb = Workbook()
         ws = wb.active
         ws.title = 'Reporte de Asistencia'
 
-        # Estilos
         header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
         header_font = Font(bold=True, color='FFFFFF')
         center_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
@@ -95,10 +274,8 @@ class AttendanceReportWizard(models.TransientModel):
             bottom=Side(style='thin')
         )
 
-        # Encabezados fijos
         fixed_headers = ['No. Empleado', 'Nombre', 'Turno']
         col_num = 1
-        
         for header in fixed_headers:
             cell = ws.cell(row=1, column=col_num, value=header)
             cell.fill = header_fill
@@ -107,96 +284,59 @@ class AttendanceReportWizard(models.TransientModel):
             cell.border = border
             col_num += 1
 
-        # Encabezados dinámicos por día
-        day_names = {
-                0: 'Lunes',
-                1: 'Martes',
-                2: 'Miércoles',
-                3: 'Jueves',
-                4: 'Viernes',
-                5: 'Sábado',
-                6: 'Domingo'
-            }
-        
-        date_columns = {}  # Mapeo de fecha a número de columna
+        date_columns = {}
         for date_obj in date_list:
             day_name = day_names[date_obj.weekday()]
             header_text = f'{day_name} {date_obj.day}'
-            
             cell = ws.cell(row=1, column=col_num, value=header_text)
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = center_alignment
             cell.border = border
-            
             date_columns[date_obj] = col_num
             col_num += 1
 
-        # Llenar datos
+        total_cols = col_num
+
         row_num = 2
-        Attendance = self.env['hr.attendance']
+        for row in rows:
+            ws.cell(row=row_num, column=1, value=row['biometric_id'])
+            ws.cell(row=row_num, column=2, value=row['name'])
+            ws.cell(row=row_num, column=3, value=row['turno'])
 
-        for employee in employees:
-            ws.cell(row=row_num, column=1, value=employee.biometric_id or '')
-            ws.cell(row=row_num, column=2, value=employee.name or '')
-            ws.cell(row=row_num, column=3, value=employee.sudo().turno_id.turno_name or '')
-
-            # Aplicar bordes y alineación a celdas fijas
             for col in range(1, 4):
                 cell = ws.cell(row=row_num, column=col)
                 cell.border = border
                 cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
 
-            # Llenar datos de asistencia por día
-            for date_obj, col_num in date_columns.items():
-                cell_data = self._get_cell_data_for_employee_date(employee, date_obj, COMPANY_TZ, Attendance)
-                
-                cell = ws.cell(row=row_num, column=col_num, value=cell_data['text'])
+            for date_obj, col_idx in date_columns.items():
+                cell_data = row['cells'].get(date_obj, {})
+                cell = ws.cell(row=row_num, column=col_idx, value=cell_data.get('text', '') or '')
                 cell.border = border
                 cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
-                
-                # Aplicar color de fondo según el tipo
-                if cell_data['color']:
-                    cell.fill = PatternFill(start_color=cell_data['color'], end_color=cell_data['color'], fill_type='solid')
-                
-                # Aplicar color de fuente si es necesario
-                if cell_data['font_color']:
-                    cell.font = Font(color=cell_data['font_color'], bold=cell_data['bold'])
+                if cell_data.get('color'):
+                    cell.fill = PatternFill(
+                        start_color=cell_data['color'],
+                        end_color=cell_data['color'],
+                        fill_type='solid'
+                    )
+                if cell_data.get('font_color'):
+                    cell.font = Font(color=cell_data['font_color'], bold=cell_data.get('bold', False))
 
             row_num += 1
 
-        # Ajustar ancho de columnas
         ws.column_dimensions['A'].width = 12
         ws.column_dimensions['B'].width = 25
         ws.column_dimensions['C'].width = 20
-        for col in range(4, col_num):
+        for col in range(4, total_cols):
             ws.column_dimensions[get_column_letter(col)].width = 25
 
-        # Guardar en BytesIO
         output = BytesIO()
         wb.save(output)
         output.seek(0)
 
-        # Crear attachment
-        filename = f"Reporte_Asistencia_{date_from}_{date_to}.xlsx"
-        
-        # Convertir a base64 para Odoo
-        import base64
-        file_data = base64.b64encode(output.getvalue())
-        
-        attachment = self.env['ir.attachment'].create({
-            'name': filename,
-            'datas': file_data,
-            'type': 'binary',
-            'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        })
-
-        # Retornar acción para descargar
-        return {
-            'type': 'ir.actions.act_url',
-            'url': f'/web/content/{attachment.id}?download=true',
-            'target': 'self',
-        }
+        filename = f'Reporte_Asistencia_{date_from}_{date_to}.xlsx'
+        return output.getvalue(), filename
 
     def _get_cell_data_for_employee_date(self, employee, target_date, company_tz, Attendance):
         """

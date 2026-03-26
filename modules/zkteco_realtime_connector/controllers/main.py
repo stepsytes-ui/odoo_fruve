@@ -68,6 +68,5 @@ class ZkTecoWebhook(http.Controller):
             _logger.info("ZKTeco Handshake received: %s", post)
 
             response_command = "GET ATTLOG" 
-            response_command += "\nREBOOT"
 
             return f"OK\r\n{response_command}\r\n"

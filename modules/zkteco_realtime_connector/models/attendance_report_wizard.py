@@ -214,7 +214,10 @@ class AttendanceReportWizard(models.TransientModel):
   th.s0, th.s1, th.s2 {{ z-index: 20; }}
   .day-cell {{ min-width: 95px; max-width: 130px; }}
   tr:nth-child(even) td {{ background-color: #f9f9fb; }}
-  tr:hover td {{ background-color: #eef3ff !important; }}
+    tr:hover td {{ background-color: #eef3ff !important; color: #000 !important; }}
+    tr:hover td * {{ color: #000 !important; }}
+    td:hover {{ background-color: #dce8ff !important; color: #000 !important; }}
+    td:hover * {{ color: #000 !important; }}
 </style>
 </head>
 <body>

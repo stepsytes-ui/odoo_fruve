@@ -166,7 +166,7 @@
                 <xpath expr="//button[@name='%(zkteco_realtime_connector.action_register_attendance)d']" position="before">
                     <button name="action_view_expedient"
                             type="object"
-                            string="Ver Expediente"
+                            string="Expediente"
                             class="btn-secondary"
                             groups="hr.group_hr_user"/>
                     <button name="action_view_warnings"

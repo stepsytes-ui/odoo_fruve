@@ -20,5 +20,12 @@
             action="zkteco_realtime_connector.attendance_report_wizard_action" 
             groups="zkteco_realtime_connector.group_hr_manager_custom"/>
 
+        <menuitem
+            id="menu_attendance_absence_generate_wizard"
+            name="Generar Faltas por Fecha"
+            parent="menu_zkteco_connector"
+            action="zkteco_realtime_connector.attendance_absence_generate_wizard_action"
+            groups="zkteco_realtime_connector.group_hr_manager_custom"/>
+
     </data>
 </odoo>

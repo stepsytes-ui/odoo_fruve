@@ -2,6 +2,7 @@ from odoo import fields, models, api, _
 from datetime import datetime, timedelta, time
 import pytz
 import logging
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ NEW_LEAVE_STATUSES = [
 LEAVE_STATUS_KEYS = [key for key, label in NEW_LEAVE_STATUSES]
 
 AUTO_CLOSE_DELAY_HOURS = 5 
+ABSENCE_ALERT_COOLDOWN_DAYS = 14
 
 class HrAttendance(models.Model):
 
@@ -135,21 +137,34 @@ class HrAttendance(models.Model):
                     record.check_out_time_only = False
 
     @api.model
-    def _cron_generate_absences(self):
+    def _cron_generate_absences(self, target_date=False):
         """
         Se ejecuta a las 10pm de cada día.
-        Genera faltas para empleados sin check_in en el día actual.
+        Genera faltas para empleados sin check_in en el día objetivo.
         Excluye: turno Seguridad (faltas manuales) y turno ESPECIAL (siempre tienen asistencia).
+
+        Args:
+            target_date (date|str|False): fecha a procesar. Si no se envía,
+                utiliza el día actual en la zona horaria de la empresa.
         """
         try:
             COMPANY_TZ = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
         except pytz.UnknownTimeZoneError:
             _logger.error(f"Error de Cron: Zona horaria '{FIXED_DEVICE_TIMEZONE_NAME}' es inválida.")
-            return
+            return {
+                'success': False,
+                'message': _('Zona horaria inválida: %s') % FIXED_DEVICE_TIMEZONE_NAME,
+            }
 
-        # Usar el día ACTUAL (no el anterior)
-        today_local = datetime.now(COMPANY_TZ).date()
-        _logger.info(f"[CRON FALTAS] Iniciando generación de faltas para el día: {today_local}")
+        if target_date:
+            try:
+                process_date = fields.Date.to_date(target_date)
+            except Exception:
+                raise UserError(_('La fecha seleccionada no es válida.'))
+        else:
+            process_date = datetime.now(COMPANY_TZ).date()
+
+        _logger.info(f"[CRON FALTAS] Iniciando generación de faltas para el día: {process_date}")
         
         day_mapping = {
             0: 'work_monday',
@@ -160,13 +175,13 @@ class HrAttendance(models.Model):
             5: 'work_saturday',
             6: 'work_sunday',
         }
-        day_of_week_int = today_local.weekday()
+        day_of_week_int = process_date.weekday()
         field_to_check = day_mapping.get(day_of_week_int)
 
         # Verificar si es día festivo global (aplica a toda la empresa)
         CalendarLeaves = self.env['resource.calendar.leaves']
-        start_of_day_local = COMPANY_TZ.localize(datetime.combine(today_local, time.min))
-        end_of_day_local = COMPANY_TZ.localize(datetime.combine(today_local, time.max))
+        start_of_day_local = COMPANY_TZ.localize(datetime.combine(process_date, time.min))
+        end_of_day_local = COMPANY_TZ.localize(datetime.combine(process_date, time.max))
         
         start_of_day_utc = start_of_day_local.astimezone(pytz.utc)
         end_of_day_utc = end_of_day_local.astimezone(pytz.utc)
@@ -180,7 +195,14 @@ class HrAttendance(models.Model):
         
         if public_holiday:
             _logger.info(f"[CRON FALTAS] ⚠️ Hoy es día festivo: {public_holiday.name}. No se generarán faltas.")
-            return
+            return {
+                'success': True,
+                'skipped': True,
+                'target_date': str(process_date),
+                'faltas_generadas': 0,
+                'permisos_generados': 0,
+                'message': _('Día festivo: %s. No se generaron faltas.') % (public_holiday.name or ''),
+            }
         
         Employee = self.env['hr.employee']
         # Excluir turnos Seguridad y ESPECIAL
@@ -263,6 +285,14 @@ class HrAttendance(models.Model):
                     self._check_and_alert_four_absences(employee, new_attendance)
         
         _logger.info(f"[CRON FALTAS] ✅ Finalizado. Faltas: {faltas_generadas}, Permisos: {permisos_generados}")
+        return {
+            'success': True,
+            'skipped': False,
+            'target_date': str(process_date),
+            'faltas_generadas': faltas_generadas,
+            'permisos_generados': permisos_generados,
+            'message': _('Proceso completado.'),
+        }
 
     @api.model
     def get_attendance_dashboard_stats(self, start_date=None, end_date=None):
@@ -461,101 +491,114 @@ class HrAttendance(models.Model):
             _logger.error(f"[CRON AUTO-CLOSE] Error crítico en el cron: {e}", exc_info=True)
 
     def _check_and_alert_four_absences(self, employee, new_attendance):
-            """Verifica si el empleado acumula 4 faltas en una ventana móvil de 31 días."""
+        """Verifica faltas y alerta con enfriamiento para evitar duplicados diarios."""
 
-            reference_dt = new_attendance.check_in or fields.Datetime.now()
-            if reference_dt.tzinfo is None:
-                reference_dt = pytz.utc.localize(reference_dt)
+        reference_dt = new_attendance.check_in or fields.Datetime.now()
+        if reference_dt.tzinfo is None:
+            reference_dt = pytz.utc.localize(reference_dt)
 
-            window_start_dt = reference_dt - timedelta(days=31)
-            window_start_str = fields.Datetime.to_string(window_start_dt)
-            window_end_str = fields.Datetime.to_string(reference_dt)
+        window_start_dt = reference_dt - timedelta(days=31)
+        window_start_str = fields.Datetime.to_string(window_start_dt)
+        window_end_str = fields.Datetime.to_string(reference_dt)
 
-            absence_count = self.search_count([
-                ('employee_id', '=', employee.id),
-                ('punctuality_status', '=', 'absence'),
-                ('check_in', '>=', window_start_str),
-                ('check_in', '<=', window_end_str),
-            ])
+        absence_count = self.search_count([
+            ('employee_id', '=', employee.id),
+            ('punctuality_status', '=', 'absence'),
+            ('check_in', '>=', window_start_str),
+            ('check_in', '<=', window_end_str),
+        ])
 
-            _logger.info(
-                "[ABSENCE ALERT] %s acumula %s faltas entre %s y %s",
-                employee.name,
-                absence_count,
-                window_start_str,
-                window_end_str,
-            )
+        _logger.info(
+            "[ABSENCE ALERT] %s acumula %s faltas entre %s y %s",
+            employee.name,
+            absence_count,
+            window_start_str,
+            window_end_str,
+        )
 
-            if absence_count == 4:
-                        hr_group = self.env.ref('zkteco_realtime_connector.group_rh_absence_manager', raise_if_not_found=False)
-
-                        if not hr_group:
-                            _logger.warning("No se encontró el grupo de Recursos Humanos.")
-                            return
-
-                        # Obtener la empresa del empleado
-                        employee_company = employee.company_id
-                        if not employee_company:
-                            _logger.warning(f"El empleado {employee.name} no tiene empresa asignada. No se enviará notificación.")
-                            return
-
-                        # Filtrar usuarios de RH que pertenecen a la misma empresa del empleado
-                        hr_users = [user for user in hr_group.users if employee_company in user.company_ids]
-                        
-                        if not hr_users:
-                            _logger.warning(f"No se encontraron usuarios de RRHH para la empresa {employee_company.name}.")
-                            return
-
-                        recipient_partner_ids = [user.partner_id.id for user in hr_users if user.partner_id and user.partner_id.email]
-                        
-                        if not recipient_partner_ids:
-                            _logger.warning(f"Los usuarios de RRHH de la empresa {employee_company.name} no tienen correo electrónico configurado.")
-                            return
-                        
-                        recipient_user_ids = [user.id for user in hr_users]
-                        # Convertir los IDs a un formato para 'recipient_ids' [(4, id), (4, id), ...]
-                        recipients_tuple_list = [(4, pid) for pid in recipient_partner_ids]
-
-                        # Construir la URL y el cuerpo (body, url, subject, etc.)
-                        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-                        employee_url = f"{base_url}/web#id={employee.id}&view_type=form&model=hr.employee"
-                        subject = _("🚨 ALERTA: Cuarta Falta de Asistencia - %s") % employee.name
-                        body = _("""
-                            El empleado **%s** (%s) ha acumulado su **CUARTA FALTA** no justificada...
-                            <a href="%s" style="padding: 10px 20px; text-decoration: none; background-color: #007bff; color: white; border-radius: 5px;">Ir al Perfil del Empleado</a>
-                        """) % (employee.name, employee.biometric_id or 'N/A', employee_url)
-                        
-                        # --- CREAR Y ENVIAR UN ÚNICO CORREO A MÚLTIPLES DESTINATARIOS ---
-                        self.env['mail.mail'].sudo().create({
-                            'subject': subject,
-                            'body_html': body,
-                            # Usar 'recipient_ids' para enviar a varios partners de una vez
-                            'recipient_ids': recipients_tuple_list, 
-                            # Establecer 'email_from' a la dirección del servidor para evitar rechazos
-                            'email_from': self.env['ir.config_parameter'].sudo().get_param('mail.catchall.domain') or 'odooia@fruvemex.com',
-                            'auto_delete': True,
-                        }).send()
-
-                        activity_type = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
-
-                        if not activity_type:
-                            activity_type = self.env['mail.activity.type'].search([('name', 'in', ['To Do', 'Para hacer'])], limit=1)
-
-                        if activity_type:
-                            hr_employee_model_id = self.env['ir.model']._get('hr.employee').id
-                            
-                            activity_data = {
-                                'res_id': employee.id,
-                                'res_model_id': hr_employee_model_id,
-                                'activity_type_id': activity_type.id,
-                                'summary': _("🚨 Revisar: 4ta Falta de Asistencia"),
-                                'note': _("El empleado **%s** ha acumulado la cuarta falta sin justificar. Debe aplicarse el protocolo de RH.") % employee.name,
-                                'date_deadline': fields.Date.today(),
-                            }
-
-                            # Crear UNA actividad por CADA usuario de RRHH
-                            for user_id in recipient_user_ids:
-                                activity_data['user_id'] = user_id # Asigna un solo usuario por actividad
-                                self.env['mail.activity'].sudo().create(activity_data)
-
+        if absence_count < 4:
             return
+
+        last_alert_dt = employee.last_absence_alert_at
+        if last_alert_dt and last_alert_dt.tzinfo is None:
+            last_alert_dt = pytz.utc.localize(last_alert_dt)
+
+        cooldown_delta = timedelta(days=ABSENCE_ALERT_COOLDOWN_DAYS)
+        if last_alert_dt and (reference_dt - last_alert_dt) < cooldown_delta:
+            _logger.info(
+                "[ABSENCE ALERT] Se omite alerta para %s: ultima alerta %s (cooldown %s dias)",
+                employee.name,
+                last_alert_dt,
+                ABSENCE_ALERT_COOLDOWN_DAYS,
+            )
+            return
+
+        hr_group = self.env.ref('zkteco_realtime_connector.group_rh_absence_manager', raise_if_not_found=False)
+
+        if not hr_group:
+            _logger.warning("No se encontró el grupo de Recursos Humanos.")
+            return
+
+        # Obtener la empresa del empleado
+        employee_company = employee.company_id
+        if not employee_company:
+            _logger.warning(f"El empleado {employee.name} no tiene empresa asignada. No se enviará notificación.")
+            return
+
+        # Filtrar usuarios de RH que pertenecen a la misma empresa del empleado
+        hr_users = [user for user in hr_group.users if employee_company in user.company_ids]
+
+        if not hr_users:
+            _logger.warning(f"No se encontraron usuarios de RRHH para la empresa {employee_company.name}.")
+            return
+
+        recipient_partner_ids = [user.partner_id.id for user in hr_users if user.partner_id and user.partner_id.email]
+
+        if not recipient_partner_ids:
+            _logger.warning(f"Los usuarios de RRHH de la empresa {employee_company.name} no tienen correo electrónico configurado.")
+            return
+
+        recipient_user_ids = [user.id for user in hr_users]
+        recipients_tuple_list = [(4, pid) for pid in recipient_partner_ids]
+
+        # Construir la URL y el cuerpo (body, url, subject, etc.)
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        employee_url = f"{base_url}/web#id={employee.id}&view_type=form&model=hr.employee"
+        subject = _("🚨 ALERTA: Cuarta Falta de Asistencia - %s") % employee.name
+        body = _("""
+            El empleado **%s** (%s) ha acumulado su **CUARTA FALTA** no justificada...
+            <a href="%s" style="padding: 10px 20px; text-decoration: none; background-color: #007bff; color: white; border-radius: 5px;">Ir al Perfil del Empleado</a>
+        """) % (employee.name, employee.biometric_id or 'N/A', employee_url)
+
+        # Enviar un único correo a múltiples destinatarios.
+        self.env['mail.mail'].sudo().create({
+            'subject': subject,
+            'body_html': body,
+            'recipient_ids': recipients_tuple_list,
+            'email_from': self.env['ir.config_parameter'].sudo().get_param('mail.catchall.domain') or 'odooia@fruvemex.com',
+            'auto_delete': True,
+        }).send()
+
+        activity_type = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+
+        if not activity_type:
+            activity_type = self.env['mail.activity.type'].search([('name', 'in', ['To Do', 'Para hacer'])], limit=1)
+
+        if activity_type:
+            hr_employee_model_id = self.env['ir.model']._get('hr.employee').id
+
+            activity_data = {
+                'res_id': employee.id,
+                'res_model_id': hr_employee_model_id,
+                'activity_type_id': activity_type.id,
+                'summary': _("🚨 Revisar: 4ta Falta de Asistencia"),
+                'note': _("El empleado **%s** ha acumulado la cuarta falta sin justificar. Debe aplicarse el protocolo de RH.") % employee.name,
+                'date_deadline': fields.Date.today(),
+            }
+
+            for user_id in recipient_user_ids:
+                activity_data['user_id'] = user_id
+                self.env['mail.activity'].sudo().create(activity_data)
+
+        employee.sudo().write({'last_absence_alert_at': fields.Datetime.to_string(reference_dt)})
+        return

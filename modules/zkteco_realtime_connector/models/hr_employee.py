@@ -6,6 +6,11 @@ class hr_employee(models.Model):
     _inherit = 'hr.employee'
 
     biometric_id = fields.Char(string='Numero de empleado')
+    last_absence_alert_at = fields.Datetime(
+        string='Ultima alerta de 4ta falta',
+        copy=False,
+        help='Fecha/hora del ultimo correo de alerta por faltas para evitar notificaciones repetidas.'
+    )
     
     biometric_id_numeric = fields.Integer(
         string='No. Empleado (ordenamiento)',

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_attendance_absence_generate_wizard_form" model="ir.ui.view">
+            <field name="name">attendance.absence.generate.wizard.form</field>
+            <field name="model">attendance.absence.generate.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Generar Faltas por Fecha">
+                    <group>
+                        <field name="target_date" required="1"/>
+                    </group>
+                    <footer>
+                        <button name="action_generate_absences" string="Generar" type="object" class="btn-primary"/>
+                        <button string="Cancelar" class="btn-default" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="attendance_absence_generate_wizard_action" model="ir.actions.act_window">
+            <field name="name">Generar Faltas por Fecha</field>
+            <field name="res_model">attendance.absence.generate.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>

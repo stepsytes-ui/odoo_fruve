@@ -358,6 +358,63 @@ class AttendanceReportWizard(models.TransientModel):
         filename = f'Reporte_Asistencia_{date_from}_{date_to}.xlsx'
         return output.getvalue(), filename
 
+    def _format_hour_from_float(self, hour_value):
+        """Convierte hora float (ej. 14.5) a HH:MM."""
+        if hour_value is False or hour_value is None:
+            return None
+        hours = int(hour_value)
+        minutes = int(round((hour_value - hours) * 60))
+        if minutes == 60:
+            hours += 1
+            minutes = 0
+        hours = hours % 24
+        return f"{hours:02d}:{minutes:02d}"
+
+    def _get_attendance_punches_text(self, employee, start_utc_str, end_utc_str, company_tz, Attendance):
+        """Retorna las checadas del día (check_in) como texto separado por guiones."""
+        punches = Attendance.search([
+            ('employee_id', '=', employee.id),
+            ('check_in', '>=', start_utc_str),
+            ('check_in', '<=', end_utc_str),
+            ('punctuality_status', '!=', 'absence')
+        ], order='check_in asc')
+
+        time_list = []
+        for att in punches:
+            check_in_dt = att.check_in
+            if check_in_dt.tzinfo is None:
+                check_in_dt = pytz.utc.localize(check_in_dt)
+            local_dt = check_in_dt.astimezone(company_tz)
+            time_list.append(local_dt.strftime('%H:%M:%S'))
+
+        return ' - '.join(time_list)
+
+    def _build_hourly_leave_cell_text(self, leave_record, employee, start_utc_str, end_utc_str, company_tz, Attendance):
+        """Construye texto para permiso por horas y agrega checadas del mismo día."""
+        hour_from = self._format_hour_from_float(leave_record.request_hour_from)
+        hour_to = self._format_hour_from_float(leave_record.request_hour_to)
+
+        if not hour_from or not hour_to:
+            date_from = leave_record.date_from
+            date_to = leave_record.date_to
+            if date_from:
+                if date_from.tzinfo is None:
+                    date_from = pytz.utc.localize(date_from)
+                hour_from = date_from.astimezone(company_tz).strftime('%H:%M')
+            if date_to:
+                if date_to.tzinfo is None:
+                    date_to = pytz.utc.localize(date_to)
+                hour_to = date_to.astimezone(company_tz).strftime('%H:%M')
+
+        leave_title = f"Permiso por horas {hour_from or '--:--'} - {hour_to or '--:--'}"
+        punches_text = self._get_attendance_punches_text(
+            employee, start_utc_str, end_utc_str, company_tz, Attendance
+        )
+
+        if punches_text:
+            return f"{leave_title}\n{punches_text}"
+        return leave_title
+
     def _get_cell_data_for_employee_date(self, employee, target_date, company_tz, Attendance):
         """
         Retorna información completa para una celda: texto, color de fondo y color de fuente.
@@ -525,6 +582,16 @@ class AttendanceReportWizard(models.TransientModel):
             
             if approved_leave:
                 leave_name = approved_leave.holiday_status_id.name
+                if approved_leave.request_unit_hours:
+                    hourly_text = self._build_hourly_leave_cell_text(
+                        approved_leave, employee, start_utc_str, end_utc_str, COMPANY_TZ, Attendance
+                    )
+                    return {
+                        'text': hourly_text,
+                        'color': 'FFC7CE',
+                        'font_color': 'FF6600',
+                        'bold': True
+                    }
                 if leave_name.strip().lower() == 'descanso':
                     return {
                         'text': 'Descanso',
@@ -644,6 +711,16 @@ class AttendanceReportWizard(models.TransientModel):
         
         if approved_leave:
             leave_name = approved_leave.holiday_status_id.name
+            if approved_leave.request_unit_hours:
+                hourly_text = self._build_hourly_leave_cell_text(
+                    approved_leave, employee, start_utc_str, end_utc_str, COMPANY_TZ, Attendance
+                )
+                return {
+                    'text': hourly_text,
+                    'color': 'FFC7CE',
+                    'font_color': 'FF6600',
+                    'bold': True
+                }
             # Descanso desde hr.leave → cuadro blanco, texto gris
             if leave_name.strip().lower() == 'descanso' or day_of_week == 6:
                 return {

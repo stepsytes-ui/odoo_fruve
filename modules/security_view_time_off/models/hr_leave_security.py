@@ -136,15 +136,45 @@ class security_view(models.Model):
         self.ensure_one()
         if self.check_in_time:
             raise UserError('La entrada ya fue registrada. Hora: {}'.format(self.check_in_time))
+        movement_dt = fields.Datetime.now()
         self.sudo().write({
-            'check_in_time': fields.Datetime.now()
+            'check_in_time': movement_dt
         })
+        self._sync_security_check_with_attendance(movement_dt)
 
     def action_check_out(self):
         """Registra la hora de salida del permiso una sola vez."""
         self.ensure_one()
         if self.check_out_time:
             raise UserError('La salida ya fue registrada. Hora: {}'.format(self.check_out_time))
+        movement_dt = fields.Datetime.now()
         self.sudo().write({
-            'check_out_time': fields.Datetime.now()
+            'check_out_time': movement_dt
+        })
+        self._sync_security_check_with_attendance(movement_dt)
+
+    def _sync_security_check_with_attendance(self, movement_dt):
+        """Replica en asistencia las checadas manuales de permisos por horas."""
+        self.ensure_one()
+
+        # Este flujo aplica a permisos por horas para evitar alterar otros tipos de permiso.
+        if not self.request_unit_hours and self.punctuality_status not in ('leave_hours', 'leave_hours_paid'):
+            return
+
+        if not self.employee_id:
+            raise UserError('El permiso no tiene un empleado asignado.')
+
+        attendance_model = self.env['hr.attendance'].sudo()
+        open_attendance = attendance_model.search([
+            ('employee_id', '=', self.employee_id.id),
+            ('check_out', '=', False),
+        ], order='check_in desc, id desc', limit=1)
+
+        if open_attendance:
+            open_attendance.write({'check_out': movement_dt})
+
+        attendance_model.create({
+            'employee_id': self.employee_id.id,
+            'check_in': movement_dt,
+            'punctuality_status': self.punctuality_status or 'leave_hours',
         })

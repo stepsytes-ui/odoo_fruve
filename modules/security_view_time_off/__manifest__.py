@@ -8,7 +8,7 @@
     'website': "https://www.fruvemex.com",
     'category': 'Human Resources',
     'version': '0.1',
-    'depends': ['base', 'hr','hr_attendance','hr_holidays','zkteco_realtime_connector', 'employee_modifications'],
+    'depends': ['base', 'hr','hr_attendance','hr_holidays','zkteco_realtime_connector'],
 
     'data': [
         'security/security.xml',

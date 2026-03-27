@@ -13,7 +13,7 @@ Fruvemex requests for employee's module
     'category': 'Human Resources',
     'version': '18.0.0.2',
 
-    'depends': ['base','hr','hr_attendance', 'hr_holidays_attendance', 'web','zkteco_realtime_connector','overtime'],
+    'depends': ['base','hr','hr_attendance', 'hr_holidays_attendance', 'web','zkteco_realtime_connector','overtime','security_view_time_off'],
 
     'data': [
             'security/hr_read_employees_security.xml',
@@ -39,11 +39,11 @@ Fruvemex requests for employee's module
             'views/hr_permission_views.xml',
             'views/hr_vacation_views.xml',
             'views/employee_resguardo_views.xml',
-            'views/employee_menus.xml',
             'wizard/employee_expedient_wizard_views.xml',
             'wizard/employee_resguardo_wizard_views.xml',
             'wizard/import_curp_rfc_wizard_views.xml',
             'wizard/employee_warning_reject_wizard_views.xml',
+            'views/employee_menus.xml',
         ],
     'demo': [
         'demo/demo.xml',

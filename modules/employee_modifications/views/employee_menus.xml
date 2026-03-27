@@ -92,6 +92,22 @@
                   action="action_hr_vacation"
                   sequence="51"
                   groups="hr.group_hr_user"/>
+
+        <record id="menu_hr_resguardo" model="ir.ui.menu">
+            <field name="name">Resguardos</field>
+            <field name="parent_id" ref="employee_modifications.menu_hr_herramientas"/>
+            <field name="action" ref="employee_modifications.action_employee_resguardo"/>
+            <field name="sequence">52</field>
+            <field name="groups_id" eval="[(6, 0, [ref('hr.group_hr_user')])]"/>
+        </record>
+
+        <record id="menu_hr_resguardo_asset" model="ir.ui.menu">
+            <field name="name">Catalogo de Objetos Resguardo</field>
+            <field name="parent_id" ref="employee_modifications.menu_hr_herramientas"/>
+            <field name="action" ref="employee_modifications.action_employee_resguardo_asset"/>
+            <field name="sequence">53</field>
+            <field name="groups_id" eval="[(6, 0, [ref('hr.group_hr_user')])]"/>
+        </record>
         
         <!-- Submenú: Reportes (placeholder - agregar acción cuando esté lista) -->
         <menuitem 

@@ -58,13 +58,5 @@
             <field name="target">new</field>
         </record>
 
-        <!-- Ítem de menú -->
-        <menuitem
-            id="menu_attendance_import_wizard"
-            name="Importar Excel de Checadas"
-            parent="menu_zkteco_connector"
-            action="attendance_import_wizard_action"
-            groups="zkteco_realtime_connector.group_hr_manager_custom"
-            sequence="30"/>
     </data>
 </odoo>

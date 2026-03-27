@@ -2,7 +2,7 @@ from odoo import fields, models, api, _
 from datetime import datetime, timedelta, time
 import pytz
 import logging
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -135,6 +135,302 @@ class HrAttendance(models.Model):
                 record.check_out_time_only = local_datetime.strftime("%d/%m/%Y, %H:%M:%S")
             else:
                     record.check_out_time_only = False
+
+    def _ensure_utc_aware(self, datetime_value):
+        """Convierte datetime/string a datetime aware en UTC para comparaciones seguras."""
+        if not datetime_value:
+            return False
+        if isinstance(datetime_value, str):
+            datetime_value = fields.Datetime.to_datetime(datetime_value)
+        if datetime_value.tzinfo is None:
+            return pytz.utc.localize(datetime_value)
+        return datetime_value.astimezone(pytz.utc)
+
+    def _format_datetime_for_employee_tz(self, employee, datetime_value):
+        """Formatea datetime en la zona horaria de la empresa del empleado."""
+        dt_utc = self._ensure_utc_aware(datetime_value)
+        if not dt_utc:
+            return ''
+        company_tz_name = employee.company_id.timezone or FIXED_DEVICE_TIMEZONE_NAME
+        try:
+            company_tz = pytz.timezone(company_tz_name)
+        except pytz.UnknownTimeZoneError:
+            company_tz = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+        return dt_utc.astimezone(company_tz).strftime("%d/%m/%Y %H:%M:%S")
+
+    def _get_employee_company_tz(self, employee):
+        """Retorna timezone pytz de la empresa del empleado con fallback seguro."""
+        company_tz_name = employee.company_id.timezone or FIXED_DEVICE_TIMEZONE_NAME
+        try:
+            return pytz.timezone(company_tz_name)
+        except pytz.UnknownTimeZoneError:
+            return pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+
+    def _remove_absence_for_check_in_day(self, employee, check_in_value):
+        """Elimina faltas del mismo dia cuando se captura una asistencia real."""
+        check_in_utc = self._ensure_utc_aware(check_in_value)
+        if not check_in_utc or not employee:
+            return
+
+        company_tz_name = employee.company_id.timezone or FIXED_DEVICE_TIMEZONE_NAME
+        try:
+            company_tz = pytz.timezone(company_tz_name)
+        except pytz.UnknownTimeZoneError:
+            company_tz = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+
+        target_date_local = check_in_utc.astimezone(company_tz).date()
+        day_start_local = company_tz.localize(datetime.combine(target_date_local, time.min))
+        day_end_local = company_tz.localize(datetime.combine(target_date_local, time.max))
+
+        day_start_utc = day_start_local.astimezone(pytz.utc)
+        day_end_utc = day_end_local.astimezone(pytz.utc)
+
+        absence_records = self.search([
+            ('employee_id', '=', employee.id),
+            ('punctuality_status', '=', 'absence'),
+            ('check_in', '>=', fields.Datetime.to_string(day_start_utc)),
+            ('check_in', '<=', fields.Datetime.to_string(day_end_utc)),
+        ])
+
+        if absence_records:
+            count_removed = len(absence_records)
+            absence_records.unlink()
+            _logger.info(
+                "[ATTENDANCE CREATE] Se eliminaron %s faltas para %s en fecha local %s.",
+                count_removed,
+                employee.name,
+                target_date_local,
+            )
+
+    def _handle_retroactive_attendance_creation(self, employee, check_in_value):
+        """
+        Si se crea asistencia para un día pasado y existe registro abierto hoy,
+        cierra temporalmente el registro de hoy, permite la creación retroactiva,
+        y limpia el check_out generado automáticamente en el registro de hoy.
+        """
+        check_in_utc = self._ensure_utc_aware(check_in_value)
+        if not check_in_utc or not employee:
+            return None
+
+        company_tz = self._get_employee_company_tz(employee)
+
+        # Obtener hoy en zona local del empleado
+        now_local = datetime.now(company_tz)
+        today_date_local = now_local.date()
+        check_in_date_local = check_in_utc.astimezone(company_tz).date()
+
+        # Si check_in es de un día pasado comparado con hoy
+        if check_in_date_local >= today_date_local:
+            return None
+
+        # Buscar registro abierto de hoy
+        today_start_local = company_tz.localize(datetime.combine(today_date_local, time.min))
+        today_end_local = company_tz.localize(datetime.combine(today_date_local, time.max))
+
+        today_start_utc = today_start_local.astimezone(pytz.utc)
+        today_end_utc = today_end_local.astimezone(pytz.utc)
+
+        today_open = self.search([
+            ('employee_id', '=', employee.id),
+            ('check_out', '=', False),
+            ('check_in', '>=', fields.Datetime.to_string(today_start_utc)),
+            ('check_in', '<=', fields.Datetime.to_string(today_end_utc)),
+        ], order='check_in desc, id desc', limit=1)
+
+        if not today_open:
+            return None
+
+        # Guardar el ID del registro abierto de hoy
+        today_open_id = today_open.id
+        today_open_check_in = today_open.check_in
+
+        # Cerrar temporalmente con un check_out ficticio
+        dummy_check_out = today_open_check_in + timedelta(seconds=1)
+        today_open.with_context(skip_attendance_sync=True).write({
+            'check_out': dummy_check_out,
+        })
+
+        _logger.info(
+            "[RETROACTIVE ATTENDANCE] Registro de hoy temporalmente cerrado para %s. "
+            "Se permite creación retroactiva.",
+            employee.name,
+        )
+
+        return {
+            'today_open_id': today_open_id,
+            'today_open_check_in': today_open_check_in,
+            'dummy_check_out': dummy_check_out,
+            'skip_checkout_sync': True,
+        }
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Override create para sincronizar checadas manuales completas con la lógica de asistencia."""
+        employee_model = self.env['hr.employee']
+        retroactive_handles = {}
+
+        # Para altas manuales completas (check_in + check_out), cerrar la asistencia abierta
+        # usando el nuevo check_in como check_out del registro previo.
+        for vals in vals_list:
+            employee_id = vals.get('employee_id')
+            check_in = vals.get('check_in')
+            check_out = vals.get('check_out')
+
+            if not (employee_id and check_in):
+                continue
+
+            employee = employee_model.browse(employee_id).exists()
+            if not employee:
+                continue
+
+            # NUEVO: Manejar creación retroactiva (para días pasados con registro abierto hoy)
+            retroactive_handle = self._handle_retroactive_attendance_creation(employee, check_in)
+            if retroactive_handle:
+                retroactive_handles[employee_id] = retroactive_handle
+
+            # Si existe falta en ese dia, removerla para permitir registrar asistencia real.
+            if vals.get('punctuality_status') != 'absence':
+                self._remove_absence_for_check_in_day(employee, check_in)
+
+            if not check_out:
+                continue
+
+            open_attendance = self.search([
+                ('employee_id', '=', employee.id),
+                ('check_out', '=', False),
+            ], order='check_in desc, id desc', limit=1)
+
+            if not open_attendance:
+                continue
+
+            new_check_in_utc = self._ensure_utc_aware(check_in)
+            open_check_in_utc = self._ensure_utc_aware(open_attendance.check_in)
+
+            if new_check_in_utc <= open_check_in_utc:
+                open_check_in_local = self._format_datetime_for_employee_tz(employee, open_attendance.check_in)
+                raise ValidationError(
+                    _('La hora de check in debe ser mayor a la última entrada registrada: %s')
+                    % open_check_in_local
+                )
+
+            open_attendance.with_context(skip_attendance_sync=True).write({
+                'check_out': fields.Datetime.to_string(new_check_in_utc),
+            })
+
+        records = super().create(vals_list)
+        
+        # Procesar cada registro creado que tenga check_in Y check_out (compuesto, desde Kiosk o manualmente)
+        for record in records:
+            if record.check_in and record.check_out:
+                retroactive_data = retroactive_handles.get(record.employee_id.id)
+                if retroactive_data and retroactive_data.get('skip_checkout_sync'):
+                    company_tz = self._get_employee_company_tz(record.employee_id)
+                    check_in_local_date = self._ensure_utc_aware(record.check_in).astimezone(company_tz).date()
+                    today_local_date = datetime.now(company_tz).date()
+
+                    # Si es alta retroactiva con manejo temporal, NO crear continuidad abierta.
+                    if check_in_local_date < today_local_date:
+                        _logger.info(
+                            "[RETROACTIVE ATTENDANCE] Se omite continuidad para %s en fecha retroactiva %s.",
+                            record.employee_id.name,
+                            check_in_local_date,
+                        )
+                        continue
+                self._process_manual_checkout_sync(record)
+
+        # NUEVO: Limpiar registros de hoy que fueron cerrados temporalmente para retroactivos
+        for employee_id, retroactive_data in retroactive_handles.items():
+            try:
+                today_open_id = retroactive_data['today_open_id']
+                today_open_record = self.browse(today_open_id)
+                
+                if today_open_record.exists():
+                    # Eliminar el check_out temporal (volver a abrir el registro)
+                    today_open_record.with_context(skip_attendance_sync=True).write({
+                        'check_out': False,
+                    })
+                    _logger.info(
+                        "[RETROACTIVE ATTENDANCE] Registro de hoy reabierto para empleado ID %s. "
+                        "Asistencia retroactiva fue creada exitosamente.",
+                        employee_id,
+                    )
+            except Exception as e:
+                _logger.error(
+                    "[RETROACTIVE ATTENDANCE] Error al limpiar registro retroactivo para empleado %s: %s",
+                    employee_id, str(e), exc_info=True
+                )
+        
+        return records
+
+    def write(self, vals):
+        """Override write para sincronizar cuando se agrega check_out a un registro abierto."""
+        # Saltar sincronización si se especifica en contexto (ej: cron auto-close)
+        skip_sync = self.env.context.get('skip_attendance_sync', False)
+        
+        # Verificar si se está agregando check_out a un registro que no lo tenía
+        if 'check_out' in vals and vals['check_out'] and not skip_sync:
+            opened_records = self.filtered(lambda rec: not rec.check_out)
+            result = super().write(vals)
+            for record in opened_records:
+                self._process_manual_checkout_sync(record)
+            return result
+        
+        return super().write(vals)
+
+    def _process_manual_checkout_sync(self, record):
+        """
+        Procesa la creación/actualización de una asistencia completa (con check_out).
+        Cierra asistencia abierta anterior y crea nueva asistencia abierta con check_out como check_in.
+        Si el check_out supera la hora de fin de turno, marca como 'end' (a menos que sea overtime o permiso).
+        
+        Args:
+            record: hr.attendance record con check_in y check_out seteos.
+        """
+        if not record.employee_id or not record.check_in or not record.check_out:
+            return
+        
+        try:
+            # Determinar el status para la nueva asistencia
+            new_status = record.punctuality_status or 'n/a'
+            
+            # Verificar si check_out supera hora de fin de turno
+            if record.employee_id.turno_id:
+                # Asegurar que check_out es timezone-aware para comparación
+                check_out_utc = self._ensure_utc_aware(record.check_out)
+                
+                shift_out_utc = self._get_shift_out_for_check_in(record.employee_id, check_out_utc)
+                
+                if shift_out_utc:
+                    # Si check_out >= shift_out_time y no es overtime ni permiso, marcar como 'end'
+                    if check_out_utc >= shift_out_utc:
+                        # Verificar que no sea overtime ni permiso
+                        is_overtime = new_status == 'overtime'
+                        is_leave = new_status in LEAVE_STATUS_KEYS
+                        
+                        if not is_overtime and not is_leave:
+                            new_status = 'end'
+                            _logger.info(
+                                "[MANUAL CHECKOUT SYNC] Check-out supera fin de turno para %s. Status cambiado a 'end'.",
+                                record.employee_id.name
+                            )
+            
+            # Crear nueva asistencia abierta con check_in = check_out del registro actual
+            new_attendance = self.with_context(skip_attendance_sync=True).create({
+                'employee_id': record.employee_id.id,
+                'check_in': record.check_out,
+                'punctuality_status': new_status,
+            })
+            
+            _logger.info(
+                "[MANUAL CHECKOUT SYNC] Nueva asistencia abierta creada para %s. Check-in (anterior check_out): %s. Status: %s",
+                record.employee_id.name, record.check_out, new_status
+            )
+            
+        except Exception as e:
+            _logger.error(
+                "[MANUAL CHECKOUT SYNC] Error procesando sincronización de checkout manual para %s: %s",
+                record.employee_id.name, str(e), exc_info=True
+            )
 
     @api.model
     def _cron_generate_absences(self, target_date=False):
@@ -353,11 +649,13 @@ class HrAttendance(models.Model):
         """
         if not employee.turno_id:
             return None
-            
+        
+        # Obtener timezone de la empresa del empleado
+        company_tz_name = employee.company_id.timezone or FIXED_DEVICE_TIMEZONE_NAME
         try:
-            COMPANY_TZ = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+            COMPANY_TZ = pytz.timezone(company_tz_name)
         except pytz.UnknownTimeZoneError:
-            _logger.error(f"Error: Zona horaria '{FIXED_DEVICE_TIMEZONE_NAME}' es inválida.")
+            _logger.error(f"Error: Zona horaria '{company_tz_name}' es inválida para {employee.name}.")
             return None
 
         try:
@@ -476,7 +774,8 @@ class HrAttendance(models.Model):
                             
                         check_out_time = check_in_dt + timedelta(minutes=1)
                         
-                        attendance.write({
+                        # Usar contexto para evitar que el write dispare sincronización
+                        attendance.with_context(skip_attendance_sync=True).write({
                             'check_out': fields.Datetime.to_string(check_out_time),
                         })
                         _logger.info(f"[CRON AUTO-CLOSE] ✅ Cerrada asistencia: {attendance.employee_id.name}")

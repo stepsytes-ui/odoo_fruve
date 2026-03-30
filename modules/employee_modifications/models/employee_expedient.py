@@ -87,13 +87,12 @@ class EmployeeExpedient(models.Model):
 
     antiguedad = fields.Char(
         string='Antiguedad',
-        compute='_compute_antiguedad_vacaciones',
-        store=True
+        compute='_compute_antiguedad',
     )
 
     dias_vacaciones_ley = fields.Integer(
         string='Días de vacaciones',
-        compute='_compute_antiguedad_vacaciones',
+        compute='_compute_vacaciones_ley',
         store=True
     )
 
@@ -151,45 +150,41 @@ class EmployeeExpedient(models.Model):
         for record in self:
             record.dias_vacaciones_saldo_inicial = record.dias_vacaciones_ley + record.dias_vacaciones_ajuste     
 
-    #Función de calculo de antiguedad y días de vacaciones
+    TABLA_VACACIONES = [
+        (1, 1, 12),
+        (2, 2, 14),
+        (3, 3, 16),
+        (4, 4, 18),
+        (5, 5, 20),
+        (6, 10, 22),
+        (11, 15, 24),
+        (16, 20, 26),
+        (21, 25, 28),
+        (26, 30, 30),
+        (31, 35, 32),
+    ]
+
     @api.depends('employee_id', 'fecha_movimiento')
-    def _compute_antiguedad_vacaciones(self):
-        TABLA_VACACIONES = [
-            (1, 1, 12),
-            (2, 2, 14),
-            (3, 3, 16),
-            (4, 4, 18),
-            (5, 5, 20),
-            (6, 10, 22),
-            (11, 15, 24),
-            (16, 20, 26),
-            (21, 25, 28),
-            (26, 30, 30),
-            (31, 35, 32),
-        ]
-
+    def _compute_antiguedad(self):
         for record in self:
-            fecha_movimiento = record.fecha_movimiento
-
-            if fecha_movimiento and record.employee_id.active:
-
+            if record.fecha_movimiento and record.employee_id.active:
                 hoy = date.today()
-                diff = relativedelta(hoy, fecha_movimiento)
-                years = diff.years
-                months = diff.months
-                days = diff.days
-
-                record.antiguedad = f"{years} años, {months} meses y {days} días"
-
-                dias_vacaciones = next(
-                    (dias for ini, fin, dias in TABLA_VACACIONES if ini <= years <= fin),
-                    0
-                )
-
-                record.dias_vacaciones_ley = dias_vacaciones
-
+                diff = relativedelta(hoy, record.fecha_movimiento)
+                record.antiguedad = f"{diff.years} años, {diff.months} meses y {diff.days} días"
             else:
                 record.antiguedad = "N/A"
+
+    @api.depends('employee_id', 'fecha_movimiento')
+    def _compute_vacaciones_ley(self):
+        for record in self:
+            if record.fecha_movimiento and record.employee_id.active:
+                hoy = date.today()
+                years = relativedelta(hoy, record.fecha_movimiento).years
+                record.dias_vacaciones_ley = next(
+                    (dias for ini, fin, dias in self.TABLA_VACACIONES if ini <= years <= fin),
+                    0
+                )
+            else:
                 record.dias_vacaciones_ley = 0
 
     
@@ -258,6 +253,7 @@ class EmployeeExpedient(models.Model):
             (21, 25, 28),
             (26, 30, 30),
             (31, 35, 32),
+            (36, 99, 32),
         ]
 
         hoy = date.today()
@@ -303,7 +299,7 @@ class EmployeeExpedient(models.Model):
                     'fecha_ultima_renovacion': hoy,
                 })
                 
-                expediente._compute_antiguedad_vacaciones()
+                expediente._compute_vacaciones_ley()
                 expediente._compute_dias_inicial_calculado()
                 expediente._compute_dias_disponibles()
                 

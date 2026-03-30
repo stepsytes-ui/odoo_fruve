@@ -163,7 +163,7 @@ class ZkTecoAttendanceLog(models.Model):
 
     def _create_attendance(self, employee, check_in_utc, status_in):
         """Función auxiliar para crear un registro de hr.attendance."""
-        Attendance = self.env['hr.attendance'].sudo()
+        Attendance = self.env['hr.attendance'].sudo().with_context(skip_attendance_sync=True)
         return Attendance.create({
             'employee_id': employee.id,
             'check_in': check_in_utc,
@@ -175,7 +175,7 @@ class ZkTecoAttendanceLog(models.Model):
         vals = {'check_out': check_out_utc}
         if status_out:
             vals['punctuality_status'] = status_out
-        attendance_record.write(vals)
+        attendance_record.with_context(skip_attendance_sync=True).write(vals)
 
     def process_logs(self):
         records_to_process = self.filtered(lambda l: l.state == 'new').sudo()

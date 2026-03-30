@@ -262,12 +262,17 @@ class EmployeeExpedient(models.Model):
 
         hoy = date.today()
         
-        # Buscar expedientes de empleados activos
+        _logger.info("[VACATION CRON] Iniciando recalculo anual de vacaciones")
+
+        # Buscar expedientes de empleados activos.
+        # Nota: el valor tecnico actual es 'active'; se mantiene 'activo' por compatibilidad legado.
         expedientes = self.search([
             ('employee_id.active', '=', True),
-            ('employee_id.employee_status', '=', 'activo'),
+            ('employee_id.employee_status', 'in', ['active', 'activo']),
             ('tipo_registro', 'in', ['alta', 'reingreso'])
         ])
+
+        _logger.info("[VACATION CRON] Expedientes elegibles encontrados: %s", len(expedientes))
         
         expedientes_actualizados = 0
         
@@ -312,10 +317,9 @@ class EmployeeExpedient(models.Model):
                 
                 expedientes_actualizados += 1
         
-        if expedientes_actualizados > 0:
-            _logger.info(
-                "Cron de vacaciones ejecutado: %s expedientes actualizados", 
-                expedientes_actualizados
-            )
+        _logger.info(
+            "[VACATION CRON] Finalizado. Expedientes actualizados: %s",
+            expedientes_actualizados,
+        )
         
         return True

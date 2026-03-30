@@ -267,98 +267,101 @@ class HrAttendance(models.Model):
     def create(self, vals_list):
         """Override create para sincronizar checadas manuales completas con la lógica de asistencia."""
         employee_model = self.env['hr.employee']
+        skip_sync = self.env.context.get('skip_attendance_sync', False)
         retroactive_handles = {}
 
         # Para altas manuales completas (check_in + check_out), cerrar la asistencia abierta
         # usando el nuevo check_in como check_out del registro previo.
-        for vals in vals_list:
-            employee_id = vals.get('employee_id')
-            check_in = vals.get('check_in')
-            check_out = vals.get('check_out')
+        if not skip_sync:
+            for vals in vals_list:
+                employee_id = vals.get('employee_id')
+                check_in = vals.get('check_in')
+                check_out = vals.get('check_out')
 
-            if not (employee_id and check_in):
-                continue
+                if not (employee_id and check_in):
+                    continue
 
-            employee = employee_model.browse(employee_id).exists()
-            if not employee:
-                continue
+                employee = employee_model.browse(employee_id).exists()
+                if not employee:
+                    continue
 
-            # NUEVO: Manejar creación retroactiva (para días pasados con registro abierto hoy)
-            retroactive_handle = self._handle_retroactive_attendance_creation(employee, check_in)
-            if retroactive_handle:
-                retroactive_handles[employee_id] = retroactive_handle
+                # NUEVO: Manejar creación retroactiva (para días pasados con registro abierto hoy)
+                retroactive_handle = self._handle_retroactive_attendance_creation(employee, check_in)
+                if retroactive_handle:
+                    retroactive_handles[employee_id] = retroactive_handle
 
-            # Si existe falta en ese dia, removerla para permitir registrar asistencia real.
-            if vals.get('punctuality_status') != 'absence':
-                self._remove_absence_for_check_in_day(employee, check_in)
+                # Si existe falta en ese dia, removerla para permitir registrar asistencia real.
+                if vals.get('punctuality_status') != 'absence':
+                    self._remove_absence_for_check_in_day(employee, check_in)
 
-            if not check_out:
-                continue
+                if not check_out:
+                    continue
 
-            open_attendance = self.search([
-                ('employee_id', '=', employee.id),
-                ('check_out', '=', False),
-            ], order='check_in desc, id desc', limit=1)
+                open_attendance = self.search([
+                    ('employee_id', '=', employee.id),
+                    ('check_out', '=', False),
+                ], order='check_in desc, id desc', limit=1)
 
-            if not open_attendance:
-                continue
+                if not open_attendance:
+                    continue
 
-            new_check_in_utc = self._ensure_utc_aware(check_in)
-            open_check_in_utc = self._ensure_utc_aware(open_attendance.check_in)
+                new_check_in_utc = self._ensure_utc_aware(check_in)
+                open_check_in_utc = self._ensure_utc_aware(open_attendance.check_in)
 
-            if new_check_in_utc <= open_check_in_utc:
-                open_check_in_local = self._format_datetime_for_employee_tz(employee, open_attendance.check_in)
-                raise ValidationError(
-                    _('La hora de check in debe ser mayor a la última entrada registrada: %s')
-                    % open_check_in_local
-                )
+                if new_check_in_utc <= open_check_in_utc:
+                    open_check_in_local = self._format_datetime_for_employee_tz(employee, open_attendance.check_in)
+                    raise ValidationError(
+                        _('La hora de check in debe ser mayor a la última entrada registrada: %s')
+                        % open_check_in_local
+                    )
 
-            open_attendance.with_context(skip_attendance_sync=True).write({
-                'check_out': fields.Datetime.to_string(new_check_in_utc),
-            })
+                open_attendance.with_context(skip_attendance_sync=True).write({
+                    'check_out': fields.Datetime.to_string(new_check_in_utc),
+                })
 
         records = super().create(vals_list)
         
-        # Procesar cada registro creado que tenga check_in Y check_out (compuesto, desde Kiosk o manualmente)
-        for record in records:
-            if record.check_in and record.check_out:
-                retroactive_data = retroactive_handles.get(record.employee_id.id)
-                if retroactive_data and retroactive_data.get('skip_checkout_sync'):
-                    company_tz = self._get_employee_company_tz(record.employee_id)
-                    check_in_local_date = self._ensure_utc_aware(record.check_in).astimezone(company_tz).date()
-                    today_local_date = datetime.now(company_tz).date()
+        if not skip_sync:
+            # Procesar cada registro creado que tenga check_in Y check_out (compuesto, desde Kiosk o manualmente)
+            for record in records:
+                if record.check_in and record.check_out:
+                    retroactive_data = retroactive_handles.get(record.employee_id.id)
+                    if retroactive_data and retroactive_data.get('skip_checkout_sync'):
+                        company_tz = self._get_employee_company_tz(record.employee_id)
+                        check_in_local_date = self._ensure_utc_aware(record.check_in).astimezone(company_tz).date()
+                        today_local_date = datetime.now(company_tz).date()
 
-                    # Si es alta retroactiva con manejo temporal, NO crear continuidad abierta.
-                    if check_in_local_date < today_local_date:
+                        # Si es alta retroactiva con manejo temporal, NO crear continuidad abierta.
+                        if check_in_local_date < today_local_date:
+                            _logger.info(
+                                "[RETROACTIVE ATTENDANCE] Se omite continuidad para %s en fecha retroactiva %s.",
+                                record.employee_id.name,
+                                check_in_local_date,
+                            )
+                            continue
+                    self._process_manual_checkout_sync(record)
+
+            # NUEVO: Limpiar registros de hoy que fueron cerrados temporalmente para retroactivos
+            for employee_id, retroactive_data in retroactive_handles.items():
+                try:
+                    today_open_id = retroactive_data['today_open_id']
+                    today_open_record = self.browse(today_open_id)
+                    
+                    if today_open_record.exists():
+                        # Eliminar el check_out temporal (volver a abrir el registro)
+                        today_open_record.with_context(skip_attendance_sync=True).write({
+                            'check_out': False,
+                        })
                         _logger.info(
-                            "[RETROACTIVE ATTENDANCE] Se omite continuidad para %s en fecha retroactiva %s.",
-                            record.employee_id.name,
-                            check_in_local_date,
+                            "[RETROACTIVE ATTENDANCE] Registro de hoy reabierto para empleado ID %s. "
+                            "Asistencia retroactiva fue creada exitosamente.",
+                            employee_id,
                         )
-                        continue
-                self._process_manual_checkout_sync(record)
-
-        # NUEVO: Limpiar registros de hoy que fueron cerrados temporalmente para retroactivos
-        for employee_id, retroactive_data in retroactive_handles.items():
-            try:
-                today_open_id = retroactive_data['today_open_id']
-                today_open_record = self.browse(today_open_id)
-                
-                if today_open_record.exists():
-                    # Eliminar el check_out temporal (volver a abrir el registro)
-                    today_open_record.with_context(skip_attendance_sync=True).write({
-                        'check_out': False,
-                    })
-                    _logger.info(
-                        "[RETROACTIVE ATTENDANCE] Registro de hoy reabierto para empleado ID %s. "
-                        "Asistencia retroactiva fue creada exitosamente.",
-                        employee_id,
+                except Exception as e:
+                    _logger.error(
+                        "[RETROACTIVE ATTENDANCE] Error al limpiar registro retroactivo para empleado %s: %s",
+                        employee_id, str(e), exc_info=True
                     )
-            except Exception as e:
-                _logger.error(
-                    "[RETROACTIVE ATTENDANCE] Error al limpiar registro retroactivo para empleado %s: %s",
-                    employee_id, str(e), exc_info=True
-                )
         
         return records
 
@@ -558,7 +561,7 @@ class HrAttendance(models.Model):
                     leave_name = approved_leave.holiday_status_id.name
                     new_status = leave_status_map.get(leave_name, 'leave_other')
                     
-                    Attendance.create({
+                    Attendance.with_context(skip_attendance_sync=True).create({
                         'employee_id': employee.id,
                         'check_in': start_utc_str,
                         'check_out': check_out_str,
@@ -568,7 +571,7 @@ class HrAttendance(models.Model):
                     _logger.info(f"[CRON FALTAS] ✅ Permiso registrado para {employee.name}: {leave_name}")
                 else:
                     # Crear registro de falta
-                    new_attendance = Attendance.create({
+                    new_attendance = Attendance.with_context(skip_attendance_sync=True).create({
                         'employee_id': employee.id,
                         'check_in': start_utc_str,
                         'check_out': check_out_str,

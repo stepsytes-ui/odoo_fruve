@@ -85,7 +85,7 @@
                                 <t t-else="">
                                     <strong>SIN PUESTO ASIGNADO</strong>
                                 </t> 
-                                con un horario hasta el día de hoy de <strong><t t-esc="employee.get_horario_trabajo().upper()"/></strong>,&#160; percibiendo ingresos mensuales de $ <strong><t t-esc="'%.2f' % employee.get_salario_mensual()"/></strong> (<strong><t t-esc="employee.get_salario_mensual_letras()"/></strong>)
+                                con un horario hasta el día de hoy de <strong><t t-esc="employee.get_horario_trabajo().upper()"/></strong>,&#160; percibiendo ingresos mensuales de $ <strong><t t-esc="'{:,.2f}'.format(employee.get_salario_mensual())"/></strong> (<strong><t t-esc="employee.get_salario_mensual_letras()"/></strong>)
                                 <t t-if="employee.rfc">, Registro Federal de Contribuyentes es: <strong><t t-esc="employee.rfc.upper()"/></strong></t>
                                 <t t-if="employee.ssnid"> con número de IMSS <strong><t t-esc="employee.ssnid"/></strong></t>
                                 <t t-if="employee.company_id.partner_id.company_registry"> el Registro Patronal de la empresa es <strong><t t-esc="employee.company_id.partner_id.company_registry"/></strong></t>

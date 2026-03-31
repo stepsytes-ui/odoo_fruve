@@ -161,7 +161,7 @@ class EmployeeExpedient(models.Model):
         (16, 20, 26),
         (21, 25, 28),
         (26, 30, 30),
-        (31, 35, 32),
+        (31, 50, 32),
     ]
 
     @api.depends('employee_id', 'fecha_movimiento')

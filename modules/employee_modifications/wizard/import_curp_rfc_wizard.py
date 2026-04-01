@@ -3,7 +3,9 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 import base64
+from io import BytesIO
 import xlrd
+from openpyxl import load_workbook
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -51,6 +53,48 @@ class ImportCurpRfcWizard(models.TransientModel):
         default=0
     )
 
+    def _normalize_excel_value(self, value, uppercase=False):
+        """Normaliza valores de celdas de Excel para texto consistente."""
+        if value is None:
+            text = ''
+        elif isinstance(value, float) and value.is_integer():
+            text = str(int(value))
+        else:
+            text = str(value)
+
+        text = text.strip()
+        return text.upper() if uppercase else text
+
+    def _iter_excel_rows(self, file_content, file_name):
+        """Retorna un iterador de filas (desde la fila 2) con 5 columnas máximo."""
+        normalized_name = (file_name or '').lower()
+
+        if normalized_name.endswith('.xlsx'):
+            workbook = load_workbook(filename=BytesIO(file_content), read_only=True, data_only=True)
+            sheet = workbook.worksheets[0]
+            return sheet.iter_rows(min_row=2, max_col=5, values_only=True)
+
+        if normalized_name.endswith('.xls'):
+            workbook = xlrd.open_workbook(file_contents=file_content)
+            sheet = workbook.sheet_by_index(0)
+            return (
+                tuple(sheet.cell_value(row_idx, col_idx) if sheet.ncols > col_idx else '' for col_idx in range(5))
+                for row_idx in range(1, sheet.nrows)
+            )
+
+        # Si no hay extensión confiable, intentar xlsx primero y luego xls.
+        try:
+            workbook = load_workbook(filename=BytesIO(file_content), read_only=True, data_only=True)
+            sheet = workbook.worksheets[0]
+            return sheet.iter_rows(min_row=2, max_col=5, values_only=True)
+        except Exception:
+            workbook = xlrd.open_workbook(file_contents=file_content)
+            sheet = workbook.sheet_by_index(0)
+            return (
+                tuple(sheet.cell_value(row_idx, col_idx) if sheet.ncols > col_idx else '' for col_idx in range(5))
+                for row_idx in range(1, sheet.nrows)
+            )
+
     def action_importar(self):
         """Procesa el archivo Excel e importa los datos de CURP y RFC"""
         self.ensure_one()
@@ -61,10 +105,7 @@ class ImportCurpRfcWizard(models.TransientModel):
         try:
             # Decodificar el archivo
             file_content = base64.b64decode(self.archivo_excel)
-            
-            # Abrir el archivo Excel
-            workbook = xlrd.open_workbook(file_contents=file_content)
-            sheet = workbook.sheet_by_index(0)
+            row_iterator = self._iter_excel_rows(file_content, self.nombre_archivo)
             
             empleados_actualizados = 0
             empleados_no_encontrados = []
@@ -75,15 +116,15 @@ class ImportCurpRfcWizard(models.TransientModel):
             resultado_html += "<thead><tr><th>Núm. Empleado</th><th>Nombre</th><th>Estado</th><th>Detalles</th></tr></thead>"
             resultado_html += "<tbody>"
             
-            # Iterar sobre las filas (comenzando desde la fila 1 para saltar encabezados)
-            for row_idx in range(1, sheet.nrows):
+            # Iterar sobre las filas (comenzando desde la fila 2 para saltar encabezados)
+            for row_idx, row_values in enumerate(row_iterator, start=2):
                 try:
                     # Leer las columnas
-                    numero_empleado = str(sheet.cell_value(row_idx, 0)).strip()
-                    nombre_empleado = str(sheet.cell_value(row_idx, 1)).strip() if sheet.ncols > 1 else ''
-                    curp = str(sheet.cell_value(row_idx, 2)).strip().upper() if sheet.ncols > 2 else ''
-                    rfc = str(sheet.cell_value(row_idx, 3)).strip().upper() if sheet.ncols > 3 else ''
-                    nss = str(sheet.cell_value(row_idx, 4)).strip() if sheet.ncols > 4 else ''
+                    numero_empleado = self._normalize_excel_value(row_values[0] if len(row_values) > 0 else '')
+                    nombre_empleado = self._normalize_excel_value(row_values[1] if len(row_values) > 1 else '')
+                    curp = self._normalize_excel_value(row_values[2] if len(row_values) > 2 else '', uppercase=True)
+                    rfc = self._normalize_excel_value(row_values[3] if len(row_values) > 3 else '', uppercase=True)
+                    nss = self._normalize_excel_value(row_values[4] if len(row_values) > 4 else '')
                     
                     # Limpiar valores numéricos de Excel (ej: 123.0 -> 123)
                     if '.' in numero_empleado and numero_empleado.replace('.', '').isdigit():
@@ -190,7 +231,7 @@ class ImportCurpRfcWizard(models.TransientModel):
                     resultado_html += f"<td>{nombre_empleado if 'nombre_empleado' in locals() else 'N/A'}</td>"
                     resultado_html += f"<td><span class='badge badge-danger'>Error</span></td>"
                     resultado_html += f"<td>{error_msg}</td></tr>"
-                    _logger.error(f"Error procesando fila {row_idx + 1}: {error_msg}")
+                    _logger.error(f"Error procesando fila {row_idx}: {error_msg}")
             
             resultado_html += "</tbody></table>"
             
@@ -220,7 +261,7 @@ class ImportCurpRfcWizard(models.TransientModel):
             }
             
         except xlrd.XLRDError as e:
-            raise UserError(_('Error al leer el archivo Excel: %s') % str(e))
+            raise UserError(_('Error al leer el archivo Excel. Use formato .xlsx o .xls válido. Detalle: %s') % str(e))
         except Exception as e:
             raise UserError(_('Error inesperado: %s') % str(e))
     

@@ -1,6 +1,8 @@
 from odoo import api, fields, models
 import pytz
 
+FIXED_SHIFT_TIMEZONE_NAME = 'America/Tijuana'
+
 class ShiftManagement(models.Model):
     _name = 'shift.management'
     _description = 'Gestión de Turnos de Empleados'
@@ -113,8 +115,10 @@ class ShiftManagement(models.Model):
 
     @api.depends('hora_entrada', 'hora_salida')
     def _compute_hora_str(self):
-        user_tz = self.env.user.tz or pytz.utc
-        local_tz = pytz.timezone(user_tz)
+        try:
+            local_tz = pytz.timezone(FIXED_SHIFT_TIMEZONE_NAME)
+        except pytz.UnknownTimeZoneError:
+            local_tz = pytz.utc
         
         TIME_FORMAT = "%H:%M"
  
@@ -125,7 +129,9 @@ class ShiftManagement(models.Model):
                 if not datetime_utc:
                     return False
                 
-                datetime_local = pytz.utc.localize(datetime_utc).astimezone(local_tz)
+                if datetime_utc.tzinfo is None:
+                    datetime_utc = pytz.utc.localize(datetime_utc)
+                datetime_local = datetime_utc.astimezone(local_tz)
                 
                 return datetime_local.strftime(TIME_FORMAT)
 

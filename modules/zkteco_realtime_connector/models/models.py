@@ -95,7 +95,8 @@ class ZkTecoAttendanceLog(models.Model):
             return None
 
         entrada_naive = fields.Datetime.from_string(entrada_config)
-        entrada_local_dt = pytz.utc.localize(entrada_naive).astimezone(device_timezone)
+        shift_timezone = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+        entrada_local_dt = pytz.utc.localize(entrada_naive).astimezone(shift_timezone)
         shift_in_time = entrada_local_dt.time()
         return device_timezone.localize(datetime.combine(target_date, shift_in_time))
 
@@ -144,8 +145,9 @@ class ZkTecoAttendanceLog(models.Model):
         entrada_naive = fields.Datetime.from_string(entrada_config)
         salida_naive = fields.Datetime.from_string(salida_config)
         
-        shift_in_local_dt = pytz.utc.localize(entrada_naive).astimezone(device_timezone)
-        shift_out_local_dt = pytz.utc.localize(salida_naive).astimezone(device_timezone)
+        shift_timezone = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+        shift_in_local_dt = pytz.utc.localize(entrada_naive).astimezone(shift_timezone)
+        shift_out_local_dt = pytz.utc.localize(salida_naive).astimezone(shift_timezone)
 
         # Usar solo la hora y aplicarla a la fecha de la checada
         shift_in_time = shift_in_local_dt.time()

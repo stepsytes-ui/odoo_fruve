@@ -689,9 +689,11 @@ class HrAttendance(models.Model):
             if salida_dt.tzinfo is None:
                 salida_dt = pytz.utc.localize(salida_dt)
             
-            # Convertir a zona local para extraer la hora
-            entrada_local_dt = entrada_dt.astimezone(COMPANY_TZ)
-            salida_local_dt = salida_dt.astimezone(COMPANY_TZ)
+            # Usar una zona horaria fija para interpretar la hora base del turno
+            # y evitar que cambie por usuario/empresa.
+            shift_tz = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+            entrada_local_dt = entrada_dt.astimezone(shift_tz)
+            salida_local_dt = salida_dt.astimezone(shift_tz)
             
             shift_in_time = entrada_local_dt.time()
             shift_out_time = salida_local_dt.time()

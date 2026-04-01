@@ -98,7 +98,15 @@ class ZkTecoAttendanceLog(models.Model):
         shift_timezone = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
         entrada_local_dt = pytz.utc.localize(entrada_naive).astimezone(shift_timezone)
         shift_in_time = entrada_local_dt.time()
-        return device_timezone.localize(datetime.combine(target_date, shift_in_time))
+
+        # Aplicar la hora del turno en la zona del empleado para que "08:05" signifique
+        # "08:05 local del empleado" sin importar desde dónde se configuró.
+        company_tz_name = employee.company_id.timezone or FIXED_DEVICE_TIMEZONE_NAME
+        try:
+            employee_tz = pytz.timezone(company_tz_name)
+        except pytz.UnknownTimeZoneError:
+            employee_tz = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+        return employee_tz.localize(datetime.combine(target_date, shift_in_time))
 
     def _device_backlog_mode_active(self, device_serial, now_utc, device_timezone):
         """
@@ -153,9 +161,17 @@ class ZkTecoAttendanceLog(models.Model):
         shift_in_time = shift_in_local_dt.time()
         shift_out_time = shift_out_local_dt.time()
         shift_date = check_datetime_local.date()
-        
-        shift_in_datetime_local = device_timezone.localize(datetime.combine(shift_date, shift_in_time))
-        shift_out_datetime_local = device_timezone.localize(datetime.combine(shift_date, shift_out_time))
+
+        # Aplicar la hora del turno en la zona del empleado para que "08:05" signifique
+        # "08:05 local del empleado" sin importar desde dónde se configuró.
+        company_tz_name = employee.company_id.timezone or FIXED_DEVICE_TIMEZONE_NAME
+        try:
+            employee_tz = pytz.timezone(company_tz_name)
+        except pytz.UnknownTimeZoneError:
+            employee_tz = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+
+        shift_in_datetime_local = employee_tz.localize(datetime.combine(shift_date, shift_in_time))
+        shift_out_datetime_local = employee_tz.localize(datetime.combine(shift_date, shift_out_time))
 
         # Manejo de cruce de medianoche (turno nocturno)
         if shift_out_time <= shift_in_time:

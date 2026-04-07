@@ -676,7 +676,20 @@ class HrEmployeeExtension(models.Model):
         """Obtiene el salario mensual formateado con comas para miles"""
         self.ensure_one()
         salario = self.get_salario_mensual()
-        return "{:,.2f}".format(salario)
+        # Formatear manualmente para evitar dependencias de locale
+        amount_str = f"{salario:.2f}"
+        parts = amount_str.split('.')
+        integer = parts[0]
+        decimal = parts[1] if len(parts) > 1 else '00'
+        # Insertar comas cada 3 dígitos en la parte entera
+        integer_reversed = integer[::-1]
+        formatted_integer = ''
+        for i, char in enumerate(integer_reversed):
+            if i > 0 and i % 3 == 0:
+                formatted_integer += ','
+            formatted_integer += char
+        formatted_integer = formatted_integer[::-1]
+        return f"{formatted_integer}.{decimal}"
 
     def get_horario_trabajo(self):
         """Obtiene el horario de trabajo del empleado"""

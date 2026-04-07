@@ -32,7 +32,8 @@
     <template id="carta_laboral_template">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="employee">
-                <t t-call="web.external_layout">
+                <t t-set="company" t-value="employee.company_id"/>
+                <t t-call="web.external_layout_bold">
                         <style>
                             .carta-laboral {
                                 font-family: Arial, sans-serif;

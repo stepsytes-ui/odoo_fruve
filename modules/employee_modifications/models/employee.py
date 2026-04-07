@@ -672,6 +672,12 @@ class HrEmployeeExtension(models.Model):
         letras_entero = numero_a_letras(salario)
         return f"{letras_entero} PESOS Y {centavos:02d}/100 M.N."
 
+    def get_salario_mensual_formatted(self):
+        """Obtiene el salario mensual formateado con comas para miles"""
+        self.ensure_one()
+        salario = self.get_salario_mensual()
+        return "{:,.2f}".format(salario)
+
     def get_horario_trabajo(self):
         """Obtiene el horario de trabajo del empleado"""
         self.ensure_one()

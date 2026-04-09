@@ -61,6 +61,32 @@ class AttendanceReportWizard(models.TransientModel):
             'target': 'self',
         }
 
+    def _get_weekly_period_info(self, date_from, date_to):
+        """Retorna info de semana custom (viernes-jueves) si el rango coincide exactamente."""
+        if not date_from or not date_to:
+            return None
+
+        if date_to != (date_from + timedelta(days=6)):
+            return None
+
+        # Semana custom inicia viernes (4) y termina jueves (3)
+        if date_from.weekday() != 4 or date_to.weekday() != 3:
+            return None
+
+        iso_year, iso_week, _ = date_to.isocalendar()
+        return {
+            'custom_year': iso_year,
+            'custom_week': iso_week,
+            'week_start_date': date_from,
+            'week_end_date': date_to,
+        }
+
+    def _build_late_weekly_form_url(self, report_id):
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        action = self.env.ref('zkteco_realtime_connector.action_attendance_late_weekly_report', raise_if_not_found=False)
+        action_part = f"&action={action.id}" if action else ""
+        return f"{base_url}/web#id={report_id}&model=attendance.late.weekly.report&view_type=form{action_part}"
+
     def _get_report_data(self):
         """
         Construye y retorna la estructura de datos del reporte.
@@ -103,6 +129,8 @@ class AttendanceReportWizard(models.TransientModel):
         if not employees:
             raise ValueError(_('No se encontraron empleados con los criterios especificados.'))
 
+        employee_ids = [emp.id for emp in employees]
+
         date_list = []
         current_date = date_from
         while current_date <= date_to:
@@ -114,6 +142,31 @@ class AttendanceReportWizard(models.TransientModel):
             4: 'Viernes', 5: 'Sábado', 6: 'Domingo',
         }
 
+        weekly_info = self._get_weekly_period_info(date_from, date_to)
+        show_neto_total = bool(weekly_info)
+
+        late_weekly_map = {}
+        observations_map = {}
+        if show_neto_total:
+            weekly_reports = self.env['attendance.late.weekly.report'].search([
+                ('company_id', '=', report_company.id),
+                ('custom_year', '=', weekly_info['custom_year']),
+                ('custom_week', '=', weekly_info['custom_week']),
+                ('employee_id', 'in', employee_ids),
+            ])
+            late_weekly_map = {rec.employee_id.id: rec for rec in weekly_reports if rec.employee_id}
+
+            weekly_adjustments = self.env['attendance.late.weekly.adjustment'].search([
+                ('employee_id', 'in', employee_ids),
+                ('custom_year', '=', weekly_info['custom_year']),
+                ('custom_week', '=', weekly_info['custom_week']),
+            ])
+            observations_map = {
+                rec.employee_id.id: (rec.manual_observation or '')
+                for rec in weekly_adjustments
+                if rec.employee_id
+            }
+
         Attendance = self.env['hr.attendance']
         rows = []
         for employee in employees:
@@ -122,11 +175,31 @@ class AttendanceReportWizard(models.TransientModel):
                 cells[date_obj] = self._get_cell_data_for_employee_date(
                     employee, date_obj, COMPANY_TZ, Attendance
                 )
+
+            payable_days = None
+            payable_days_url = ''
+            observation = ''
+            if show_neto_total:
+                weekly_record = late_weekly_map.get(employee.id)
+                if weekly_record:
+                    payable_days = float(weekly_record.payable_days or 0.0)
+                    payable_days_url = self._build_late_weekly_form_url(weekly_record.id)
+                else:
+                    # Sin retardos/faltas en la semana: neto completo de 6 dias.
+                    payable_days = 6.0
+                observation = observations_map.get(employee.id, '')
+
             rows.append({
                 'biometric_id': employee.biometric_id or '',
                 'name': employee.name or '',
                 'turno': employee.sudo().turno_id.turno_name or '',
                 'cells': cells,
+                'payable_days': payable_days,
+                'payable_days_url': payable_days_url,
+                'employee_id': employee.id,
+                'custom_year': weekly_info['custom_year'] if show_neto_total else None,
+                'custom_week': weekly_info['custom_week'] if show_neto_total else None,
+                'observation': observation,
             })
 
         return {
@@ -137,6 +210,7 @@ class AttendanceReportWizard(models.TransientModel):
             'date_to': date_to,
             'company': report_company,
             'company_tz': COMPANY_TZ,
+            'show_neto_total': show_neto_total,
         }
 
     def _build_preview_html(self):
@@ -147,6 +221,7 @@ class AttendanceReportWizard(models.TransientModel):
         rows = data['rows']
         date_from = data['date_from']
         date_to = data['date_to']
+        show_neto_total = data.get('show_neto_total', False)
 
         def cell_style(color, font_color, bold):
             styles = [
@@ -211,8 +286,15 @@ class AttendanceReportWizard(models.TransientModel):
   .s0 {{ position: sticky; left: 0;   z-index: 5; background: inherit; min-width: 75px;  max-width: 75px; }}
   .s1 {{ position: sticky; left: 75px; z-index: 5; background: inherit; min-width: 170px; max-width: 170px; }}
   .s2 {{ position: sticky; left: 245px; z-index: 5; background: inherit; min-width: 110px; max-width: 110px; }}
-  th.s0, th.s1, th.s2 {{ z-index: 20; }}
+    .s3 {{ position: sticky; left: 355px; z-index: 5; background: inherit; min-width: 95px; max-width: 95px; text-align: center; }}
+    .obs-col {{ min-width: 170px; max-width: 260px; }}
+    th.s0, th.s1, th.s2, th.s3 {{ z-index: 20; }}
+    th.s0, th.s1, th.s2, th.s3 {{ background-color: #4472C4 !important; color: #FFFFFF !important; }}
   .day-cell {{ min-width: 95px; max-width: 130px; }}
+    .neto-link {{ color: #1b5fbd; font-weight: 700; text-decoration: none; }}
+    .neto-link:hover {{ text-decoration: underline; }}
+    .obs-link {{ color: #1b5fbd; text-decoration: none; font-weight: 600; }}
+    .obs-link:hover {{ text-decoration: underline; }}
   tr:nth-child(even) td {{ background-color: #f9f9fb; }}
     tr:hover td {{ background-color: #eef3ff !important; color: #000 !important; }}
     tr:hover td * {{ color: #000 !important; }}
@@ -244,12 +326,18 @@ class AttendanceReportWizard(models.TransientModel):
   <th class="s2">Turno</th>
 ''')
 
+        if show_neto_total:
+            parts.append('  <th class="s3">Neto Total</th>\n')
+
         for date_obj in date_list:
             day_name = day_names[date_obj.weekday()]
             parts.append(
                 f'  <th class="day-cell">{esc(day_name)}<br>'
                 f'<span style="font-weight:normal;font-size:10px">{date_obj.strftime("%d/%m")}</span></th>\n'
             )
+
+        if show_neto_total:
+            parts.append('  <th class="obs-col">Observaciones</th>\n')
 
         parts.append('</tr></thead>\n<tbody>\n')
 
@@ -258,14 +346,89 @@ class AttendanceReportWizard(models.TransientModel):
             parts.append(f'  <td class="s0">{esc(row["biometric_id"])}</td>\n')
             parts.append(f'  <td class="s1">{esc(row["name"])}</td>\n')
             parts.append(f'  <td class="s2">{esc(row["turno"])}</td>\n')
+            if show_neto_total:
+                value = row.get('payable_days')
+                if value is None:
+                    parts.append('  <td class="s3">-</td>\n')
+                else:
+                    neto_text = f"{value:.2f}"
+                    neto_url = row.get('payable_days_url')
+                    if neto_url:
+                        parts.append(
+                            f'  <td class="s3"><a class="neto-link" href="{esc(neto_url)}" target="_blank">{esc(neto_text)}</a></td>\n'
+                        )
+                    else:
+                        parts.append(f'  <td class="s3"><strong>{esc(neto_text)}</strong></td>\n')
             for date_obj in date_list:
                 cell = row['cells'].get(date_obj, {})
                 style = cell_style(cell.get('color'), cell.get('font_color'), cell.get('bold', False))
                 text = esc(cell.get('text', '') or '')
                 parts.append(f'  <td class="day-cell" style="{style}">{text}</td>\n')
+
+            if show_neto_total:
+                obs_text = (row.get('observation') or '').strip()
+                obs_label = obs_text[:40] + ('...' if len(obs_text) > 40 else '') if obs_text else 'Agregar'
+                parts.append(
+                    f'  <td class="obs-col">'
+                    f'<a href="#" class="obs-link" '
+                    f'data-employee-id="{row.get("employee_id")}" '
+                    f'data-custom-year="{row.get("custom_year")}" '
+                    f'data-custom-week="{row.get("custom_week")}" '
+                    f'data-observation="{esc(obs_text)}">{esc(obs_label)}</a>'
+                    f'</td>\n'
+                )
             parts.append('</tr>\n')
 
-        parts.append('</tbody>\n</table>\n</div>\n</body>\n</html>')
+        parts.append(f'''</tbody>
+</table>
+</div>
+<script>
+(() => {{
+    async function saveObservation(payload) {{
+        const response = await fetch('/attendance/report/save_weekly_observation', {{
+            method: 'POST',
+            headers: {{ 'Content-Type': 'application/json' }},
+            body: JSON.stringify(payload),
+        }});
+        if (!response.ok) {{
+            throw new Error('No se pudo guardar observacion');
+        }}
+        return response.json();
+    }}
+
+    document.addEventListener('click', async (ev) => {{
+        const link = ev.target.closest('.obs-link');
+        if (!link) return;
+        ev.preventDefault();
+
+        const current = link.dataset.observation || '';
+        const value = window.prompt('Observaciones de la semana:', current);
+        if (value === null) return;
+
+        const payload = {{
+            wizard_id: {self.id},
+            employee_id: parseInt(link.dataset.employeeId || '0', 10),
+            custom_year: parseInt(link.dataset.customYear || '0', 10),
+            custom_week: parseInt(link.dataset.customWeek || '0', 10),
+            observation: value,
+        }};
+
+        try {{
+            const result = await saveObservation(payload);
+            if (result && result.ok) {{
+                const saved = result.observation || '';
+                const label = saved ? (saved.length > 40 ? saved.slice(0, 40) + '...' : saved) : 'Agregar';
+                link.textContent = label;
+                link.dataset.observation = saved;
+            }}
+        }} catch (err) {{
+            window.alert('Error guardando observacion.');
+        }}
+    }});
+}})();
+</script>
+</body>
+</html>''')
         return ''.join(parts)
 
     def _generate_excel_file(self):
@@ -279,6 +442,7 @@ class AttendanceReportWizard(models.TransientModel):
         rows = data['rows']
         date_from = data['date_from']
         date_to = data['date_to']
+        show_neto_total = data.get('show_neto_total', False)
 
         wb = Workbook()
         ws = wb.active
@@ -295,6 +459,8 @@ class AttendanceReportWizard(models.TransientModel):
         )
 
         fixed_headers = ['No. Empleado', 'Nombre', 'Turno']
+        if show_neto_total:
+            fixed_headers.append('Neto Total')
         col_num = 1
         for header in fixed_headers:
             cell = ws.cell(row=1, column=col_num, value=header)
@@ -316,6 +482,16 @@ class AttendanceReportWizard(models.TransientModel):
             date_columns[date_obj] = col_num
             col_num += 1
 
+        observation_col = None
+        if show_neto_total:
+            observation_col = col_num
+            cell = ws.cell(row=1, column=observation_col, value='Observaciones')
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center_alignment
+            cell.border = border
+            col_num += 1
+
         total_cols = col_num
 
         row_num = 2
@@ -324,7 +500,16 @@ class AttendanceReportWizard(models.TransientModel):
             ws.cell(row=row_num, column=2, value=row['name'])
             ws.cell(row=row_num, column=3, value=row['turno'])
 
-            for col in range(1, 4):
+            start_fixed_cols = 3
+            if show_neto_total:
+                start_fixed_cols = 4
+                neto_cell = ws.cell(row=row_num, column=4, value=row['payable_days'])
+                neto_cell.number_format = '0.00'
+                if row.get('payable_days_url'):
+                    neto_cell.hyperlink = row['payable_days_url']
+                    neto_cell.style = 'Hyperlink'
+
+            for col in range(1, start_fixed_cols + 1):
                 cell = ws.cell(row=row_num, column=col)
                 cell.border = border
                 cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
@@ -343,13 +528,26 @@ class AttendanceReportWizard(models.TransientModel):
                 if cell_data.get('font_color'):
                     cell.font = Font(color=cell_data['font_color'], bold=cell_data.get('bold', False))
 
+            if show_neto_total and observation_col:
+                obs_cell = ws.cell(row=row_num, column=observation_col, value=(row.get('observation') or ''))
+                obs_cell.border = border
+                obs_cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+
             row_num += 1
 
         ws.column_dimensions['A'].width = 12
         ws.column_dimensions['B'].width = 25
         ws.column_dimensions['C'].width = 20
-        for col in range(4, total_cols):
+        date_col_start = 4
+        if show_neto_total:
+            ws.column_dimensions['D'].width = 12
+            date_col_start = 5
+
+        for col in range(date_col_start, total_cols):
             ws.column_dimensions[get_column_letter(col)].width = 25
+
+        if show_neto_total and observation_col:
+            ws.column_dimensions[get_column_letter(observation_col)].width = 35
 
         output = BytesIO()
         wb.save(output)

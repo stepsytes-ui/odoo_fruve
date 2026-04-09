@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="zkteco_realtime_connector.LateWeeklyBreakdownField" owl="1">
+        <div class="o_late_weekly_breakdown card border-0 shadow-sm">
+            <div class="card-header bg-light py-2 d-flex align-items-center justify-content-between">
+                <strong>Detalle Semanal de Retardos (minutos)</strong>
+                <button
+                    t-if="!isReadonly"
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    t-on-click="onResetClick"
+                >
+                    Reiniciar
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 o_late_weekly_table">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center">Concepto</th>
+                                <th t-foreach="headers" t-as="header" t-key="header" class="text-center">
+                                    <t t-esc="header"/>
+                                </th>
+                                <th class="text-center text-success">Total a Pagar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold">Minutos de Retardo</td>
+                                <td t-foreach="dailyMinutes" t-as="minutes" t-key="minutes_index" class="text-center">
+                                    <input
+                                        type="number"
+                                        class="form-control form-control-sm text-end"
+                                        min="0"
+                                        t-att-value="minutes"
+                                        t-att-readonly="isReadonly"
+                                        t-on-input="(ev) => this.onInputMinutes(minutes_index, ev)"
+                                    />
+                                </td>
+                                <td class="text-center fw-bold text-success align-middle">
+                                    <t t-esc="payableDays.toFixed(2)"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

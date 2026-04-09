@@ -1,0 +1,9 @@
+.o_late_weekly_table th,
+.o_late_weekly_table td {
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.o_late_weekly_table input {
+    min-width: 84px;
+}

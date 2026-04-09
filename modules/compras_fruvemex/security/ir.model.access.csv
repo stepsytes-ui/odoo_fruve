@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_compras_fruvemex_compras_fruvemex,compras_fruvemex.compras_fruvemex,model_compras_fruvemex_compras_fruvemex,base.group_user,1,1,1,1

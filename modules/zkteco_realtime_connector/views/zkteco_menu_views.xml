@@ -35,5 +35,13 @@
             groups="zkteco_realtime_connector.group_hr_manager_custom"
             sequence="30"/>
 
+        <menuitem
+            id="menu_attendance_late_weekly_report"
+            name="Retardos"
+            parent="menu_zkteco_connector"
+            action="zkteco_realtime_connector.action_attendance_late_weekly_report"
+            groups="zkteco_realtime_connector.group_hr_manager_custom,zkteco_realtime_connector.group_attendance_report_user"
+            sequence="40"/>
+
     </data>
 </odoo>

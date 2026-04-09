@@ -120,3 +120,62 @@ class AttendanceReportController(http.Controller):
                 ('Content-Length', str(len(file_bytes))),
             ],
         )
+
+    @http.route('/attendance/report/save_weekly_observation', auth='user', type='http', methods=['POST'], csrf=False)
+    def save_weekly_observation(self, **kwargs):
+        """Guarda observación por empleado y semana custom (viernes-jueves)."""
+        try:
+            payload = json.loads(request.httprequest.get_data(as_text=True) or '{}')
+        except Exception:
+            payload = {}
+
+        wizard_id = int(payload.get('wizard_id') or 0)
+        employee_id = int(payload.get('employee_id') or 0)
+        custom_year = int(payload.get('custom_year') or 0)
+        custom_week = int(payload.get('custom_week') or 0)
+        observation = (payload.get('observation') or '').strip()
+
+        if not wizard_id or not employee_id or not custom_year or not custom_week:
+            return request.make_response(
+                json.dumps({'ok': False, 'error': 'Parametros incompletos'}),
+                headers=[('Content-Type', 'application/json; charset=utf-8')],
+                status=400,
+            )
+
+        wizard = request.env['attendance.report.wizard'].browse(wizard_id)
+        if not wizard.exists():
+            return request.make_response(
+                json.dumps({'ok': False, 'error': 'Wizard no encontrado'}),
+                headers=[('Content-Type', 'application/json; charset=utf-8')],
+                status=404,
+            )
+
+        employee = request.env['hr.employee'].browse(employee_id)
+        if not employee.exists() or employee.company_id != wizard.company_id:
+            return request.make_response(
+                json.dumps({'ok': False, 'error': 'Empleado invalido para la empresa seleccionada'}),
+                headers=[('Content-Type', 'application/json; charset=utf-8')],
+                status=400,
+            )
+
+        adjustment_model = request.env['attendance.late.weekly.adjustment']
+        adjustment = adjustment_model.search([
+            ('employee_id', '=', employee_id),
+            ('custom_year', '=', custom_year),
+            ('custom_week', '=', custom_week),
+        ], limit=1)
+
+        if adjustment:
+            adjustment.write({'manual_observation': observation})
+        else:
+            adjustment_model.create({
+                'employee_id': employee_id,
+                'custom_year': custom_year,
+                'custom_week': custom_week,
+                'manual_observation': observation,
+            })
+
+        return request.make_response(
+            json.dumps({'ok': True, 'observation': observation}),
+            headers=[('Content-Type', 'application/json; charset=utf-8')],
+        )

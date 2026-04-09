@@ -1,0 +1,89 @@
+<odoo>
+    <data>
+        <record id="view_attendance_late_weekly_report_tree" model="ir.ui.view">
+            <field name="name">attendance.late.weekly.report.tree</field>
+            <field name="model">attendance.late.weekly.report</field>
+            <field name="arch" type="xml">
+                <list string="Retardos Semanales" create="0" edit="0" delete="0" default_order="custom_year desc, custom_week desc, employee_name asc">
+                    <field name="week_group_label"/>
+                    <field name="biometric_id"/>
+                    <field name="employee_name"/>
+                    <field name="late_days_count"/>
+                    <field name="late_dates_text"/>
+                    <field name="total_late_minutes" sum="Total Minutos"/>
+                    <field name="total_late_hours_floor" sum="Total Horas Piso"/>
+                    <field name="discount_days" sum="Total Descuento"/>
+                    <field name="payable_days" string="Neto Total"/>
+                    <field name="has_manual_override"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_attendance_late_weekly_report_form" model="ir.ui.view">
+            <field name="name">attendance.late.weekly.report.form</field>
+            <field name="model">attendance.late.weekly.report</field>
+            <field name="arch" type="xml">
+                <form string="Retardos Semanales" create="0" delete="0">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="week_group_label" readonly="1"/>
+                                <field name="week_label" readonly="1"/>
+                                <field name="employee_id" readonly="1"/>
+                                <field name="biometric_id" readonly="1"/>
+                                <field name="late_days_count" readonly="1"/>
+                                <field name="late_dates_text" readonly="1" widget="text"/>
+                            </group>
+                            <group>
+                                <field name="base_total_late_minutes" readonly="1"/>
+                                <field name="total_late_minutes"/>
+                                <field name="total_late_hours_floor" readonly="1"/>
+                                <field name="base_payable_days" readonly="1" string="Neto Total Base"/>
+                                <field name="payable_days" string="Neto Total"/>
+                                <field name="has_manual_override" readonly="1"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="daily_minutes_json" widget="late_weekly_breakdown" nolabel="1"/>
+                            <field name="base_daily_minutes_json" invisible="1"/>
+                            <field name="week_start_date" invisible="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_attendance_late_weekly_report_search" model="ir.ui.view">
+            <field name="name">attendance.late.weekly.report.search</field>
+            <field name="model">attendance.late.weekly.report</field>
+            <field name="arch" type="xml">
+                <search string="Retardos Semanales">
+                    <field name="custom_year"/>
+                    <field name="custom_week"/>
+                    <field name="employee_name"/>
+                    <field name="biometric_id"/>
+
+                    <filter string="Anio Actual" name="current_year" domain="[('custom_year', '=', context_today().year)]"/>
+
+                    <separator/>
+                    <filter string="Agrupar por Semana" name="group_week" context="{'group_by': 'week_group_label', 'orderby': 'week_group_label desc'}"/>
+                    <filter string="Agrupar por Empleado" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_attendance_late_weekly_report" model="ir.actions.act_window">
+            <field name="name">Retardos</field>
+            <field name="res_model">attendance.late.weekly.report</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_attendance_late_weekly_report_search"/>
+            <field name="context">{'search_default_group_week': 1, 'orderby': 'week_group_label desc'}</field>
+            <field name="help" type="html">
+                <p>
+                    Reporte semanal de retardos por empleado.
+                    La semana laboral se calcula de viernes a jueves.
+                </p>
+            </field>
+        </record>
+    </data>
+</odoo>

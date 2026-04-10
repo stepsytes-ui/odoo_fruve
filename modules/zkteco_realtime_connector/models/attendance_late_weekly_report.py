@@ -174,6 +174,7 @@ class AttendanceLateWeeklyReport(models.Model):
                         att.id AS attendance_id,
                         att.employee_id,
                         emp.company_id,
+                        COALESCE(sm.turno_name, '') AS turno_name,
                         att.punctuality_status,
                         emp.name AS employee_name,
                         emp.biometric_id,
@@ -193,10 +194,13 @@ class AttendanceLateWeeklyReport(models.Model):
                     FROM hr_attendance att
                     INNER JOIN hr_employee emp ON emp.id = att.employee_id
                     LEFT JOIN shift_management sm ON sm.id = emp.turno_id
-                    WHERE att.punctuality_status IN ('late', 'absence')
+                    WHERE (
+                        att.punctuality_status IN ('late', 'absence', 'leave_unpaid')
+                        OR COALESCE(sm.turno_name, '') = 'Seguridad'
+                    )
                         AND att.check_in IS NOT NULL
                         AND (
-                            att.punctuality_status = 'absence'
+                            att.punctuality_status IN ('absence', 'leave_unpaid')
                             OR (
                                 emp.turno_id IS NOT NULL
                                 AND sm.hora_entrada IS NOT NULL
@@ -208,6 +212,7 @@ class AttendanceLateWeeklyReport(models.Model):
                         lr.attendance_id,
                         lr.employee_id,
                         lr.company_id,
+                        lr.turno_name,
                         lr.employee_name,
                         lr.biometric_id,
                         lr.check_in_local,
@@ -215,7 +220,8 @@ class AttendanceLateWeeklyReport(models.Model):
                         date_trunc('day', lr.check_in_local)
                             + (((lr.shift_start_src AT TIME ZONE 'UTC') AT TIME ZONE '{FIXED_DEVICE_TIMEZONE_NAME}')::time) AS expected_check_in_local,
                         CASE
-                            WHEN lr.punctuality_status = 'absence' THEN 480
+                            WHEN lr.turno_name = 'Seguridad' AND lr.punctuality_status NOT IN ('absence', 'leave_unpaid') THEN 0
+                            WHEN lr.punctuality_status IN ('absence', 'leave_unpaid') THEN 480
                             ELSE GREATEST(
                                 FLOOR(EXTRACT(EPOCH FROM (lr.check_in_local - (
                                     date_trunc('day', lr.check_in_local)
@@ -225,7 +231,7 @@ class AttendanceLateWeeklyReport(models.Model):
                             )::int
                         END AS late_minutes
                     FROM late_rows lr
-                    WHERE lr.punctuality_status = 'absence' OR lr.shift_start_src IS NOT NULL
+                    WHERE lr.punctuality_status IN ('absence', 'leave_unpaid') OR lr.shift_start_src IS NOT NULL
                 ),
                 enriched AS (
                     SELECT
@@ -241,12 +247,13 @@ class AttendanceLateWeeklyReport(models.Model):
                             )::date - INTERVAL '6 day'
                         )::date AS week_start_friday
                     FROM normalized n
-                    WHERE n.late_minutes > 0
+                    WHERE n.late_minutes > 0 OR n.turno_name = 'Seguridad'
                 ),
                 per_day AS (
                     SELECT
                         e.employee_id,
                         e.company_id,
+                        MAX(e.turno_name) AS turno_name,
                         MAX(e.employee_name) AS employee_name,
                         MAX(e.biometric_id) AS biometric_id,
                         e.week_start_friday,
@@ -265,6 +272,7 @@ class AttendanceLateWeeklyReport(models.Model):
                     SELECT
                         d.employee_id,
                         d.company_id,
+                        MAX(d.turno_name) AS turno_name,
                         MAX(d.employee_name) AS employee_name,
                         MAX(d.biometric_id) AS biometric_id,
                         EXTRACT(ISOYEAR FROM d.week_end_thursday)::int AS custom_year,
@@ -278,8 +286,9 @@ class AttendanceLateWeeklyReport(models.Model):
                         SUM(CASE WHEN d.late_date = (d.week_start_friday + INTERVAL '4 day')::date THEN d.late_minutes ELSE 0 END)::int AS day_5_minutes,
                         SUM(CASE WHEN d.late_date = (d.week_start_friday + INTERVAL '5 day')::date THEN d.late_minutes ELSE 0 END)::int AS day_6_minutes,
                         SUM(CASE WHEN d.late_date = (d.week_start_friday + INTERVAL '6 day')::date THEN d.late_minutes ELSE 0 END)::int AS day_7_minutes,
-                        COUNT(*)::int AS late_days_count,
-                        STRING_AGG(TO_CHAR(d.late_date, 'DD/MM/YYYY'), ', ' ORDER BY d.late_date) AS late_dates_text,
+                        SUM(CASE WHEN d.late_minutes > 0 THEN 1 ELSE 0 END)::int AS late_days_count,
+                        STRING_AGG(TO_CHAR(d.late_date, 'DD/MM/YYYY'), ', ' ORDER BY d.late_date)
+                            FILTER (WHERE d.late_minutes > 0) AS late_dates_text,
                         SUM(d.late_minutes)::int AS total_late_minutes
                     FROM per_day d
                     GROUP BY

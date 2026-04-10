@@ -14,6 +14,7 @@ SECOND_DIFFERENCE = 1
 RECOVERY_LOOKBACK_DAYS = 30
 BACKLOG_RECENT_WINDOW_MINUTES = 10
 BACKLOG_ON_TIME_WINDOW_HOURS = 4
+DUPLICATE_END_PUNCH_WINDOW_SECONDS = 120
 
 class ZkTecoAttendanceLog(models.Model):
     _name = 'zkteco.attendance.log'
@@ -194,6 +195,69 @@ class ZkTecoAttendanceLog(models.Model):
         if status_out:
             vals['punctuality_status'] = status_out
         attendance_record.with_context(skip_attendance_sync=True).write(vals)
+
+    def _is_duplicate_end_punch(self, employee, check_datetime_utc_dt, attendance_model, device_timezone):
+        """
+        Detecta doble checada accidental justo después de un 'end'.
+        Si existe un registro 'end' muy reciente para el mismo día local, se considera duplicado.
+        """
+        if not employee or not check_datetime_utc_dt:
+            return False
+
+        window_start = check_datetime_utc_dt - timedelta(seconds=DUPLICATE_END_PUNCH_WINDOW_SECONDS)
+        check_local_date = check_datetime_utc_dt.astimezone(device_timezone).date()
+        day_start_local = device_timezone.localize(datetime.combine(check_local_date, time.min))
+        day_end_local = device_timezone.localize(datetime.combine(check_local_date, time.max))
+
+        recent_end = attendance_model.search([
+            ('employee_id', '=', employee.id),
+            ('punctuality_status', '=', 'end'),
+            ('check_in', '>=', fields.Datetime.to_string(window_start)),
+            ('check_in', '<=', fields.Datetime.to_string(check_datetime_utc_dt)),
+            ('check_in', '>=', fields.Datetime.to_string(day_start_local.astimezone(pytz.utc))),
+            ('check_in', '<=', fields.Datetime.to_string(day_end_local.astimezone(pytz.utc))),
+        ], order='check_in desc, id desc', limit=1)
+
+        if not recent_end:
+            return False
+
+        _logger.info(
+            "[DUPLICATE PUNCH] Doble checada ignorada para %s. "
+            "Se detecto 'end' reciente (%s segundos).",
+            employee.name,
+            DUPLICATE_END_PUNCH_WINDOW_SECONDS,
+        )
+        return True
+
+    def _is_overtime_after_same_day_end(self, employee, check_datetime_utc_dt, attendance_model, device_timezone):
+        """
+        Regla solicitada: si ya existe un 'end' en el mismo día local y la nueva
+        checada ocurre después de la ventana anti-duplicado, marcar como overtime.
+        """
+        if not employee or not check_datetime_utc_dt:
+            return False
+
+        check_local_date = check_datetime_utc_dt.astimezone(device_timezone).date()
+        day_start_local = device_timezone.localize(datetime.combine(check_local_date, time.min))
+        day_end_local = device_timezone.localize(datetime.combine(check_local_date, time.max))
+
+        latest_end = attendance_model.search([
+            ('employee_id', '=', employee.id),
+            ('punctuality_status', '=', 'end'),
+            ('check_in', '>=', fields.Datetime.to_string(day_start_local.astimezone(pytz.utc))),
+            ('check_in', '<=', fields.Datetime.to_string(day_end_local.astimezone(pytz.utc))),
+            ('check_in', '<=', fields.Datetime.to_string(check_datetime_utc_dt)),
+        ], order='check_in desc, id desc', limit=1)
+
+        if not latest_end:
+            return False
+
+        end_check_in = latest_end.check_in
+        if end_check_in.tzinfo is None:
+            end_check_in = pytz.utc.localize(end_check_in)
+
+        elapsed_seconds = (check_datetime_utc_dt - end_check_in).total_seconds()
+        return elapsed_seconds > DUPLICATE_END_PUNCH_WINDOW_SECONDS
 
     def process_logs(self):
         records_to_process = self.filtered(lambda l: l.state == 'new').sudo()
@@ -404,10 +468,23 @@ class ZkTecoAttendanceLog(models.Model):
                     ('check_in', '<=', fields.Datetime.to_string(hist_day_end)),
                 ], order='check_in desc', limit=1)
 
+            if (
+                (not is_historical)
+                and (not last_attendance or last_attendance.check_out)
+                and self._is_duplicate_end_punch(employee, check_datetime_utc_dt, Attendance, DEVICE_TIMEZONE)
+            ):
+                log.write({'state': 'processed'})
+                continue
+
             if not last_attendance or last_attendance.check_out:
 
                 status = 'n/a'
-                if shift_in_utc_dt:
+                if (
+                    (not is_historical)
+                    and self._is_overtime_after_same_day_end(employee, check_datetime_utc_dt, Attendance, DEVICE_TIMEZONE)
+                ):
+                    status = 'overtime'
+                elif shift_in_utc_dt:
 
                     max_on_time = shift_in_utc_dt + timedelta(minutes=TIME_OFFSET_MINUTES)
 

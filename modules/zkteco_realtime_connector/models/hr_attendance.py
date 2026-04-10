@@ -2,6 +2,7 @@ from odoo import fields, models, api, _
 from datetime import datetime, timedelta, time
 import pytz
 import logging
+import unicodedata
 from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -21,15 +22,10 @@ NEW_LEAVE_STATUSES = [
     ('leave_sickness', 'Incapacidad'),
     ('leave_sickness_paid', 'Tiempo personal por enfermedad'),
     ('leave_suspension', 'Suspensión'),
-    ('leave_unpaid', 'Permiso no pagado'),
-    ('leave_payday', 'Permiso día pagado'),
+    ('leave_unpaid', 'Permiso sin goce'),
     ('leave_birthday', 'Permiso por cumpleaños'),
-    ('leave_delay_pass_paid', 'Permiso retardo'),
     ('leave_marriage', 'Permiso por matrimonio'),
-    ('leave_no_payday', 'Permiso día no pagado'),
     ('leave_other', 'Ausencia Justificada (Otro)'),
-    ('leave_partial_paid', 'Permiso parcial pagado'),
-    ('leave_partial_unpaid', 'Permiso parcial no pagado'), 
 ]
 
 LEAVE_STATUS_KEYS = [key for key, label in NEW_LEAVE_STATUSES]
@@ -526,14 +522,33 @@ class HrAttendance(models.Model):
         Attendance = self.env['hr.attendance']
         Leave = self.env['hr.leave'].sudo()
 
+        def _normalize_leave_name(name):
+            normalized = (name or '').strip().lower()
+            normalized = unicodedata.normalize('NFKD', normalized)
+            normalized = ''.join(ch for ch in normalized if not unicodedata.combining(ch))
+            return ' '.join(normalized.split())
+
         leave_status_map = {
-            'Permiso sin goce de sueldo': 'leave_unpaid',
-            'Permiso con goce de sueldo': 'leave_paid',
-            'Incapacidad': 'leave_sickness',
-            'Vacaciones': 'leave_vacation',
-            'Maternidad': 'leave_maternity',
-            'Paternidad': 'leave_paternity',
-            'Suspension': 'leave_suspension',
+            # Catalogo actual de hr.leave en Fruve
+            'vacaciones': 'leave_vacation',
+            'permiso por cumpleanos': 'leave_birthday',
+            'permiso pagado': 'leave_paid',
+            'permiso de ausencia': 'leave_abscent',
+            'permiso por horas': 'leave_hours',
+            'incapacidad': 'leave_sickness',
+            'permiso sin goce': 'leave_unpaid',
+            'descanso': 'leave_day_off',
+            'permiso pagado por horas': 'leave_hours_paid',
+            'permiso por matrimonio': 'leave_marriage',
+            'tiempo personal por enfermedad': 'leave_sickness_paid',
+            'suspension': 'leave_suspension',
+            'maternidad': 'leave_maternity',
+            'paternidad': 'leave_paternity',
+
+            # Alias historicos/comunes
+            'permiso sin goce de sueldo': 'leave_unpaid',
+            'permiso con goce de sueldo': 'leave_paid',
+            'ausencia justificada (otro)': 'leave_other',
         }
 
         faltas_generadas = 0
@@ -559,7 +574,15 @@ class HrAttendance(models.Model):
                 if approved_leave:
                     # Crear registro con el tipo de permiso
                     leave_name = approved_leave.holiday_status_id.name
-                    new_status = leave_status_map.get(leave_name, 'leave_other')
+                    leave_name_key = _normalize_leave_name(leave_name)
+                    new_status = leave_status_map.get(leave_name_key, 'leave_other')
+
+                    if new_status == 'leave_other':
+                        _logger.warning(
+                            "[CRON FALTAS] Tipo de permiso no mapeado para %s: '%s'. Se registrara como leave_other.",
+                            employee.name,
+                            leave_name,
+                        )
                     
                     Attendance.with_context(skip_attendance_sync=True).create({
                         'employee_id': employee.id,

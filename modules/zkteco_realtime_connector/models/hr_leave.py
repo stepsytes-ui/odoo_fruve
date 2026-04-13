@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 
+import logging
+import pytz
+
 from odoo import models, fields, api
 from odoo.tools.float_utils import float_round
 from odoo.tools.translate import _
 from odoo.exceptions import ValidationError
 from odoo.tools import format_date
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from math import ceil
+
+_logger = logging.getLogger(__name__)
 
 class HrLeaveCustom(models.Model):
     """Customización para que Incapacidad cuente días naturales"""
@@ -160,3 +165,59 @@ Attempting to double-book your time off won't magically make your vacation 2x be
                     unit = _('días')
                     display = "%g %s" % (float_round(natural_days, precision_digits=2), unit)
                     leave.duration_display = display
+
+    def action_validate(self, check_state=True):
+        result = super().action_validate(check_state)
+        self.filtered(lambda l: l.state == 'validate')._retroactively_fix_vacation_absences()
+        return result
+
+    def _retroactively_fix_vacation_absences(self):
+        """
+        Cuando se valida un permiso de Vacaciones, busca registros de asistencia
+        con estatus 'absence' del empleado dentro del rango de fechas del permiso
+        y los convierte a 'leave_vacation', corrigiendo el cálculo de neto.
+        """
+        for leave in self:
+            if leave.holiday_status_id.name != 'Vacaciones':
+                continue
+            if not leave.employee_id or not leave.date_from or not leave.date_to:
+                continue
+
+            # Comparar por día completo local para evitar desajustes por horas del turno.
+            company_tz_name = leave.employee_id.company_id.timezone or 'UTC'
+            try:
+                company_tz = pytz.timezone(company_tz_name)
+            except pytz.UnknownTimeZoneError:
+                company_tz = pytz.utc
+
+            start_date = leave.request_date_from or fields.Date.to_date(leave.date_from)
+            end_date = leave.request_date_to or fields.Date.to_date(leave.date_to)
+
+            day_start_local = company_tz.localize(datetime.combine(start_date, time.min))
+            day_end_local = company_tz.localize(datetime.combine(end_date, time.max))
+
+            day_start_utc = day_start_local.astimezone(pytz.utc)
+            day_end_utc = day_end_local.astimezone(pytz.utc)
+
+            absence_records = self.env['hr.attendance'].search([
+                ('employee_id', '=', leave.employee_id.id),
+                ('punctuality_status', '=', 'absence'),
+                ('check_in', '>=', fields.Datetime.to_string(day_start_utc)),
+                ('check_in', '<=', fields.Datetime.to_string(day_end_utc)),
+            ])
+
+            if not absence_records:
+                continue
+
+            count = len(absence_records)
+            absence_records.with_context(skip_attendance_sync=True).write({
+                'punctuality_status': 'leave_vacation',
+            })
+            _logger.info(
+                "[VACATION FIX] Se corrigieron %s faltas a 'leave_vacation' para %s "
+                "en el rango %s - %s.",
+                count,
+                leave.employee_id.name,
+                day_start_utc,
+                day_end_utc,
+            )

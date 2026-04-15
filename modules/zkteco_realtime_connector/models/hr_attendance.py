@@ -817,6 +817,24 @@ class HrAttendance(models.Model):
         except Exception as e:
             _logger.error(f"[CRON AUTO-CLOSE] Error crítico en el cron: {e}", exc_info=True)
 
+    def _can_receive_absence_alert(self, user, employee_company):
+        """Valida si un usuario puede recibir alertas de faltas."""
+        user.ensure_one()
+
+        if not user.active or user.share or not employee_company:
+            return False
+
+        if employee_company.id not in user.company_ids.ids:
+            return False
+
+        has_absence_manager = user.has_group('zkteco_realtime_connector.group_rh_absence_manager')
+        has_hr_access = (
+            user.has_group('zkteco_realtime_connector.group_hr_manager_custom')
+            or user.has_group('hr.group_hr_user')
+            or user.has_group('hr.group_hr_manager')
+        )
+        return has_absence_manager and has_hr_access
+
     def _check_and_alert_four_absences(self, employee, new_attendance):
         """Verifica faltas y alerta con enfriamiento para evitar duplicados diarios."""
 
@@ -872,20 +890,33 @@ class HrAttendance(models.Model):
             _logger.warning(f"El empleado {employee.name} no tiene empresa asignada. No se enviará notificación.")
             return
 
-        # Filtrar usuarios de RH que pertenecen a la misma empresa del empleado
-        hr_users = [user for user in hr_group.users if employee_company in user.company_ids]
+        # Filtrar solo usuarios activos de la misma empresa que tengan:
+        # 1) RH Absence Manager y 2) acceso a Recursos Humanos.
+        hr_users = hr_group.users.filtered(
+            lambda user: self._can_receive_absence_alert(user, employee_company)
+        )
 
         if not hr_users:
-            _logger.warning(f"No se encontraron usuarios de RRHH para la empresa {employee_company.name}.")
+            _logger.warning(
+                "No se encontraron usuarios activos con RH Absence Manager y Recursos Humanos para la empresa %s.",
+                employee_company.name,
+            )
             return
 
-        recipient_partner_ids = [user.partner_id.id for user in hr_users if user.partner_id and user.partner_id.email]
+        recipient_partner_ids = [
+            user.partner_id.id
+            for user in hr_users
+            if user.partner_id and user.partner_id.email
+        ]
 
         if not recipient_partner_ids:
-            _logger.warning(f"Los usuarios de RRHH de la empresa {employee_company.name} no tienen correo electrónico configurado.")
+            _logger.warning(
+                "Los usuarios válidos de RRHH de la empresa %s no tienen correo electrónico configurado.",
+                employee_company.name,
+            )
             return
 
-        recipient_user_ids = [user.id for user in hr_users]
+        recipient_user_ids = hr_users.ids
         recipients_tuple_list = [(4, pid) for pid in recipient_partner_ids]
 
         # Construir la URL y el cuerpo (body, url, subject, etc.)
@@ -921,11 +952,16 @@ class HrAttendance(models.Model):
                 'summary': _("🚨 Revisar: 4ta Falta de Asistencia"),
                 'note': _("El empleado **%s** ha acumulado la cuarta falta sin justificar. Debe aplicarse el protocolo de RH.") % employee.name,
                 'date_deadline': fields.Date.today(),
+                'automated': True,
             }
 
+            activity_model = self.env['mail.activity'].sudo().with_context(
+                mail_activity_quick_update=True,
+                mail_create_nosubscribe=True,
+            )
+
             for user_id in recipient_user_ids:
-                activity_data['user_id'] = user_id
-                self.env['mail.activity'].sudo().create(activity_data)
+                activity_model.create(dict(activity_data, user_id=user_id))
 
         employee.sudo().write({'last_absence_alert_at': fields.Datetime.to_string(reference_dt)})
         return

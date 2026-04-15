@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Regla multi-empresa para purchase.request -->
+        <record id="purchase_request_company_rule" model="ir.rule">
+            <field name="name">Purchase Request Multi-Company Rule</field>
+            <field name="model_id" ref="model_purchase_request"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
+
+        <!-- Regla multi-empresa para purchase.request.line -->
+        <record id="purchase_request_line_company_rule" model="ir.rule">
+            <field name="name">Purchase Request Line Multi-Company Rule</field>
+            <field name="model_id" ref="model_purchase_request_line"/>
+            <field name="domain_force">[('request_id.company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
+
+        <record id="compras_warehouse_company_rule" model="ir.rule">
+            <field name="name">Compras Warehouse Multi-Company Rule</field>
+            <field name="model_id" ref="model_compras_warehouse"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
+
+        <record id="compras_product_company_rule" model="ir.rule">
+            <field name="name">Compras Product Multi-Company Rule</field>
+            <field name="model_id" ref="model_compras_product"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
+
+        <record id="compras_inventory_move_company_rule" model="ir.rule">
+            <field name="name">Compras Inventory Move Multi-Company Rule</field>
+            <field name="model_id" ref="model_compras_inventory_move"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
+
+        <!-- Regla: usuario_compras solo ve sus propias solicitudes -->
+        <record id="purchase_request_own_rule" model="ir.rule">
+            <field name="name">Purchase Request Own Records Rule</field>
+            <field name="model_id" ref="model_purchase_request"/>
+            <field name="domain_force">[('solicitante_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('compras_fruvemex.group_compras_usuario'))]"/>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Extender formulario de producto con campos de Marca y Modelo -->
+        <record id="view_product_template_form_compras" model="ir.ui.view">
+            <field name="name">product.template.form.compras.extension</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_only_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='general_information']" position="inside">
+                    <group string="Información de Compras">
+                        <field name="brand_id"/>
+                        <field name="model_name"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Acción para abrir productos desde menú de Compras -->
+        <record id="action_compras_products" model="ir.actions.act_window">
+            <field name="name">Productos</field>
+            <field name="res_model">product.template</field>
+            <field name="view_mode">list,form</field>
+            <field name="context">{}</field>
+        </record>
+    </data>
+</odoo>

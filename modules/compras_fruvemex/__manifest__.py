@@ -1,34 +1,48 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "compras_fruvemex",
+    'name': "Compras Fruvemex",
 
-    'summary': "Short (1 phrase/line) summary of the module's purpose",
+    'summary': "Módulo de solicitudes de compra con flujo de aprobación",
 
     'description': """
-Long description of module's purpose
+Módulo para gestionar solicitudes de compra con flujo de aprobación:
+- usuario_compras crea solicitudes
+- encargado_compras aprueba o rechaza
+- almacenista_compras marca órdenes como recibidas
     """,
 
-    'author': "My Company",
-    'website': "https://www.yourcompany.com",
+    'author': "NeyiSoek",
+    'website': "https://fruvemex.com/es/",
+    'category': 'Purchases',
+    'version': '18.0.0.1',
 
-    # Categories can be used to filter modules in modules listing
-    # Check https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/data/ir_module_category_data.xml
-    # for the full list
-    'category': 'Uncategorized',
-    'version': '0.1',
+    'depends': [
+        'base',
+        'hr',
+        'mail',
+        'uom',
+        'contacts',
+        'overtime',
+        'product',
+        'account',
+    ],
 
-    # any module necessary for this one to work correctly
-    'depends': ['base'],
-
-    # always loaded
     'data': [
-        # 'security/ir.model.access.csv',
-        'views/views.xml',
-        'views/templates.xml',
+        'security/groups.xml',
+        'security/ir.model.access.csv',
+        'security/purchase_request_security_rules.xml',
+        'data/purchase_request_sequence.xml',
+        'views/inventory_views.xml',
+        'views/purchase_request_views.xml',
+        'views/purchase_rejection_wizard.xml',
+        'views/purchase_receipt_wizard.xml',
+        'views/purchase_menu.xml',
     ],
-    # only loaded in demonstration mode
-    'demo': [
-        'demo/demo.xml',
-    ],
+
+    'demo': [],
+    'installable': True,
+    'application': True,
+    'license': 'LGPL-3',
 }
+
 

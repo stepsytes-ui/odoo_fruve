@@ -1,0 +1,319 @@
+<odoo>
+    <data>
+        <record id="compras_product_view_list" model="ir.ui.view">
+            <field name="name">compras.product.list</field>
+            <field name="model">compras.product</field>
+            <field name="arch" type="xml">
+                <list string="Productos de Almacén">
+                    <field name="code"/>
+                    <field name="name"/>
+                    <field name="brand_id"/>
+                    <field name="model_name"/>
+                    <field name="unit_id"/>
+                    <field name="vendor_id"/>
+                    <field name="unit_price"/>
+                    <field name="qty_on_hand" sum="Total"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="compras_product_view_form" model="ir.ui.view">
+            <field name="name">compras.product.form</field>
+            <field name="model">compras.product</field>
+            <field name="arch" type="xml">
+                <form string="Producto de Almacén">
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name"/>
+                            </h1>
+                            <h2>
+                                <field name="code" readonly="1"/>
+                            </h2>
+                        </div>
+                        <group>
+                            <group string="Información General">
+                                <field name="company_id"/>
+                                <field name="unit_id"/>
+                                <field name="brand_id"/>
+                                <field name="model_name"/>
+                                <field name="vendor_id"/>
+                                <field name="unit_price"/>
+                                <field name="tax_ids" widget="many2many_tags"/>
+                            </group>
+                            <group string="Existencias en Tiempo Real">
+                                <field name="qty_on_hand" readonly="1"/>
+                                <field name="qty_in" readonly="1"/>
+                                <field name="qty_out" readonly="1"/>
+                                <field name="last_entry_date" readonly="1"/>
+                                <field name="last_exit_date" readonly="1"/>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                        <group string="Descripción">
+                            <field name="description" nolabel="1"/>
+                        </group>
+                        <notebook>
+                            <page string="Bitácora de Movimientos">
+                                <field name="move_ids" readonly="1">
+                                    <list>
+                                        <field name="movement_date"/>
+                                        <field name="name"/>
+                                        <field name="move_type"/>
+                                        <field name="quantity"/>
+                                        <field name="quantity_done"/>
+                                        <field name="previous_qty"/>
+                                        <field name="new_qty"/>
+                                        <field name="status"/>
+                                        <field name="receiver_name"/>
+                                        <field name="registered_by_id"/>
+                                        <field name="state"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="compras_product_view_search" model="ir.ui.view">
+            <field name="name">compras.product.search</field>
+            <field name="model">compras.product</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Productos">
+                    <field name="name"/>
+                    <field name="code"/>
+                    <field name="brand_id"/>
+                    <field name="vendor_id"/>
+                    <filter name="con_existencia" string="Con Existencia" domain="[('qty_on_hand', '&gt;', 0)]"/>
+                    <group string="Agrupar por" expand="0">
+                        <filter name="group_brand" string="Marca" context="{'group_by': 'brand_id'}"/>
+                        <filter name="group_vendor" string="Proveedor" context="{'group_by': 'vendor_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="compras_inventory_move_view_list" model="ir.ui.view">
+            <field name="name">compras.inventory.move.list</field>
+            <field name="model">compras.inventory.move</field>
+            <field name="arch" type="xml">
+                <list string="Bitácora de Movimientos">
+                    <field name="movement_date"/>
+                    <field name="name"/>
+                    <field name="product_id"/>
+                    <field name="move_type"/>
+                    <field name="source_warehouse_id"/>
+                    <field name="destination_warehouse_id"/>
+                    <field name="area_id"/>
+                    <field name="quantity"/>
+                    <field name="quantity_done"/>
+                    <field name="previous_qty"/>
+                    <field name="new_qty"/>
+                    <field name="status"/>
+                    <field name="receiver_user_id"/>
+                    <field name="receiver_name"/>
+                    <field name="delivered_by_id"/>
+                    <field name="signed_by_id"/>
+                    <field name="registered_by_id"/>
+                    <field name="state" widget="badge"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="compras_inventory_move_view_form" model="ir.ui.view">
+            <field name="name">compras.inventory.move.form</field>
+            <field name="model">compras.inventory.move</field>
+            <field name="arch" type="xml">
+                <form string="Movimiento de Almacén">
+                    <header>
+                        <button name="action_confirm" string="Confirmar" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                        <button name="action_cancel" string="Cancelar" type="object" class="btn-secondary" invisible="state == 'cancelled'"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,done,cancelled"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1><field name="name" readonly="1"/></h1>
+                        </div>
+                        <group>
+                            <group string="Movimiento">
+                                <field name="company_id"/>
+                                <field name="movement_date"/>
+                                <field name="move_type"/>
+                                <field name="product_id"/>
+                                <field name="unit_id" readonly="1"/>
+                                <field name="source_warehouse_id"/>
+                                <field name="destination_warehouse_id"/>
+                            </group>
+                            <group string="Control">
+                                <field name="quantity"/>
+                                <field name="quantity_done"/>
+                                <field name="status"/>
+                                <field name="area_id"/>
+                                <field name="destination"/>
+                                <field name="receiver_user_id"/>
+                                <field name="receiver_name"/>
+                                <field name="delivered_by_id"/>
+                                <field name="signed_by_id"/>
+                                <field name="registered_by_id" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Existencias">
+                            <field name="previous_qty" readonly="1"/>
+                            <field name="new_qty" readonly="1"/>
+                            <field name="request_id" readonly="1"/>
+                        </group>
+                        <group string="Observaciones">
+                            <field name="notes" nolabel="1"/>
+                        </group>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="compras_inventory_move_view_search" model="ir.ui.view">
+            <field name="name">compras.inventory.move.search</field>
+            <field name="model">compras.inventory.move</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Movimientos">
+                    <field name="name"/>
+                    <field name="product_id"/>
+                    <field name="receiver_name"/>
+                    <field name="receiver_user_id"/>
+                    <field name="source_warehouse_id"/>
+                    <field name="destination_warehouse_id"/>
+                    <filter name="entries" string="Entradas" domain="[('move_type', '=', 'entrada')]"/>
+                    <filter name="exits" string="Salidas" domain="[('move_type', '=', 'salida')]"/>
+                    <filter name="transfers" string="Transferencias" domain="[('move_type', '=', 'transferencia')]"/>
+                    <filter name="shortages" string="Faltantes" domain="[('move_type', '=', 'entrada'), ('status', 'in', ['faltante', 'incompleto'])]"/>
+                    <filter name="done" string="Confirmados" domain="[('state', '=', 'done')]"/>
+                    <filter name="today" string="Hoy" domain="[('movement_date', '&gt;=', context_today())]"/>
+                    <group string="Agrupar por" expand="0">
+                        <filter name="group_type" string="Tipo" context="{'group_by': 'move_type'}"/>
+                        <filter name="group_product" string="Producto" context="{'group_by': 'product_id'}"/>
+                        <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                        <filter name="group_source" string="Almacén Origen" context="{'group_by': 'source_warehouse_id'}"/>
+                        <filter name="group_destination" string="Almacén Destino" context="{'group_by': 'destination_warehouse_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="compras_warehouse_view_list" model="ir.ui.view">
+            <field name="name">compras.warehouse.list</field>
+            <field name="model">compras.warehouse</field>
+            <field name="arch" type="xml">
+                <list string="Almacenes">
+                    <field name="name"/>
+                    <field name="code"/>
+                    <field name="company_id"/>
+                    <field name="is_main"/>
+                    <field name="movement_count"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="compras_warehouse_view_form" model="ir.ui.view">
+            <field name="name">compras.warehouse.form</field>
+            <field name="model">compras.warehouse</field>
+            <field name="arch" type="xml">
+                <form string="Almacén">
+                    <sheet>
+                        <div class="oe_title">
+                            <h1><field name="name"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="company_id"/>
+                                <field name="code"/>
+                                <field name="is_main"/>
+                                <field name="active"/>
+                            </group>
+                            <group>
+                                <field name="movement_count" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Observaciones">
+                            <field name="notes" nolabel="1"/>
+                        </group>
+                        <notebook>
+                            <page string="Movimientos de Entrada">
+                                <field name="destination_move_ids" readonly="1">
+                                    <list>
+                                        <field name="movement_date"/>
+                                        <field name="product_id"/>
+                                        <field name="quantity_done"/>
+                                        <field name="status"/>
+                                        <field name="receiver_user_id"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Movimientos de Salida">
+                                <field name="source_move_ids" readonly="1">
+                                    <list>
+                                        <field name="movement_date"/>
+                                        <field name="product_id"/>
+                                        <field name="quantity_done"/>
+                                        <field name="status"/>
+                                        <field name="receiver_user_id"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="compras_warehouse_view_search" model="ir.ui.view">
+            <field name="name">compras.warehouse.search</field>
+            <field name="model">compras.warehouse</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Almacenes">
+                    <field name="name"/>
+                    <field name="code"/>
+                    <field name="company_id"/>
+                    <filter name="main" string="Principales" domain="[('is_main', '=', True)]"/>
+                    <filter name="active" string="Activos" domain="[('active', '=', True)]"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="compras_product_action" model="ir.actions.act_window">
+            <field name="name">Productos de Almacén</field>
+            <field name="res_model">compras.product</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="compras_inventory_move_action" model="ir.actions.act_window">
+            <field name="name">Bitácora de Movimientos</field>
+            <field name="res_model">compras.inventory.move</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="compras_inventory_exit_action" model="ir.actions.act_window">
+            <field name="name">Salidas de Almacén</field>
+            <field name="res_model">compras.inventory.move</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('move_type', 'in', ['salida', 'transferencia'])]</field>
+            <field name="context">{'default_move_type': 'salida'}</field>
+        </record>
+
+        <record id="compras_shortage_report_action" model="ir.actions.act_window">
+            <field name="name">Reporte de Faltantes</field>
+            <field name="res_model">compras.inventory.move</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('move_type', '=', 'entrada'), ('status', 'in', ['faltante', 'incompleto'])]</field>
+        </record>
+
+        <record id="compras_warehouse_action" model="ir.actions.act_window">
+            <field name="name">Almacenes</field>
+            <field name="res_model">compras.warehouse</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,270 @@
+<odoo>
+    <data>
+
+        <!-- ==================== FORM VIEW ==================== -->
+        <record id="purchase_request_view_form" model="ir.ui.view">
+            <field name="name">purchase.request.form</field>
+            <field name="model">purchase.request</field>
+            <field name="arch" type="xml">
+                <form string="Solicitud de Compra">
+                    <header>
+                        <!-- Botón Aprobar: visible solo para encargado_compras cuando está activa -->
+                        <button
+                            name="action_approve"
+                            string="Aprobar"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'activa'"
+                            groups="compras_fruvemex.group_compras_encargado"
+                        />
+                        <!-- Botón Rechazar: visible solo para encargado_compras cuando está activa -->
+                        <button
+                            name="action_reject"
+                            string="Rechazar"
+                            type="object"
+                            class="btn-danger"
+                            invisible="state != 'activa'"
+                            groups="compras_fruvemex.group_compras_encargado"
+                        />
+                        <!-- Botón Recibida: visible solo para almacenista_compras cuando está autorizada -->
+                        <button
+                            name="action_receive"
+                            string="Marcar como Recibida"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'autorizada'"
+                            groups="compras_fruvemex.group_compras_almacenista"
+                        />
+                        <field
+                            name="state"
+                            widget="statusbar"
+                            statusbar_visible="activa,autorizada,recibida"
+                        />
+                    </header>
+
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
+                        </div>
+
+                        <group>
+                            <group string="Información General">
+                                <field name="company_id" options="{'no_create': True}"/>
+                                <field name="warehouse_id"/>
+                                <field name="department_id" domain="[('company_id', '=', company_id)]"/>
+                                <!-- Para usuario_compras el campo es readonly; encargado_compras puede cambiarlo -->
+                                <field name="solicitante_id"
+                                    readonly="1"
+                                    groups="compras_fruvemex.group_compras_usuario"
+                                />
+                                <field name="solicitante_id"
+                                    groups="compras_fruvemex.group_compras_encargado"
+                                />
+                                <field name="supervisor_id"/>
+                                <field name="authorizer_id"/>
+                            </group>
+                            <group string="Detalles de Compra">
+                                <field name="payment_type" widget="radio"/>
+                                <field name="currency_type" widget="radio"/>
+                                <field name="create_date"/>
+                            </group>
+                        </group>
+
+                        <group string="Comentarios">
+                            <field name="comments" nolabel="1" placeholder="Escribe los comentarios o justificación de la solicitud..."/>
+                        </group>
+
+                        <!-- Tabla de productos/servicios -->
+                        <notebook>
+                            <page string="Productos / Servicios">
+                                <field name="line_ids" widget="one2many_list">
+                                    <list editable="bottom">
+                                        <field name="quantity"/>
+                                        <field name="warehouse_product_id"/>
+                                        <field name="unit_id"/>
+                                        <field name="description"/>
+                                        <field name="brand_id" optional="show"/>
+                                        <field name="model_name" optional="show"/>
+                                        <field name="vendor_id" optional="show"/>
+                                        <field name="unit_price"/>
+                                        <field name="tax_ids" widget="many2many_tags" optional="show"/>
+                                        <field name="received_qty" optional="show"/>
+                                        <field name="receipt_status" optional="show"/>
+                                        <field name="receipt_notes" optional="show"/>
+                                        <field name="subtotal" readonly="1"/>
+                                    </list>
+                                </field>
+                                <group class="oe_subtotal_footer">
+                                    <field name="total_amount" readonly="1" string="Total"/>
+                                </group>
+                            </page>
+
+                            <page string="Bitácora de Almacén">
+                                <field name="movement_ids" readonly="1">
+                                    <list>
+                                        <field name="movement_date"/>
+                                        <field name="name"/>
+                                        <field name="product_id"/>
+                                        <field name="move_type"/>
+                                        <field name="quantity"/>
+                                        <field name="quantity_done"/>
+                                        <field name="status"/>
+                                        <field name="receiver_name"/>
+                                        <field name="registered_by_id"/>
+                                        <field name="state"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+
+                        <!-- Información de rechazo (visible si está inactiva) -->
+                        <group string="Información de Rechazo" invisible="state != 'inactiva'">
+                            <field name="rejection_reason" readonly="1"/>
+                            <field name="rejected_by_id" readonly="1"/>
+                        </group>
+
+                        <!-- Información de aprobación/recepción -->
+                        <group string="Seguimiento" invisible="state == 'activa' or state == 'inactiva'">
+                            <field name="approved_by_id" readonly="1" invisible="not approved_by_id"/>
+                            <field name="received_by_id" readonly="1" invisible="not received_by_id"/>
+                        </group>
+                    </sheet>
+
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- ==================== LIST VIEW ==================== -->
+        <record id="purchase_request_view_list" model="ir.ui.view">
+            <field name="name">purchase.request.list</field>
+            <field name="model">purchase.request</field>
+            <field name="arch" type="xml">
+                <list string="Solicitudes de Compra">
+                    <field name="company_id" column_invisible="True"/>
+                    <field name="name"/>
+                    <field name="create_date" width="140"/>
+                    <field name="department_id"/>
+                    <field name="solicitante_id"/>
+                    <field name="supervisor_id"/>
+                    <field name="payment_type"/>
+                    <field name="currency_type"/>
+                    <field name="total_amount" sum="Total"/>
+                    <field name="state" widget="badge"
+                        decoration-success="state == 'autorizada' or state == 'recibida'"
+                        decoration-warning="state == 'activa'"
+                        decoration-danger="state == 'inactiva'"
+                    />
+                </list>
+            </field>
+        </record>
+
+        <!-- ==================== SEARCH VIEW ==================== -->
+        <record id="purchase_request_view_search" model="ir.ui.view">
+            <field name="name">purchase.request.search</field>
+            <field name="model">purchase.request</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Solicitudes de Compra">
+                    <field name="name" string="Folio" filter_domain="[('name', 'ilike', self)]"/>
+                    <field name="solicitante_id" string="Solicitante" filter_domain="[('solicitante_id', '=', self)]"/>
+                    <field name="department_id" string="Departamento" filter_domain="[('department_id', '=', self)]"/>
+
+                    <separator/>
+
+                    <filter
+                        name="filter_activa"
+                        string="Activas"
+                        domain="[('state', '=', 'activa')]"
+                    />
+                    <filter
+                        name="filter_autorizada"
+                        string="Autorizadas"
+                        domain="[('state', '=', 'autorizada')]"
+                    />
+                    <filter
+                        name="filter_inactiva"
+                        string="Inactivas"
+                        domain="[('state', '=', 'inactiva')]"
+                    />
+                    <filter
+                        name="filter_recibida"
+                        string="Recibidas"
+                        domain="[('state', '=', 'recibida')]"
+                    />
+
+                    <separator/>
+
+                    <!-- Filtro por solicitudes del usuario actual -->
+                    <filter
+                        name="my_requests"
+                        string="Mis Solicitudes"
+                        domain="[('solicitante_id.user_id', '=', uid)]"
+                    />
+
+                    <separator/>
+
+                    <filter
+                        name="filter_this_month"
+                        string="Este Mes"
+                        domain="[('create_date', '>=', (context_today() + relativedelta(day=1)).strftime('%Y-%m-%d')), ('create_date', '&lt;=', (context_today() + relativedelta(months=1, day=1, days=-1)).strftime('%Y-%m-%d'))]"
+                    />
+
+                    <group string="Agrupar por" expand="0">
+                        <filter name="group_department" string="Departamento" context="{'group_by': 'department_id'}"/>
+                        <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                        <filter name="group_payment_type" string="Tipo de Pago" context="{'group_by': 'payment_type'}"/>
+                        <filter name="group_currency" string="Moneda" context="{'group_by': 'currency_type'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- ==================== ACTIONS ==================== -->
+
+        <!-- Acción: Solicitudes activas e inactivas (para usuario_compras y encargado_compras) -->
+        <record id="purchase_request_action" model="ir.actions.act_window">
+            <field name="name">Solicitudes de Compra</field>
+            <field name="res_model">purchase.request</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('state', 'in', ['activa', 'inactiva'])]</field>
+            <field name="context">{'search_default_my_requests': 1}</field>
+            <field name="groups_id" eval="[(4, ref('compras_fruvemex.group_compras_usuario')), (4, ref('compras_fruvemex.group_compras_encargado'))]"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
+                    Crea tu primera solicitud de compra
+                </p>
+            </field>
+        </record>
+
+        <!-- Acción: Solicitudes autorizadas (para encargado_compras y almacenista_compras) -->
+        <record id="purchase_request_authorized_action" model="ir.actions.act_window">
+            <field name="name">Compras Autorizadas</field>
+            <field name="res_model">purchase.request</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('state', '=', 'autorizada')]</field>
+            <field name="groups_id" eval="[(4, ref('compras_fruvemex.group_compras_encargado')), (4, ref('compras_fruvemex.group_compras_almacenista'))]"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
+                    No hay solicitudes de compra autorizadas pendientes de recibir.
+                </p>
+            </field>
+        </record>
+
+        <!-- Acción: Solicitudes recibidas -->
+        <record id="purchase_request_received_action" model="ir.actions.act_window">
+            <field name="name">Compras Recibidas</field>
+            <field name="res_model">purchase.request</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('state', '=', 'recibida')]</field>
+            <field name="groups_id" eval="[(4, ref('compras_fruvemex.group_compras_encargado')), (4, ref('compras_fruvemex.group_compras_almacenista'))]"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
+                    No hay solicitudes de compra recibidas.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

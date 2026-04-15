@@ -1,0 +1,90 @@
+<odoo>
+    <data>
+        <menuitem
+            id="menu_compras_root"
+            name="Compras"
+            web_icon="compras_fruvemex,static/description/icon.png"
+            sequence="20"
+            groups="compras_fruvemex.group_compras_usuario,compras_fruvemex.group_compras_encargado"
+        />
+
+        <menuitem
+            id="menu_compras_solicitudes"
+            name="Solicitudes"
+            parent="menu_compras_root"
+            action="purchase_request_action"
+            sequence="10"
+            groups="compras_fruvemex.group_compras_usuario,compras_fruvemex.group_compras_encargado"
+        />
+
+        <menuitem
+            id="menu_almacen_root"
+            name="Almacén"
+            sequence="30"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
+
+        <menuitem
+            id="menu_almacen_por_recibir"
+            name="Órdenes por Recibir"
+            parent="menu_almacen_root"
+            action="purchase_request_authorized_action"
+            sequence="10"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
+
+        <menuitem
+            id="menu_almacen_recibidas"
+            name="Órdenes Recibidas"
+            parent="menu_almacen_root"
+            action="purchase_request_received_action"
+            sequence="20"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
+
+        <menuitem
+            id="menu_almacen_productos"
+            name="Productos"
+            parent="menu_almacen_root"
+            action="compras_fruvemex.compras_product_action"
+            sequence="30"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
+
+        <menuitem
+            id="menu_almacen_salidas"
+            name="Salidas y Transferencias"
+            parent="menu_almacen_root"
+            action="compras_fruvemex.compras_inventory_exit_action"
+            sequence="40"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
+
+        <menuitem
+            id="menu_almacen_movimientos"
+            name="Bitácora de Movimientos"
+            parent="menu_almacen_root"
+            action="compras_fruvemex.compras_inventory_move_action"
+            sequence="50"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
+
+        <menuitem
+            id="menu_almacen_faltantes"
+            name="Reporte de Faltantes"
+            parent="menu_almacen_root"
+            action="compras_fruvemex.compras_shortage_report_action"
+            sequence="60"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
+
+        <menuitem
+            id="menu_almacen_warehouses"
+            name="Almacenes"
+            parent="menu_almacen_root"
+            action="compras_fruvemex.compras_warehouse_action"
+            sequence="70"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
+    </data>
+</odoo>

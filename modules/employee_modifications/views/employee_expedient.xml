@@ -80,6 +80,7 @@
                                         <field name="dias_vacaciones_ajuste"/>
                                         <field name="dias_vacaciones_saldo_inicial" readonly="1"/>
                                         <field name="dias_vacaciones_utilizados" readonly="1"/>
+                                        <field name="dias_vacaciones_adelantados_pendientes" readonly="1"/>
                                         <field name="dias_vacaciones_disponibles" readonly="1" 
                                             decoration-info="True" font-weight="bold"/>
                                     </group>

@@ -162,6 +162,10 @@
                            invisible="not is_vacation"
                            readonly="1"
                            string="Días Disponibles"/>
+                    <field name="advance_vacation_days"
+                           invisible="not is_vacation"
+                           readonly="1"
+                           string="Días Adelantados"/>
                     <field name="employee_antiguedad" 
                            invisible="not is_vacation"
                            readonly="1"

@@ -108,6 +108,13 @@ class EmployeeExpedient(models.Model):
         tracking=True
     )
 
+    dias_vacaciones_adelantados_pendientes = fields.Float(
+        string='Días Adelantados Pendientes',
+        default=0.0,
+        tracking=True,
+        help='Días autorizados por adelantado que se descontarán en próximas renovaciones.'
+    )
+
     dias_vacaciones_disponibles = fields.Float(
         string='Días de Vacaciones disponibles',
         compute='_compute_dias_disponibles',
@@ -127,8 +134,8 @@ class EmployeeExpedient(models.Model):
     )
 
     history_ids = fields.One2many(
-        'employee.expedient.line', 
-        'expedient_id', 
+        'employee.expedient.line',
+        'expedient_id',
         string='Historial de Fechas'
     )
 
@@ -143,7 +150,10 @@ class EmployeeExpedient(models.Model):
     @api.depends('dias_vacaciones_saldo_inicial', 'dias_vacaciones_utilizados')
     def _compute_dias_disponibles(self):
         for record in self:
-            record.dias_vacaciones_disponibles = record.dias_vacaciones_saldo_inicial - record.dias_vacaciones_utilizados
+            record.dias_vacaciones_disponibles = max(
+                record.dias_vacaciones_saldo_inicial - record.dias_vacaciones_utilizados,
+                0.0,
+            )
 
     @api.depends('dias_vacaciones_ley', 'dias_vacaciones_ajuste')
     def _compute_dias_inicial_calculado(self):
@@ -294,20 +304,32 @@ class EmployeeExpedient(models.Model):
                     0
                 )
                 
+                dias_adelantados_pendientes = expediente.dias_vacaciones_adelantados_pendientes or 0.0
+                dias_a_descontar_en_renovacion = min(dias_adelantados_pendientes, dias_vacaciones_nuevos)
+                saldo_adelantado_restante = max(dias_adelantados_pendientes - dias_vacaciones_nuevos, 0.0)
+
                 expediente.write({
-                    'dias_vacaciones_utilizados': 0.0, 
+                    'dias_vacaciones_utilizados': dias_a_descontar_en_renovacion,
+                    'dias_vacaciones_adelantados_pendientes': saldo_adelantado_restante,
                     'fecha_ultima_renovacion': hoy,
                 })
-                
+
                 expediente._compute_vacaciones_ley()
                 expediente._compute_dias_inicial_calculado()
                 expediente._compute_dias_disponibles()
-                
+
                 expediente.message_post(
                     body=_(
                         "Renovación automática de vacaciones: El empleado ha cumplido un año más. "
-                        "Antigüedad: %s años. Nuevos días de vacaciones: %s días."
-                    ) % (years_total, dias_vacaciones_nuevos),
+                        "Antigüedad: %s años. Nuevos días de vacaciones por ley: %s días. "
+                        "Descuento por adelanto aplicado en esta renovación: %s días. "
+                        "Saldo adelantado pendiente: %s días."
+                    ) % (
+                        years_total,
+                        dias_vacaciones_nuevos,
+                        dias_a_descontar_en_renovacion,
+                        saldo_adelantado_restante,
+                    ),
                     subject=_("Renovación Automática de Vacaciones")
                 )
                 

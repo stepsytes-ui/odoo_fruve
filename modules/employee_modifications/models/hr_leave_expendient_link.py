@@ -10,6 +10,14 @@ class HrLeave(models.Model):
         copy=False,
     )
 
+    advance_vacation_days = fields.Float(
+        string="Días Adelantados",
+        default=0.0,
+        copy=False,
+        tracking=True,
+        help='Días de vacaciones autorizados por adelantado para esta solicitud.',
+    )
+
     # Campo Supervisor (para todos los tipos de ausencia)
     supervisor_id = fields.Many2one(
         'res.users',
@@ -164,6 +172,35 @@ class HrLeave(models.Model):
                 leave.vacation_days_available = 0.0
                 leave.employee_antiguedad = ''
 
+    def _get_employee_expedient(self):
+        self.ensure_one()
+        return self.env['employee.expedient'].search([
+            ('employee_id', '=', self.employee_id.id),
+        ], order='fecha_movimiento desc', limit=1)
+
+    def _open_advance_vacation_warning_wizard(self, days_requested, days_available):
+        self.ensure_one()
+        shortage_days = max(days_requested - days_available, 0.0)
+
+        wizard = self.env['employee.vacation.advance.warning.wizard'].create({
+            'leave_id': self.id,
+            'days_requested': days_requested,
+            'days_available': days_available,
+            'shortage_days': shortage_days,
+        })
+
+        return {
+            'name': _('Saldo de Vacaciones Insuficiente'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'employee.vacation.advance.warning.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'view_id': self.env.ref(
+                'employee_modifications.view_employee_vacation_advance_warning_wizard_form'
+            ).id,
+            'target': 'new',
+        }
+
     @api.onchange('is_incapacity', 'request_date_from', 'total_days_incapacity')
     def _onchange_incapacity_dates(self):
         """Calcula automáticamente la fecha de fin cuando es incapacidad"""
@@ -174,56 +211,143 @@ class HrLeave(models.Model):
             date_to = self.request_date_from + timedelta(days=self.total_days_incapacity - 1)
             self.request_date_to = date_to
 
-    @api.constrains('number_of_days', 'holiday_status_id', 'employee_id', 'state')
+    def _check_and_maybe_open_vacation_advance_wizard(self):
+        vacation_leaves = self.filtered(
+            lambda leave: leave.holiday_status_id and leave.holiday_status_id.name == 'Vacaciones'
+        )
+
+        if len(vacation_leaves) > 1:
+            for leave in vacation_leaves:
+                expedient = leave._get_employee_expedient()
+                if not expedient:
+                    raise ValidationError(_(
+                        'No se encontró un expediente activo para el empleado %s.'
+                    ) % leave.employee_id.name)
+
+                if leave.number_of_days > max(expedient.dias_vacaciones_disponibles, 0.0) and not leave.advance_vacation_days:
+                    raise ValidationError(_(
+                        'Hay solicitudes sin saldo suficiente. Apruébelas una por una para indicar cuántos días desea adelantar.'
+                    ))
+
+        for leave in vacation_leaves:
+            expedient = leave._get_employee_expedient()
+            if not expedient:
+                raise ValidationError(_(
+                    'No se encontró un expediente activo para el empleado %s.'
+                ) % leave.employee_id.name)
+
+            days_available = max(expedient.dias_vacaciones_disponibles, 0.0)
+            days_requested = leave.number_of_days
+
+            if (
+                leave.state in ['confirm', 'validate1']
+                and days_requested > days_available
+                and not leave.advance_vacation_days
+            ):
+                return leave._open_advance_vacation_warning_wizard(days_requested, days_available)
+
+        return False
+
+    def action_approve(self, check_state=True):
+        if not self.env.context.get('skip_vacation_advance_check'):
+            wizard_action = self._check_and_maybe_open_vacation_advance_wizard()
+            if wizard_action:
+                return wizard_action
+
+        return super(HrLeave, self).action_approve(check_state=check_state)
+
+    def action_validate(self, check_state=True):
+        if not self.env.context.get('skip_vacation_advance_check'):
+            wizard_action = self._check_and_maybe_open_vacation_advance_wizard()
+            if wizard_action:
+                return wizard_action
+
+        return super(HrLeave, self).action_validate(check_state=check_state)
+
+    @api.constrains('number_of_days', 'holiday_status_id', 'employee_id', 'state', 'advance_vacation_days')
     def _check_vacation_availibility_and_update(self):
-        
         for leave in self:
-            if leave.holiday_status_id.name == 'Vacaciones':
-                
-                expedient = self.env['employee.expedient'].search([
-                    ('employee_id', '=', leave.employee_id.id),
-                ], order='fecha_movimiento desc', limit=1)
+            if leave.holiday_status_id and leave.holiday_status_id.name == 'Vacaciones':
+                expedient = leave._get_employee_expedient()
 
                 if not expedient:
                     raise ValidationError(_("No se encontró un expediente activo para el empleado %s.") % leave.employee_id.name)
 
                 days_requested = leave.number_of_days
-                
+                advance_days = leave.advance_vacation_days or 0.0
+
                 if leave.state == 'validate' and not leave.vacation_days_subtracted:
-                    days_available = expedient.dias_vacaciones_disponibles
+                    days_available = max(expedient.dias_vacaciones_disponibles, 0.0)
+                    shortage_days = max(days_requested - days_available, 0.0)
 
-                    if days_requested > days_available:
+                    if shortage_days > 0 and advance_days < shortage_days:
                         raise ValidationError(_(
-                            "Error de vacaciones: El empleado %s solo tiene %.2f días disponibles y está solicitando %.2f días"
-                        ) % (leave.employee_id.name, days_available, days_requested))
+                            'Error de vacaciones: El empleado %s solo tiene %.2f días disponibles y está solicitando %.2f días. Debe indicar al menos %.2f días como adelanto para poder aprobar la solicitud.'
+                        ) % (leave.employee_id.name, days_available, days_requested, shortage_days))
 
+                    if advance_days > days_requested:
+                        raise ValidationError(_(
+                            'Los días adelantados no pueden ser mayores a los días solicitados.'
+                        ))
+
+                    new_used_days = expedient.dias_vacaciones_utilizados + days_requested
+                    new_pending_advanced = expedient.dias_vacaciones_adelantados_pendientes + advance_days
+                    expedient.write({
+                        'dias_vacaciones_utilizados': new_used_days,
+                        'dias_vacaciones_adelantados_pendientes': new_pending_advanced,
+                    })
+                    leave.vacation_days_subtracted = True
+
+                    if advance_days:
+                        body = _(
+                            "**Adelanto y descuento de vacaciones automático:** Se aprobaron %.2f días para la solicitud #%s. Saldo disponible anterior: %.2f días. Días adelantados autorizados: %.2f. Saldo adelantado pendiente por descontar en renovaciones futuras: %.2f días."
+                        ) % (
+                            days_requested,
+                            leave.name,
+                            days_available,
+                            advance_days,
+                            new_pending_advanced,
+                        )
                     else:
-                        new_used_days = expedient.dias_vacaciones_utilizados + days_requested
-                        expedient.write({'dias_vacaciones_utilizados': new_used_days})
-                        leave.vacation_days_subtracted = True
-                        
-                        self.env['mail.message'].create({
-                            'model': 'employee.expedient',
-                            'res_id': expedient.id,
-                            'message_type': 'notification',
-                            'body':_("**Descuento de Vacaciones Automático:** Se descontaron %.2f días por la solicitud de ausencias #%s. Saldo disponible anterior: %.2f días. Nuevo Saldo Utilizado: %.2f días."
-                            ) % (days_requested, leave.name, days_available, new_used_days),
-                            'subject': 'Vacaciones Descontadas',
-                            'author_id': self.env.user.partner_id.id,
-                        })
-
-                # --- LÓGICA DE RECHAZO (Devolver Días) ---
-                elif leave.state == 'refuse' and leave.vacation_days_subtracted:
-                    new_used_days = expedient.dias_vacaciones_utilizados - days_requested
-                    expedient.write({'dias_vacaciones_utilizados': new_used_days})
-                    leave.vacation_days_subtracted = False
+                        body = _(
+                            "**Descuento de Vacaciones Automático:** Se descontaron %.2f días por la solicitud de ausencias #%s. Saldo disponible anterior: %.2f días. Nuevo Saldo Utilizado: %.2f días."
+                        ) % (days_requested, leave.name, days_available, new_used_days)
 
                     self.env['mail.message'].create({
                         'model': 'employee.expedient',
                         'res_id': expedient.id,
                         'message_type': 'notification',
-                        'body':_("**Devolución de Vacaciones Automática:** Se devolvieron %.2f días por el rechazo de la solicitud de ausencias #%s. Nuevo Saldo Utilizado: %.2f días."
-                        ) % (days_requested, leave.name, new_used_days),
+                        'body': body,
+                        'subject': 'Vacaciones Descontadas',
+                        'author_id': self.env.user.partner_id.id,
+                    })
+
+                elif leave.state == 'refuse' and leave.vacation_days_subtracted:
+                    new_used_days = max(expedient.dias_vacaciones_utilizados - days_requested, 0.0)
+                    new_pending_advanced = max(
+                        expedient.dias_vacaciones_adelantados_pendientes - advance_days,
+                        0.0,
+                    )
+                    expedient.write({
+                        'dias_vacaciones_utilizados': new_used_days,
+                        'dias_vacaciones_adelantados_pendientes': new_pending_advanced,
+                    })
+                    leave.vacation_days_subtracted = False
+
+                    if advance_days:
+                        body = _(
+                            "**Devolución de Vacaciones Automática:** Se devolvieron %.2f días por el rechazo de la solicitud de ausencias #%s. También se revirtieron %.2f días adelantados. Saldo adelantado pendiente actual: %.2f días."
+                        ) % (days_requested, leave.name, advance_days, new_pending_advanced)
+                    else:
+                        body = _(
+                            "**Devolución de Vacaciones Automática:** Se devolvieron %.2f días por el rechazo de la solicitud de ausencias #%s. Nuevo Saldo Utilizado: %.2f días."
+                        ) % (days_requested, leave.name, new_used_days)
+
+                    self.env['mail.message'].create({
+                        'model': 'employee.expedient',
+                        'res_id': expedient.id,
+                        'message_type': 'notification',
+                        'body': body,
                         'subject': 'Vacaciones Devueltas (Rechazo)',
                         'author_id': self.env.user.partner_id.id,
                     })

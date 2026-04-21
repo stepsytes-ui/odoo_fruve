@@ -140,7 +140,7 @@ class security_view(models.Model):
         self.sudo().write({
             'check_in_time': movement_dt
         })
-        self._sync_security_check_with_attendance(movement_dt)
+        self._sync_security_check_with_attendance(movement_dt, event_type='check_in')
 
     def action_check_out(self):
         """Registra la hora de salida del permiso una sola vez."""
@@ -151,18 +151,24 @@ class security_view(models.Model):
         self.sudo().write({
             'check_out_time': movement_dt
         })
-        self._sync_security_check_with_attendance(movement_dt)
+        self._sync_security_check_with_attendance(movement_dt, event_type='check_out')
 
-    def _sync_security_check_with_attendance(self, movement_dt):
-        """Replica en asistencia las checadas manuales de permisos por horas."""
+    def _sync_security_check_with_attendance(self, movement_dt, event_type='check_out'):
+        """Replica en asistencia las checadas del control de seguridad.
+
+        event_type='check_out' → empleado sale del plantel → crea 'LunchS' (Salida de Planta)
+        event_type='check_in'  → empleado regresa al plantel → crea 'LunchE' (Regreso a Planta)
+
+        Si existe un registro de asistencia abierto (sin check_out), lo cierra con el
+        timestamp actual antes de crear el nuevo, evitando el error de registro solapado.
+        """
         self.ensure_one()
-
-        # Este flujo aplica a permisos por horas para evitar alterar otros tipos de permiso.
-        if not self.request_unit_hours and self.punctuality_status not in ('leave_hours', 'leave_hours_paid'):
-            return
 
         if not self.employee_id:
             raise UserError('El permiso no tiene un empleado asignado.')
+
+        # 'LunchS' = Salida de Planta, 'LunchE' = Regreso a Planta
+        new_status = 'LunchS' if event_type == 'check_out' else 'LunchE'
 
         attendance_model = self.env['hr.attendance'].sudo()
         open_attendance = attendance_model.search([
@@ -170,11 +176,16 @@ class security_view(models.Model):
             ('check_out', '=', False),
         ], order='check_in desc, id desc', limit=1)
 
+        # Cerrar el registro abierto con skip_attendance_sync para no activar
+        # el write-override del ZKTeco que causaba el error de solapamiento.
         if open_attendance:
-            open_attendance.write({'check_out': movement_dt})
+            open_attendance.with_context(skip_attendance_sync=True).write({
+                'check_out': movement_dt,
+            })
 
-        attendance_model.create({
+        # Crear nuevo registro con la etiqueta de planta correcta.
+        attendance_model.with_context(skip_attendance_sync=True).create({
             'employee_id': self.employee_id.id,
             'check_in': movement_dt,
-            'punctuality_status': self.punctuality_status or 'leave_hours',
+            'punctuality_status': new_status,
         })

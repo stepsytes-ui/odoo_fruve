@@ -108,7 +108,7 @@ class ComprasInventoryMove(models.Model):
                 raise ValidationError(_('Las cantidades deben ser mayores a cero.'))
             if rec.quantity_done > rec.quantity:
                 raise ValidationError(_('La cantidad real no puede ser mayor a la cantidad esperada.'))
-
+ 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:

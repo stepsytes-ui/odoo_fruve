@@ -38,6 +38,11 @@ class AttendanceReportWizard(models.TransientModel):
         domain="[('company_id', '=', company_id)]",
         help='Dejar en blanco para incluir todos los empleados'
     )
+    show_archived = fields.Boolean(
+        string='Ver Empleados Archivados',
+        default=False,
+        help='Activa esta opción para ver la asistencia de empleados que ya fueron dados de baja (finiquitados)'
+    )
 
     @api.constrains('date_from', 'date_to')
     def _check_dates(self):
@@ -107,19 +112,30 @@ class AttendanceReportWizard(models.TransientModel):
                 % report_company.display_name
             )
 
-        employee_domain = [
-            ('company_id', '=', report_company.id),
-            '|',
-            ('employee_status', '=', 'active'),
-            '&',
-            ('employee_status', '=', 'inactive'),
-            ('finiquitado', '=', False),
-            ('turno_id', '!=', False)
-        ]
+        if self.show_archived:
+            employee_domain = [
+                ('company_id', '=', report_company.id),
+                ('active', '=', False),
+                ('finiquitado', '=', True),
+                ('turno_id', '!=', False),
+            ]
+        else:
+            employee_domain = [
+                ('company_id', '=', report_company.id),
+                '|',
+                ('employee_status', '=', 'active'),
+                '&',
+                ('employee_status', '=', 'inactive'),
+                ('finiquitado', '=', False),
+                ('turno_id', '!=', False)
+            ]
         if self.employee_id:
             employee_domain.append(('id', '=', self.employee_id.id))
 
-        employees = self.env['hr.employee'].search(employee_domain)
+        if self.show_archived:
+            employees = self.env['hr.employee'].with_context(active_test=False).search(employee_domain)
+        else:
+            employees = self.env['hr.employee'].search(employee_domain)
 
         try:
             employees = sorted(employees, key=lambda e: int(e.biometric_id) if e.biometric_id else 0)

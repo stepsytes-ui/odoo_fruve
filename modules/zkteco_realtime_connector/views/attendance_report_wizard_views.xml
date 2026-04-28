@@ -14,7 +14,10 @@
                             <field name="date_to" />
                         </group>
                         <group>
-                            <field name="employee_id" />
+                            <field name="show_archived" />
+                            <field name="employee_id"
+                                domain="[('company_id', '=', company_id), ('active', '=', False)] if show_archived else [('company_id', '=', company_id)]"
+                                context="{'active_test': False}" />
                         </group>
                     </group>
                     <footer>

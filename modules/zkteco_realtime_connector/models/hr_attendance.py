@@ -10,6 +10,9 @@ _logger = logging.getLogger(__name__)
 
 FIXED_DEVICE_TIMEZONE_NAME = 'America/Tijuana'
 
+# Empresas donde NO se deben mostrar los campos informativos de hora local.
+HIDE_TZ_DISPLAY_COMPANY_IDS = [1,2]
+
 NEW_LEAVE_STATUSES = [
     ('leave_day_off', 'Descanso'),
     ('leave_paid', 'Permiso pagado'),
@@ -60,6 +63,13 @@ class HrAttendance(models.Model):
             compute='_compute_check_out_time_only',
             store=False
         )
+
+    show_company_tz_display = fields.Boolean(
+        string='Mostrar Horas TZ Empresa',
+        compute='_compute_show_company_tz_display',
+        store=False,
+        compute_sudo=True,
+    )
     
     biometric_id = fields.Char(
         string='Número de Empleado',
@@ -131,6 +141,13 @@ class HrAttendance(models.Model):
                 record.check_out_time_only = local_datetime.strftime("%d/%m/%Y, %H:%M:%S")
             else:
                     record.check_out_time_only = False
+
+    @api.depends('employee_id', 'employee_id.company_id')
+    def _compute_show_company_tz_display(self):
+        hidden_company_ids = set(HIDE_TZ_DISPLAY_COMPANY_IDS)
+        for record in self:
+            company_id = record.employee_id.company_id.id if record.employee_id and record.employee_id.company_id else self.env.company.id
+            record.show_company_tz_display = bool(company_id and company_id not in hidden_company_ids)
 
     def _ensure_utc_aware(self, datetime_value):
         """Convierte datetime/string a datetime aware en UTC para comparaciones seguras."""

@@ -36,7 +36,12 @@
             <field name="inherit_id" ref="hr_attendance.hr_attendance_view_form"/>
             <field name="arch" type="xml">
                 <field name="check_in" position="after">
+                    <field name="show_company_tz_display" invisible="1"/>
+                    <field name="check_in_time_only" string="Hora Entrada (TZ Empresa)" readonly="1" invisible="show_company_tz_display == False"/>
                     <field name="punctuality_status" widget="selection"/>
+                </field>
+                <field name="check_out" position="after">
+                    <field name="check_out_time_only" string="Hora Salida (TZ Empresa)" readonly="1" invisible="show_company_tz_display == False"/>
                 </field>
             </field>
         </record>

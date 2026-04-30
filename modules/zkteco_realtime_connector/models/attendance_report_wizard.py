@@ -97,14 +97,15 @@ class AttendanceReportWizard(models.TransientModel):
         Construye y retorna la estructura de datos del reporte.
         Usada tanto por la vista previa HTML como por la generación de Excel.
         """
-        try:
-            COMPANY_TZ = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
-        except pytz.UnknownTimeZoneError:
-            raise ValueError(_(f"Zona horaria inválida: {FIXED_DEVICE_TIMEZONE_NAME}"))
-
         date_from = self.date_from
         date_to = self.date_to
         report_company = self.company_id or self.env.company
+
+        company_tz_name = report_company.timezone or FIXED_DEVICE_TIMEZONE_NAME
+        try:
+            COMPANY_TZ = pytz.timezone(company_tz_name)
+        except pytz.UnknownTimeZoneError:
+            COMPANY_TZ = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
 
         if self.employee_id and self.employee_id.company_id != report_company:
             raise ValueError(

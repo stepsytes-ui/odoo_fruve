@@ -89,6 +89,13 @@ class HrLeaveCustom(models.Model):
                 lambda h: h.leave_type_request_unit == holiday.leave_type_request_unit
             )
 
+            # Permitir que permisos de Incapacidad se sobrepongan con otros de Incapacidad
+            # (necesario por desfases de zona horaria en fechas contiguas)
+            if holiday.holiday_status_id.name == 'Incapacidad':
+                same_unit_conflicts = same_unit_conflicts.filtered(
+                    lambda h: h.holiday_status_id.name != 'Incapacidad'
+                )
+
             if same_unit_conflicts:
                 conflicting_holidays_list = []
                 holidays_only_have_uid = bool(holiday.employee_id)

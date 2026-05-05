@@ -1,5 +1,6 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from datetime import timedelta
 
 class HrLeave(models.Model):
     _inherit = 'hr.leave'
@@ -201,15 +202,18 @@ class HrLeave(models.Model):
             'target': 'new',
         }
 
-    @api.onchange('is_incapacity', 'request_date_from', 'total_days_incapacity')
+    @api.onchange('holiday_status_id', 'request_date_from', 'total_days_incapacity')
     def _onchange_incapacity_dates(self):
         """Calcula automáticamente la fecha de fin cuando es incapacidad"""
-        if self.is_incapacity and self.request_date_from and self.total_days_incapacity:
-            from datetime import timedelta
+        is_incapacity = (
+            self.holiday_status_id
+            and self.holiday_status_id.name
+            and self.holiday_status_id.name.strip().lower() == 'incapacidad'
+        )
+        if is_incapacity and self.request_date_from and self.total_days_incapacity and self.total_days_incapacity > 0:
             # Calcular fecha de fin: fecha inicio + (total_días - 1)
-            # -1 porque el primer día cuenta
-            date_to = self.request_date_from + timedelta(days=self.total_days_incapacity - 1)
-            self.request_date_to = date_to
+            # -1 porque el primer día cuenta y se consideran días naturales.
+            self.request_date_to = self.request_date_from + timedelta(days=self.total_days_incapacity - 1)
 
     def _check_and_maybe_open_vacation_advance_wizard(self):
         vacation_leaves = self.filtered(
@@ -466,8 +470,8 @@ class HrLeave(models.Model):
         
         incapacity_vals = {
             'employee_id': leave.employee_id.id,
-            'date_from': leave.date_from,
-            'date_to': leave.date_to,
+            'date_from': leave.request_date_from or fields.Date.to_date(leave.date_from),
+            'date_to': leave.request_date_to or fields.Date.to_date(leave.date_to),
             'total_days': leave.total_days_incapacity,
             'incapacity_type': leave.incapacity_type,
             'comments': leave.name or '',
@@ -487,8 +491,8 @@ class HrLeave(models.Model):
         """Actualiza el registro de incapacidad existente"""
         if leave.incapacity_id:
             update_vals = {
-                'date_from': leave.date_from,
-                'date_to': leave.date_to,
+                'date_from': leave.request_date_from or fields.Date.to_date(leave.date_from),
+                'date_to': leave.request_date_to or fields.Date.to_date(leave.date_to),
                 'total_days': leave.total_days_incapacity or 0,
                 'comments': leave.name or '',
             }

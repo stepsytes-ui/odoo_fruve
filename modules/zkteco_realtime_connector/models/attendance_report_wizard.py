@@ -655,13 +655,21 @@ class AttendanceReportWizard(models.TransientModel):
         incapacidad_statuses = ['leave_sickness', 'leave_sickness_paid', 'Incapacidad', 'incapacidad']
 
         # 1. Verificar si es día festivo global PRIMERO (tiene prioridad sobre todo)
+        # Los festivos se almacenan en UTC según la TZ del admin que los creó.
+        # Un festivo de "1 día en Mexicali" queda en UTC como ~07:00 May1 - 06:59 May2,
+        # lo que en Mexico_City (UTC-5) parecería abarcar también el día 2.
+        # Para evitar ese "derrame", usamos el mediodía local (12:00) como punto de
+        # referencia: si el mediodía del target_date en la TZ de la empresa cae dentro
+        # del rango UTC del festivo, el festivo aplica; si no, no aplica.
         CalendarLeaves = self.env['resource.calendar.leaves']
+        midday_local = COMPANY_TZ.localize(datetime.combine(target_date, time(12, 0, 0)))
+        midday_utc_str = fields.Datetime.to_string(midday_local.astimezone(pytz.utc))
         public_holiday = CalendarLeaves.search([
             ('resource_id', '=', False),  # Festivo global (aplica a todos)
-            ('date_from', '<=', end_utc_str),
-            ('date_to', '>=', start_utc_str)
+            ('date_from', '<=', midday_utc_str),
+            ('date_to', '>=', midday_utc_str),
         ], limit=1)
-        
+
         if public_holiday:
             return {
                 'text': public_holiday.name,

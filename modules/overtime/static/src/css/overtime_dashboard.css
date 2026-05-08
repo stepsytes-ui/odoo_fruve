@@ -71,6 +71,7 @@
         background: #ffffff !important;
         border-radius: 0 !important;
         padding: 0 !important;
+        zoom: 80%;
     }
 
     .o_overtime_dashboard .o_overtime_print_hide {

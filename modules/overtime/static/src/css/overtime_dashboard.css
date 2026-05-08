@@ -46,3 +46,43 @@
 .overtime-row:active {
     background-color: #bbdefb !important;
 }
+
+@media print {
+    @page {
+        size: landscape;
+        margin: 10mm;
+    }
+
+    html,
+    body {
+        background: #ffffff !important;
+    }
+
+    .o_overtime_dashboard_wrapper {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .o_overtime_dashboard_wrapper .o_dashboard_content {
+        display: none !important;
+    }
+
+    .o_overtime_dashboard {
+        background: #ffffff !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+    }
+
+    .o_overtime_dashboard .o_overtime_print_hide {
+        display: none !important;
+    }
+
+    .o_overtime_dashboard .table-responsive {
+        overflow: visible !important;
+    }
+
+    .o_overtime_dashboard table {
+        width: 100% !important;
+        font-size: 11px !important;
+    }
+}

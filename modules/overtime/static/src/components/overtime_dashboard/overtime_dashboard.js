@@ -2,8 +2,6 @@
 
 import {Component, onWillStart, useState} from "@odoo/owl";
 import {useService} from "@web/core/utils/hooks";
-import {registry} from "@web/core/registry";
-import {session} from "@web/session";
 
 export class OvertimeDashboard extends Component {
     static props = {
@@ -110,6 +108,10 @@ export class OvertimeDashboard extends Component {
         if (this.props.onFilterEmployee) {
             this.props.onFilterEmployee(employeeNumber, employeeName);
         }
+    }
+
+    onPrintDashboard() {
+        window.print();
     }
 
 }

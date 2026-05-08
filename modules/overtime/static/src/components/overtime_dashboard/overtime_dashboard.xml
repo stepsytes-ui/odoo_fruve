@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="overtime.OvertimeDashboard" owl="1">
-    <div class="o_overtime_dashboard container-fluid p-3 bg-light" style="marging-bottom: 16px; border-radius: 8px;">
+    <div class="o_overtime_dashboard container-fluid p-3 bg-light" style="margin-bottom: 16px; border-radius: 8px;">
 
         <div t-if="state.loading" class="text-center">
             <i class="fa fa-spinner fa-spin fa-2x text-primary"/>
@@ -20,8 +20,12 @@
                     <label class="fw-bold small ms-2 me-2">Hasta:</label>
                     <input type="date" t-model="state.end_date" class="form-control form-control-sm w-auto"/>
 
-                    <button class="btn btn-sm btn-primary ms-2" t-on-click="_onRefresh" title="Refrescar">
+                    <button class="btn btn-sm btn-primary ms-2 o_overtime_print_hide" t-on-click="_onRefresh" title="Refrescar">
                         <i class="fa fa-refresh"/>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary ms-1 o_overtime_print_hide" t-on-click="onPrintDashboard" title="Imprimir tabla">
+                        <i class="fa fa-print me-1"/>
+                        Imprimir
                     </button>
                 </div>
             </div>

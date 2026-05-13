@@ -92,6 +92,115 @@ class AttendanceReportWizard(models.TransientModel):
         action_part = f"&action={action.id}" if action else ""
         return f"{base_url}/web#id={report_id}&model=attendance.late.weekly.report&view_type=form{action_part}"
 
+    @api.model
+    def _cron_send_weekly_attendance_email(self):
+        """Envia correo semanal (viernes) con Excel de asistencia por empresa."""
+        group = self.env.ref(
+            'zkteco_realtime_connector.group_receive_weekly_attendance_email',
+            raise_if_not_found=False,
+        )
+        if not group:
+            _logger.warning('[WEEKLY ATTENDANCE EMAIL] Grupo de destinatarios no encontrado.')
+            return {'sent': 0, 'companies': 0, 'skipped': 'group_not_found'}
+
+        companies = self.env['res.company'].sudo().search([])
+        sent_mails = 0
+        processed_companies = 0
+
+        for company in companies:
+            tz_name = company.timezone or FIXED_DEVICE_TIMEZONE_NAME
+            try:
+                company_tz = pytz.timezone(tz_name)
+            except pytz.UnknownTimeZoneError:
+                company_tz = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
+
+            now_local = datetime.now(company_tz)
+            # Solo enviar los viernes en la zona horaria de la empresa.
+            if now_local.weekday() != 4:
+                continue
+
+            week_end = now_local.date() - timedelta(days=1)
+            week_start = week_end - timedelta(days=6)
+            iso_year, iso_week, _ = week_end.isocalendar()
+
+            recipients = self.env['res.users'].sudo().search([
+                ('active', '=', True),
+                ('share', '=', False),
+                ('groups_id', 'in', group.id),
+                ('company_ids', 'in', company.id),
+                ('partner_id.email', '!=', False),
+            ])
+
+            if not recipients:
+                _logger.info(
+                    '[WEEKLY ATTENDANCE EMAIL] Sin destinatarios para empresa %s.',
+                    company.display_name,
+                )
+                continue
+
+            wizard = self.sudo().create({
+                'company_id': company.id,
+                'date_from': week_start,
+                'date_to': week_end,
+                'show_archived': False,
+            })
+
+            try:
+                excel_bytes, filename = wizard._generate_excel_file()
+            except Exception as error:
+                _logger.error(
+                    '[WEEKLY ATTENDANCE EMAIL] Error generando Excel para %s: %s',
+                    company.display_name,
+                    error,
+                    exc_info=True,
+                )
+                continue
+
+            attachment = self.env['ir.attachment'].sudo().create({
+                'name': filename,
+                'type': 'binary',
+                'datas': base64.b64encode(excel_bytes),
+                'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            })
+
+            date_from_txt = week_start.strftime('%d/%m/%Y')
+            date_to_txt = week_end.strftime('%d/%m/%Y')
+            subject = _('ASISTENCIA SEMANA %(week)s - %(start)s al %(end)s') % {
+                'week': iso_week,
+                'start': date_from_txt,
+                'end': date_to_txt,
+            }
+            body = _(
+                '<p>Hola,</p>'
+                '<p>Adjuntamos el reporte de asistencia semanal de Odoo.</p>'
+                '<p>Periodo: <strong>%(start)s</strong> al <strong>%(end)s</strong> (Semana %(week)s).</p>'
+                '<p>Saludos.</p>'
+            ) % {
+                'start': date_from_txt,
+                'end': date_to_txt,
+                'week': iso_week,
+            }
+
+            mail_values = {
+                'subject': subject,
+                'body_html': body,
+                'recipient_ids': [(4, user.partner_id.id) for user in recipients if user.partner_id],
+                'attachment_ids': [(4, attachment.id)],
+                'email_from': company.email or self.env.user.email_formatted or 'odoo@localhost',
+                'auto_delete': False,
+            }
+            self.env['mail.mail'].sudo().create(mail_values).send()
+
+            sent_mails += 1
+            processed_companies += 1
+            _logger.info(
+                '[WEEKLY ATTENDANCE EMAIL] Correo semanal enviado para %s (semana %s).',
+                company.display_name,
+                iso_week,
+            )
+
+        return {'sent': sent_mails, 'companies': processed_companies}
+
     def _get_report_data(self):
         """
         Construye y retorna la estructura de datos del reporte.

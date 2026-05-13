@@ -24,5 +24,16 @@
             <field name="interval_type">hours</field> 
             <field name="nextcall" eval="(datetime.now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:00')" />
         </record>
+
+        <record id="cron_send_weekly_attendance_email" model="ir.cron">
+            <field name="name">Asistencia: Envio Semanal de Reporte por Correo</field>
+            <field name="model_id" ref="zkteco_realtime_connector.model_attendance_report_wizard"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_send_weekly_attendance_email()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">weeks</field>
+            <field name="nextcall" eval="(datetime.now() + timedelta(days=((4 - datetime.now().weekday()) % 7 or 7))).strftime('%Y-%m-%d 08:00:00')"/>
+        </record>
     </data>
 </odoo>

@@ -115,11 +115,12 @@ class AttendanceReportWizard(models.TransientModel):
                 company_tz = pytz.timezone(FIXED_DEVICE_TIMEZONE_NAME)
 
             now_local = datetime.now(company_tz)
-            # Solo enviar los viernes en la zona horaria de la empresa.
-            if now_local.weekday() != 4:
-                continue
-
-            week_end = now_local.date() - timedelta(days=1)
+            # Tomar siempre la ultima semana completa viernes-jueves.
+            # Si hoy es jueves, usa el jueves de la semana anterior para evitar periodos incompletos.
+            days_since_thursday = (now_local.weekday() - 3) % 7
+            if days_since_thursday == 0:
+                days_since_thursday = 7
+            week_end = now_local.date() - timedelta(days=days_since_thursday)
             week_start = week_end - timedelta(days=6)
             iso_year, iso_week, _ = week_end.isocalendar()
 

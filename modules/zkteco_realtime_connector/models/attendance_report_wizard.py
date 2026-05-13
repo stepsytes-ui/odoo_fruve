@@ -122,7 +122,7 @@ class AttendanceReportWizard(models.TransientModel):
                 days_since_thursday = 7
             week_end = now_local.date() - timedelta(days=days_since_thursday)
             week_start = week_end - timedelta(days=6)
-            iso_year, iso_week, _ = week_end.isocalendar()
+            iso_year, iso_week, iso_weekday = week_end.isocalendar()
 
             recipients = self.env['res.users'].sudo().search([
                 ('active', '=', True),

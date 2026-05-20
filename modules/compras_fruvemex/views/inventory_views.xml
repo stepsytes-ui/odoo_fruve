@@ -34,12 +34,16 @@
                         <group>
                             <group string="Información General">
                                 <field name="company_id"/>
+                                <field name="code" placeholder="Escanee el codigo aqui"/>
                                 <field name="unit_id"/>
                                 <field name="brand_id"/>
                                 <field name="model_name"/>
                                 <field name="vendor_id"/>
                                 <field name="unit_price"/>
                                 <field name="tax_ids" widget="many2many_tags"/>
+                            </group>
+                            <group string="Código de Barras">
+                                <field name="barcode_preview_html" widget="html" nolabel="1" readonly="1"/>
                             </group>
                             <group string="Existencias en Tiempo Real">
                                 <field name="qty_on_hand" readonly="1"/>

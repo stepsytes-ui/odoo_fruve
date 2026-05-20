@@ -1,4 +1,5 @@
-from odoo import api, fields, models, _
+from odoo import api, fields, models
+from odoo.osv import expression
 
 
 class ComprasProduct(models.Model):
@@ -12,8 +13,12 @@ class ComprasProduct(models.Model):
         string='Código',
         required=True,
         copy=False,
-        readonly=True,
-        default=lambda self: _('Nuevo'),
+        tracking=True,
+    )
+    barcode_preview_html = fields.Html(
+        string='Código de Barras',
+        compute='_compute_barcode_preview_html',
+        sanitize=False,
     )
     active = fields.Boolean(string='Activo', default=True)
     company_id = fields.Many2one(
@@ -69,9 +74,42 @@ class ComprasProduct(models.Model):
             product.last_entry_date = max(done_entries.mapped('movement_date')) if done_entries else False
             product.last_exit_date = max(done_exits.mapped('movement_date')) if done_exits else False
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
-            if vals.get('code', _('Nuevo')) == _('Nuevo'):
-                vals['code'] = self.env['ir.sequence'].next_by_code('compras.product') or _('Nuevo')
-        return super().create(vals_list)
+    @api.depends('code')
+    def _compute_barcode_preview_html(self):
+        for product in self:
+            code = (product.code or '').strip()
+            if not code:
+                product.barcode_preview_html = '<span>Escanee o capture un codigo para previsualizar.</span>'
+                continue
+
+            product.barcode_preview_html = (
+                '<div style="padding:8px; background:#fff; border:1px solid #ddd; display:inline-block;">'
+                '<img alt="barcode" src="/report/barcode/Code128/%s?width=600&height=120&humanreadable=1" '
+                'style="max-width:100%%; height:70px;"/>'
+                '</div>'
+            ) % code
+
+    def name_get(self):
+        result = []
+        for product in self:
+            if product.code:
+                display_name = '[%s] %s' % (product.code, product.name)
+            else:
+                display_name = product.name
+            result.append((product.id, display_name))
+        return result
+
+    @api.model
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        """Busca por nombre o código de barras."""
+        args = args or []
+        if name:
+            search_domain = expression.AND([
+                args,
+                ['|', ('name', operator, name), ('code', operator, name)],
+            ])
+        else:
+            search_domain = args
+        products = self.search(search_domain, limit=limit)
+        return products.name_get()
+

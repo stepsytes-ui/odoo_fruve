@@ -239,7 +239,7 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
         chart_total_absences = sum(info['count'] for info in categories.values())
 
         rows = sorted(
-            rows_by_employee.values(),
+            [row for row in rows_by_employee.values() if row.get('absence_type')],
             key=lambda row: (
                 int(row['employee_code']) if str(row['employee_code']).isdigit() else 9999999,
                 row['employee_code'] or '',

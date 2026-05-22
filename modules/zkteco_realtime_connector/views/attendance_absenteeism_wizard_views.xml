@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_attendance_absenteeism_wizard_form" model="ir.ui.view">
+            <field name="name">attendance.absenteeism.wizard.form</field>
+            <field name="model">attendance.absenteeism.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Ausentismo">
+                    <group>
+                        <group>
+                            <field name="company_id" readonly="1"/>
+                            <field name="target_date"/>
+                        </group>
+                    </group>
+                    <footer>
+                        <button name="action_preview_dashboard" string="Aceptar" type="object" class="btn-primary"/>
+                        <button string="Cancelar" class="btn-default" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="attendance_absenteeism_wizard_action" model="ir.actions.act_window">
+            <field name="name">Ausentismo</field>
+            <field name="res_model">attendance.absenteeism.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>

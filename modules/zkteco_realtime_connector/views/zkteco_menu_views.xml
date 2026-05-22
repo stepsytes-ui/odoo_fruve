@@ -21,6 +21,13 @@
             groups="zkteco_realtime_connector.group_hr_manager_custom"/>
 
         <menuitem
+            id="menu_attendance_absenteeism_wizard"
+            name="Ausentismo"
+            parent="menu_zkteco_connector"
+            action="zkteco_realtime_connector.attendance_absenteeism_wizard_action"
+            groups="zkteco_realtime_connector.group_hr_manager_custom,zkteco_realtime_connector.group_attendance_report_user"/>
+
+        <menuitem
             id="menu_attendance_absence_generate_wizard"
             name="Generar Faltas por Fecha"
             parent="menu_zkteco_connector"

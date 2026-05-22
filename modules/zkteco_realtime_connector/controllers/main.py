@@ -179,3 +179,28 @@ class AttendanceReportController(http.Controller):
             json.dumps({'ok': True, 'observation': observation}),
             headers=[('Content-Type', 'application/json; charset=utf-8')],
         )
+
+    @http.route('/attendance/absenteeism/preview/<int:wizard_id>', auth='user', type='http', methods=['GET'], csrf=False)
+    def preview_absenteeism_dashboard(self, wizard_id, **kwargs):
+        wizard = request.env['attendance.absenteeism.wizard'].browse(wizard_id)
+        if not wizard.exists():
+            return request.not_found()
+
+        try:
+            html_content = wizard._build_preview_html()
+        except Exception as error:
+            _logger.exception("Error generando vista previa de ausentismo %s", wizard_id)
+            error_html = (
+                '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Error</title>'
+                '<style>body{font-family:Arial,sans-serif;padding:40px;color:#c00}</style></head>'
+                f'<body><h2>Error al generar la vista de ausentismo</h2><pre>{str(error)}</pre></body></html>'
+            )
+            return request.make_response(
+                error_html,
+                headers=[('Content-Type', 'text/html; charset=utf-8')],
+            )
+
+        return request.make_response(
+            html_content,
+            headers=[('Content-Type', 'text/html; charset=utf-8')],
+        )

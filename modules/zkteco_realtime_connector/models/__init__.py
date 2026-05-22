@@ -7,6 +7,7 @@ from . import hr_attendance
 from . import res_company
 from . import zkteco_device
 from . import attendance_report_wizard
+from . import attendance_absenteeism_wizard
 from . import attendance_import_wizard
 from . import attendance_absence_generate_wizard
 from . import attendance_late_weekly_adjustment

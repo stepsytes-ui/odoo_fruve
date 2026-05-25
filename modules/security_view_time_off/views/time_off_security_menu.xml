@@ -10,8 +10,8 @@
         ]"/>
         <field name="search_view_id" ref="hr_leave_security_search_view"/>
         <field name="domain">[
-            ('request_date_from', '&lt;=', time.strftime('%Y-%m-%d')),
-            ('request_date_to', '&gt;=', time.strftime('%Y-%m-%d'))
+            ('request_date_from', '&lt;=', context_today()),
+            ('request_date_to', '&gt;=', context_today())
         ]</field>
         <field name="context">{'default_search_date': context_today()}</field>
         <field name="help" type="html">

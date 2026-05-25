@@ -18,8 +18,6 @@
 
             <field name="domain_force">[
                 ('state', 'in', ['validate', 'validate1']),
-                ('request_date_from', '&lt;=', time.strftime('%Y-%m-%d')),
-                ('request_date_to', '&gt;=', time.strftime('%Y-%m-%d')),
                 ('company_id', 'in', company_ids),
                 ('holiday_status_id.name', 'in', [
                     'Permiso por horas',

@@ -841,7 +841,9 @@ class HrAttendance(models.Model):
         if not user.active or user.share or not employee_company:
             return False
 
-        if employee_company.id not in user.company_ids.ids:
+        # Solo notificar a la empresa principal del usuario.
+        # Esto evita que un usuario con varias compañías permitidas reciba alertas de todas ellas.
+        if user.company_id.id != employee_company.id:
             return False
 
         has_absence_manager = user.has_group('zkteco_realtime_connector.group_rh_absence_manager')

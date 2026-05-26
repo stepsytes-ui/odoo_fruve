@@ -104,6 +104,7 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
             'suspensiones': {'label': 'Suspensiones', 'color': '#E8BF7E', 'count': 0, 'employees': set()},
             'faltas': {'label': 'Faltas', 'color': '#E26A5C', 'count': 0, 'employees': set()},
             'incapacidades': {'label': 'Incapacidades', 'color': '#77ADD2', 'count': 0, 'employees': set()},
+            'ingresos': {'label': 'Ingresos', 'color': "#A8FFAC", 'count': 0, 'employees': set()},
             'bajas': {'label': 'Bajas', 'color': '#EF3B88', 'count': 0, 'employees': set()},
         }
 
@@ -233,6 +234,23 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
         for employee in inactive_employees:
             _set_category('bajas', employee, 'Baja', regreso='N/A')
 
+        # Altas nuevas del dia exacto (datetime completo), evita mezclar anios anteriores.
+        new_hire_domain = [
+            ('company_id', '=', self.company_id.id),
+            ('create_date', '>=', start_utc_str),
+            ('create_date', '<=', end_utc_str),
+        ]
+        if 'employee_status' in Employee._fields:
+            new_hire_domain.append(('employee_status', '=', 'active'))
+        else:
+            new_hire_domain.append(('active', '=', True))
+        if 'finiquitado' in Employee._fields:
+            new_hire_domain.append(('finiquitado', '=', False))
+
+        new_hires = Employee.search(new_hire_domain)
+        for employee in new_hires:
+            _set_category('ingresos', employee, 'Ingreso', regreso='N/A')
+
         for key, info in categories.items():
             info['count'] = len(info['employees'])
 
@@ -249,7 +267,7 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
 
         absence_employee_ids = set()
         for key, info in categories.items():
-            if key == 'bajas':
+            if key in ('bajas', 'ingresos'):
                 continue
             absence_employee_ids.update(info['employees'])
 
@@ -301,7 +319,7 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
         self.ensure_one()
         data = self._get_absenteeism_data()
 
-        categories_order = ['vacaciones', 'permisos', 'suspensiones', 'faltas', 'incapacidades', 'bajas']
+        categories_order = ['vacaciones', 'permisos', 'suspensiones', 'faltas', 'incapacidades', 'ingresos', 'bajas']
         pie_parts = []
         legend_html = []
         tooltips = []

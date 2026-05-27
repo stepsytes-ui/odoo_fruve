@@ -58,12 +58,14 @@
                                 <field name="solicitante_id"
                                     readonly="1"
                                     groups="compras_fruvemex.group_compras_usuario"
+                                    options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True}"
                                 />
                                 <field name="solicitante_id"
                                     groups="compras_fruvemex.group_compras_encargado"
+                                    options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True}"
                                 />
                                 <field name="supervisor_id"/>
-                                <field name="authorizer_id"/>
+                                <field name="authorizer_id" options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True}"/>
                             </group>
                             <group string="Detalles de Compra">
                                 <field name="payment_type" widget="radio"/>

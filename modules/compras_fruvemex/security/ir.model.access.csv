@@ -20,3 +20,9 @@ access_account_tax_compras_almacenista,account.tax.compras.almacenista,account.m
 access_purchase_rejection_wizard,purchase.rejection.wizard,model_purchase_rejection_wizard,base.group_user,1,1,1,1
 access_purchase_receipt_wizard,purchase.receipt.wizard,model_purchase_receipt_wizard,base.group_user,1,1,1,1
 access_purchase_receipt_wizard_line,purchase.receipt.wizard.line,model_purchase_receipt_wizard_line,base.group_user,1,1,1,1
+access_hr_employee_compras_usuario,hr.employee.compras.usuario,hr.model_hr_employee,compras_fruvemex.group_compras_usuario,1,0,0,0
+access_hr_employee_public_compras_usuario,hr.employee.public.compras.usuario,hr.model_hr_employee_public,compras_fruvemex.group_compras_usuario,1,0,0,0
+access_hr_employee_compras_encargado,hr.employee.compras.encargado,hr.model_hr_employee,compras_fruvemex.group_compras_encargado,1,0,0,0
+access_hr_employee_public_compras_encargado,hr.employee.public.compras.encargado,hr.model_hr_employee_public,compras_fruvemex.group_compras_encargado,1,0,0,0
+access_hr_employee_compras_almacenista,hr.employee.compras.almacenista,hr.model_hr_employee,compras_fruvemex.group_compras_almacenista,1,0,0,0
+access_hr_employee_public_compras_almacenista,hr.employee.public.compras.almacenista,hr.model_hr_employee_public,compras_fruvemex.group_compras_almacenista,1,0,0,0

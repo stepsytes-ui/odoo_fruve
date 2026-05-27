@@ -1,5 +1,6 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from odoo.tools.sql import column_exists
 
 
 class PurchaseRequest(models.Model):
@@ -36,17 +37,17 @@ class PurchaseRequest(models.Model):
     )
 
     def _get_solicitante_domain(self):
-        group = self.env.ref('compras_fruvemex.group_compras_usuario', raise_if_not_found=False)
-        if group:
-            return [('user_id.groups_id', 'in', [group.id])]
-        return []
+        return [
+            ('company_id', '=', self.env.company.id),
+            ('active', '=', True),
+        ]
     supervisor_id = fields.Many2one(
         'res.users',
         string='Supervisor de Área',
         domain=lambda self: self._get_supervisor_domain(),
     )
     authorizer_id = fields.Many2one(
-        'res.users',
+        'hr.employee',
         string='Autoriza',
         domain=lambda self: self._get_authorizer_domain(),
     )
@@ -58,10 +59,10 @@ class PurchaseRequest(models.Model):
         return []
 
     def _get_authorizer_domain(self):
-        group = self.env.ref('compras_fruvemex.group_gerente_fruvemex', raise_if_not_found=False)
-        if group:
-            return [('groups_id', 'in', [group.id])]
-        return []
+        return [
+            ('company_id', '=', self.env.company.id),
+            ('active', '=', True),
+        ]
     comments = fields.Text(string='Comentarios')
     payment_type = fields.Selection(
         [
@@ -163,6 +164,28 @@ class PurchaseRequest(models.Model):
         product = self.env['compras.product'].create(self._prepare_product_vals_from_line(line))
         line.warehouse_product_id = product.id
         return product
+
+    def _auto_init(self):
+        # Migrate old values of authorizer_id from res.users ids to hr.employee ids.
+        if column_exists(self.env.cr, self._table, 'authorizer_id'):
+            self.env.cr.execute("""
+                UPDATE purchase_request pr
+                   SET authorizer_id = he.id
+                  FROM hr_employee he
+                 WHERE pr.authorizer_id IS NOT NULL
+                   AND he.user_id = pr.authorizer_id
+            """)
+            self.env.cr.execute("""
+                UPDATE purchase_request pr
+                   SET authorizer_id = NULL
+                 WHERE pr.authorizer_id IS NOT NULL
+                   AND NOT EXISTS (
+                       SELECT 1
+                         FROM hr_employee he
+                        WHERE he.id = pr.authorizer_id
+                   )
+            """)
+        return super()._auto_init()
 
     @api.model_create_multi
     def create(self, vals_list):

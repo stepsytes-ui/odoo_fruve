@@ -49,6 +49,14 @@
             action="employee_modifications.action_employee_tools_lista"
             sequence="11"
             groups="hr.group_hr_user"/>
+
+        <menuitem
+            id="menu_hr_employee_export_lista_datos"
+            name="Exportar lista de datos"
+            parent="menu_hr_herramientas"
+            action="employee_modifications.action_open_export_employee_list_wizard"
+            sequence="12"
+            groups="hr.group_hr_user"/>
         
         <!-- Submenú: Suspensiones -->
         <menuitem 

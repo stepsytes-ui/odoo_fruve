@@ -294,7 +294,18 @@ class HrEmployeeExtension(models.Model):
         groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
     )
 
-    @api.depends('fecha_ingreso_manual', 'expedient_ids', 'expedient_ids.fecha_movimiento', 'expedient_ids.tipo_registro')
+    @api.depends(
+        'fecha_ingreso_manual',
+        'expedient_ids',
+        'expedient_ids.fecha_movimiento',
+        'expedient_ids.tipo_registro',
+        'expedient_ids.history_ids',
+        'expedient_ids.history_ids.fecha',
+        'expedient_ids.history_ids.tipo_movimiento',
+        'active',
+        'employee_status',
+        'departure_date',
+    )
     def _compute_antiguedad(self):
         for employee in self:
             fecha_ingreso = employee.get_fecha_ingreso() if employee.id else employee.fecha_ingreso_manual
@@ -302,7 +313,25 @@ class HrEmployeeExtension(models.Model):
                 employee.antiguedad = 'N/A'
                 continue
 
-            diff = relativedelta(date.today(), fecha_ingreso)
+            hoy = date.today()
+            fecha_corte = hoy
+
+            if employee.employee_status == 'inactive' or not employee.active:
+                bajas_historial = employee.expedient_ids.mapped('history_ids').filtered(
+                    lambda line: line.tipo_movimiento == 'baja' and line.fecha
+                )
+
+                if bajas_historial:
+                    fecha_corte = max(bajas_historial.mapped('fecha'))
+                elif employee.departure_date:
+                    fecha_corte = employee.departure_date
+                elif employee.write_date:
+                    fecha_corte = fields.Datetime.to_datetime(employee.write_date).date()
+
+            if fecha_corte < fecha_ingreso:
+                fecha_corte = fecha_ingreso
+
+            diff = relativedelta(fecha_corte, fecha_ingreso)
             employee.antiguedad = f"{diff.years} anos, {diff.months} meses y {diff.days} dias"
 
     @api.depends('biometric_id')

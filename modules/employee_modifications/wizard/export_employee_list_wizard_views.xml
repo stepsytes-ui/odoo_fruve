@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_export_employee_list_wizard_form" model="ir.ui.view">
+            <field name="name">export.employee.list.wizard.form</field>
+            <field name="model">export.employee.list.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Exportar lista de datos">
+                    <group>
+                        <field name="employee_status_filter"/>
+                    </group>
+                    <footer>
+                        <button name="action_export_excel" type="object" string="Exportar" class="btn-primary"/>
+                        <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_open_export_employee_list_wizard" model="ir.actions.act_window">
+            <field name="name">Exportar lista de datos</field>
+            <field name="res_model">export.employee.list.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="employee_modifications.view_export_employee_list_wizard_form"/>
+            <field name="target">new</field>
+        </record>
+
+        <record id="action_export_employee_list_wizard" model="ir.actions.server">
+            <field name="name">Exportar lista de datos</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="state">code</field>
+            <field name="code"><![CDATA[
+wizard = env['export.employee.list.wizard'].create({})
+action = wizard.action_export_excel()
+            ]]></field>
+        </record>
+    </data>
+</odoo>

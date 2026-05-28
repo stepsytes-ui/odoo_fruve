@@ -40,6 +40,15 @@
             sequence="10"
             groups="hr.group_hr_manager" 
             action="employee_modifications.employee_expedient_action"/> 
+
+        <!-- Submenú: Lista de Empleados -->
+        <menuitem
+            id="menu_hr_employee_lista"
+            name="Lista"
+            parent="menu_hr_herramientas"
+            action="employee_modifications.action_employee_tools_lista"
+            sequence="11"
+            groups="hr.group_hr_user"/>
         
         <!-- Submenú: Suspensiones -->
         <menuitem 

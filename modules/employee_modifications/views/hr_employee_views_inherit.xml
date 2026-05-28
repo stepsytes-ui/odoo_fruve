@@ -172,4 +172,29 @@
         </field>
     </record>
 
+    <record id="view_employee_list_tools_lista" model="ir.ui.view">
+        <field name="name">hr.employee.list.tools.lista</field>
+        <field name="model">hr.employee</field>
+        <field name="arch" type="xml">
+            <list string="Lista de Empleados" default_order="biometric_id_numeric asc, biometric_id asc">
+                <field name="biometric_id" string="No. Empleado"/>
+                <field name="antiguedad" string="Antiguedad"/>
+                <field name="name" string="Nombre"/>
+                <field name="department_id" string="Departamento"/>
+                <field name="turno_id" string="Turno"/>
+                <field name="employee_status" string="Estado"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_employee_tools_lista" model="ir.actions.act_window">
+        <field name="name">Lista</field>
+        <field name="res_model">hr.employee</field>
+        <field name="view_id" ref="employee_modifications.view_employee_list_tools_lista"/>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'list_view_ref': 'employee_modifications.view_employee_list_tools_lista'}</field>
+        <field name="binding_model_id" ref="hr.model_hr_employee"/>
+        <field name="binding_view_types">list,form</field>
+    </record>
+
 </odoo>

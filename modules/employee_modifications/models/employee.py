@@ -2,6 +2,9 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import AccessError, ValidationError
 import logging
+from datetime import date
+
+from dateutil.relativedelta import relativedelta
 
 _logger = logging.getLogger(__name__)
 
@@ -80,6 +83,18 @@ def numero_a_letras(numero):
 
 class HrEmployeeExtension(models.Model):
     _inherit = 'hr.employee'
+
+    antiguedad = fields.Char(
+        string='Antiguedad',
+        compute='_compute_antiguedad',
+    )
+
+    biometric_id_numeric = fields.Integer(
+        string='Numero de Empleado (Numerico)',
+        compute='_compute_biometric_id_numeric',
+        store=True,
+        index=True,
+    )
 
     fecha_ingreso_manual = fields.Date(
         string='Fecha de Ingreso',
@@ -278,6 +293,28 @@ class HrEmployeeExtension(models.Model):
         precompute=False,
         groups='hr.group_hr_user,employee_modifications.group_supervisor,employee_modifications.group_guardia'
     )
+
+    @api.depends('fecha_ingreso_manual', 'expedient_ids', 'expedient_ids.fecha_movimiento', 'expedient_ids.tipo_registro')
+    def _compute_antiguedad(self):
+        for employee in self:
+            fecha_ingreso = employee.get_fecha_ingreso() if employee.id else employee.fecha_ingreso_manual
+            if not fecha_ingreso:
+                employee.antiguedad = 'N/A'
+                continue
+
+            diff = relativedelta(date.today(), fecha_ingreso)
+            employee.antiguedad = f"{diff.years} anos, {diff.months} meses y {diff.days} dias"
+
+    @api.depends('biometric_id')
+    def _compute_biometric_id_numeric(self):
+        max_numeric_fallback = 2147483647
+        for employee in self:
+            biometric_value = (employee.biometric_id or '').strip()
+            employee.biometric_id_numeric = (
+                int(biometric_value)
+                if biometric_value.isdigit()
+                else max_numeric_fallback
+            )
 
     @api.depends('suspension_ids')
     def _compute_suspension_count(self):

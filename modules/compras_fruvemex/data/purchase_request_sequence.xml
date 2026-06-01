@@ -10,8 +10,9 @@
         <record id="sequence_compras_product" model="ir.sequence">
             <field name="name">Producto de Almacén</field>
             <field name="code">compras.product</field>
-            <field name="prefix">PROD/%(y)s/</field>
-            <field name="padding">4</field>
+            <field name="prefix"></field>
+            <field name="padding">6</field>
+            <field name="number_increment">1</field>
         </record>
 
         <record id="sequence_compras_inventory_move" model="ir.sequence">

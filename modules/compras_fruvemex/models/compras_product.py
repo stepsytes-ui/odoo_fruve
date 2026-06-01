@@ -1,4 +1,6 @@
-from odoo import api, fields, models
+import re
+
+from odoo import _, api, fields, models
 from odoo.osv import expression
 
 
@@ -7,6 +9,9 @@ class ComprasProduct(models.Model):
     _description = 'Producto de Almacén'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name'
+    _sql_constraints = [
+        ('compras_product_code_unique', 'unique(code)', 'El código del producto debe ser único.'),
+    ]
 
     name = fields.Char(string='Producto', required=True, tracking=True)
     code = fields.Char(
@@ -14,6 +19,7 @@ class ComprasProduct(models.Model):
         required=True,
         copy=False,
         tracking=True,
+        default=lambda self: _('Nuevo'),
     )
     barcode_preview_html = fields.Html(
         string='Código de Barras',
@@ -112,4 +118,24 @@ class ComprasProduct(models.Model):
             search_domain = args
         products = self.search(search_domain, limit=limit)
         return products.name_get()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('code') or vals.get('code') == _('Nuevo'):
+                next_code = self.env['ir.sequence'].next_by_code('compras.product') or _('Nuevo')
+                vals['code'] = self._normalize_auto_code(next_code)
+        return super().create(vals_list)
+
+    @api.model
+    def _normalize_auto_code(self, code):
+        """Normaliza el código autogenerado al formato numérico de 6 dígitos."""
+        if not code or code == _('Nuevo'):
+            return code
+
+        match = re.search(r'(\d+)$', code.strip())
+        if not match:
+            return code
+
+        return match.group(1).zfill(6)
 

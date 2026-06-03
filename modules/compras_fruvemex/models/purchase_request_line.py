@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class PurchaseRequestLine(models.Model):
@@ -98,3 +98,35 @@ class PurchaseRequestLine(models.Model):
     def _compute_subtotal(self):
         for line in self:
             line.subtotal = line.quantity * line.unit_price
+
+    def _is_warehouse_only_user(self):
+        user = self.env.user
+        return (
+            user.has_group('compras_fruvemex.group_compras_almacenista')
+            and not user.has_group('compras_fruvemex.group_compras_encargado')
+        )
+
+    def _check_warehouse_user_can_edit_request(self, requests):
+        if not self._is_warehouse_only_user():
+            return
+        if requests.filtered(lambda request: request.state == 'recibida'):
+            raise AccessError(_('Los usuarios de almacén no pueden editar líneas de solicitudes de compra recibidas.'))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        request_ids = [vals.get('request_id') for vals in vals_list if vals.get('request_id')]
+        if request_ids:
+            requests = self.env['purchase.request'].browse(request_ids)
+            self._check_warehouse_user_can_edit_request(requests)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        requests = self.mapped('request_id')
+        if vals.get('request_id'):
+            requests |= self.env['purchase.request'].browse(vals['request_id'])
+        self._check_warehouse_user_can_edit_request(requests)
+        return super().write(vals)
+
+    def unlink(self):
+        self._check_warehouse_user_can_edit_request(self.mapped('request_id'))
+        return super().unlink()

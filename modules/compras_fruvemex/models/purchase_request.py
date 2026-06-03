@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tools.sql import column_exists
 
 
@@ -283,3 +283,25 @@ class PurchaseRequest(models.Model):
             'received_by_id': receiver.id,
             'warehouse_id': warehouse.id if warehouse else self.warehouse_id.id,
         })
+
+    def _is_warehouse_only_user(self):
+        user = self.env.user
+        return (
+            user.has_group('compras_fruvemex.group_compras_almacenista')
+            and not user.has_group('compras_fruvemex.group_compras_encargado')
+        )
+
+    def _check_warehouse_user_can_edit(self):
+        if not self._is_warehouse_only_user():
+            return
+        locked_requests = self.filtered(lambda request: request.state == 'recibida')
+        if locked_requests:
+            raise AccessError(_('Los usuarios de almacén no pueden editar solicitudes de compra recibidas.'))
+
+    def write(self, vals):
+        self._check_warehouse_user_can_edit()
+        return super().write(vals)
+
+    def unlink(self):
+        self._check_warehouse_user_can_edit()
+        return super().unlink()

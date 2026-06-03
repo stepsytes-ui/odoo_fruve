@@ -224,11 +224,19 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
         inactive_domain = [
             ('company_id', '=', self.company_id.id),
             ('employee_status', '=', 'inactive'),
-            ('write_date', '>=', start_utc_str),
-            ('write_date', '<=', end_utc_str),
         ]
         if 'finiquitado' in Employee._fields:
             inactive_domain.append(('finiquitado', '=', True))
+
+        # Usar fecha de baja real para evitar que cambios administrativos (write_date)
+        # cuenten al empleado como baja del dia actual.
+        if 'departure_date' in Employee._fields:
+            inactive_domain.append(('departure_date', '=', target_date))
+        else:
+            inactive_domain.extend([
+                ('write_date', '>=', start_utc_str),
+                ('write_date', '<=', end_utc_str),
+            ])
 
         inactive_employees = Employee.search(inactive_domain)
         for employee in inactive_employees:
@@ -276,15 +284,26 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
         total_employees = self._get_employee_total_for_company()
         absence_rate = (total_absences / total_employees * 100.0) if total_employees else 0.0
 
-        def _rotation_pct(start_dt, end_dt):
+        def _rotation_pct(start_date, end_date):
             rotation_domain = [
                 ('company_id', '=', self.company_id.id),
                 ('employee_status', '=', 'inactive'),
-                ('write_date', '>=', fields.Datetime.to_string(start_dt)),
-                ('write_date', '<=', fields.Datetime.to_string(end_dt)),
             ]
             if 'finiquitado' in Employee._fields:
                 rotation_domain.append(('finiquitado', '=', True))
+
+            if 'departure_date' in Employee._fields:
+                rotation_domain.extend([
+                    ('departure_date', '>=', start_date),
+                    ('departure_date', '<=', end_date),
+                ])
+            else:
+                start_dt = company_tz.localize(datetime.combine(start_date, time.min)).astimezone(pytz.utc)
+                end_dt = company_tz.localize(datetime.combine(end_date, time.max)).astimezone(pytz.utc)
+                rotation_domain.extend([
+                    ('write_date', '>=', fields.Datetime.to_string(start_dt)),
+                    ('write_date', '<=', fields.Datetime.to_string(end_dt)),
+                ])
 
             baja_count = Employee.search_count(rotation_domain)
             pct = (baja_count / total_employees * 100.0) if total_employees else 0.0
@@ -293,14 +312,14 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
                 'pct': pct,
             }
 
-        week_start_local = company_tz.localize(datetime.combine(target_date - timedelta(days=6), time.min))
-        month_start_local = company_tz.localize(datetime.combine(target_date.replace(day=1), time.min))
-        year_start_local = company_tz.localize(datetime.combine(target_date.replace(month=1, day=1), time.min))
+        week_start_date = target_date - timedelta(days=6)
+        month_start_date = target_date.replace(day=1)
+        year_start_date = target_date.replace(month=1, day=1)
 
         rotations = {
-            'weekly': _rotation_pct(week_start_local.astimezone(pytz.utc), end_utc),
-            'monthly': _rotation_pct(month_start_local.astimezone(pytz.utc), end_utc),
-            'yearly': _rotation_pct(year_start_local.astimezone(pytz.utc), end_utc),
+            'weekly': _rotation_pct(week_start_date, target_date),
+            'monthly': _rotation_pct(month_start_date, target_date),
+            'yearly': _rotation_pct(year_start_date, target_date),
         }
 
         return {

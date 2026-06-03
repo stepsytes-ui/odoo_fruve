@@ -233,6 +233,7 @@
                 
                 <xpath expr="//field[@name='parent_id']" position="after">
                     <field name="fecha_ingreso_manual" invisible="context.get('active_id')" required="1"/>
+                    <field name="departure_date" string="Fecha de baja" invisible="active"/>
                 </xpath>
 
                 </field>

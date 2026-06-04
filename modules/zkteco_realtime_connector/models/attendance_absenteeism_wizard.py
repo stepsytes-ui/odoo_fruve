@@ -451,6 +451,25 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
             'yearly': _rotation_pct(year_start_date, date_to),
         }
 
+        # Si semanal/mensual no tienen bajas en el periodo, usar promedio del anio en curso
+        # para mostrar una medida mas representativa y evitar valores en cero.
+        ytd_baja_count = rotations['yearly']['count']
+        if ytd_baja_count:
+            days_elapsed = max((date_to - year_start_date).days + 1, 1)
+            weeks_elapsed = max(days_elapsed / 7.0, 1.0)
+            months_elapsed = max((date_to.month - 1) + 1.0, 1.0)
+
+            weekly_avg_count = ytd_baja_count / weeks_elapsed
+            monthly_avg_count = ytd_baja_count / months_elapsed
+
+            if rotations['weekly']['count'] == 0:
+                rotations['weekly']['count'] = round(weekly_avg_count, 2)
+                rotations['weekly']['pct'] = (rotations['weekly']['count'] / total_employees * 100.0) if total_employees else 0.0
+
+            if rotations['monthly']['count'] == 0:
+                rotations['monthly']['count'] = round(monthly_avg_count, 2)
+                rotations['monthly']['pct'] = (rotations['monthly']['count'] / total_employees * 100.0) if total_employees else 0.0
+
         return {
             'company_name': self.company_id.display_name,
             'date_from': date_from,

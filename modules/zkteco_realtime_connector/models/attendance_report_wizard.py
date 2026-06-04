@@ -422,6 +422,25 @@ class AttendanceReportWizard(models.TransientModel):
     .neto-link:hover {{ text-decoration: underline; }}
     .obs-link {{ color: #1b5fbd; text-decoration: none; font-weight: 600; }}
     .obs-link:hover {{ text-decoration: underline; }}
+    td.is-active-row {{
+        box-shadow: inset 0 1px 0 rgba(96, 96, 96, 0.75), inset 0 -1px 0 rgba(96, 96, 96, 0.75);
+    }}
+    td.is-active-col {{
+        box-shadow: inset 1px 0 0 rgba(96, 96, 96, 0.75), inset -1px 0 0 rgba(96, 96, 96, 0.75);
+    }}
+    td.is-active-row.is-active-col {{
+        box-shadow:
+            inset 0 1px 0 rgba(96, 96, 96, 0.75),
+            inset 0 -1px 0 rgba(96, 96, 96, 0.75),
+            inset 1px 0 0 rgba(96, 96, 96, 0.75),
+            inset -1px 0 0 rgba(96, 96, 96, 0.75);
+    }}
+    td.is-active-cell {{
+        outline: 2px solid #1b5fbd;
+        outline-offset: -2px;
+        background-color: #dce8ff !important;
+        color: #000 !important;
+    }}
   tr:nth-child(even) td {{ background-color: #f9f9fb; }}
     tr:hover td {{ background-color: #eef3ff !important; color: #000 !important; }}
     tr:hover td * {{ color: #000 !important; }}
@@ -446,7 +465,7 @@ class AttendanceReportWizard(models.TransientModel):
   <div class="legend-item"><span class="lswatch" style="background:#fff"></span><span style="color:#808080">Descanso</span></div>
 </div>
 <div class="table-wrap">
-<table>
+<table id="attendance-preview-table">
 <thead><tr>
   <th class="s0">No. Emp.</th>
   <th class="s1">Nombre</th>
@@ -511,6 +530,43 @@ class AttendanceReportWizard(models.TransientModel):
 </div>
 <script>
 (() => {{
+    const table = document.getElementById('attendance-preview-table');
+
+    function clearCrosshair() {{
+        if (!table) return;
+        table.querySelectorAll('td.is-active-row, td.is-active-col, td.is-active-cell').forEach((td) => {{
+            td.classList.remove('is-active-row', 'is-active-col', 'is-active-cell');
+        }});
+    }}
+
+    function applyCrosshair(cell) {{
+        if (!table || !cell) return;
+
+        const row = cell.parentElement;
+        if (!row) return;
+
+        const rowCells = Array.from(row.children);
+        const colIndex = rowCells.indexOf(cell);
+        if (colIndex < 0) return;
+
+        clearCrosshair();
+
+        rowCells.forEach((td) => td.classList.add('is-active-row'));
+        table.querySelectorAll('tbody tr').forEach((tr) => {{
+            const td = tr.children[colIndex];
+            if (td) td.classList.add('is-active-col');
+        }});
+        cell.classList.add('is-active-cell');
+    }}
+
+    if (table) {{
+        table.addEventListener('click', (ev) => {{
+            const cell = ev.target.closest('td');
+            if (!cell || !table.contains(cell)) return;
+            applyCrosshair(cell);
+        }});
+    }}
+
     async function saveObservation(payload) {{
         const response = await fetch('/attendance/report/save_weekly_observation', {{
             method: 'POST',

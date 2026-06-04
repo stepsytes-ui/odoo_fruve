@@ -239,6 +239,29 @@ class PurchaseRequest(models.Model):
             },
         }
 
+    def action_cancel_for_edit(self):
+        for request in self:
+            if request.state not in ('autorizada', 'recibida'):
+                raise ValidationError(_('Solo se pueden cancelar para edición solicitudes Autorizadas o Recibidas.'))
+
+            if not (
+                self.env.user.has_group('compras_fruvemex.group_compras_usuario')
+                or self.env.user.has_group('compras_fruvemex.group_compras_encargado')
+            ):
+                raise AccessError(_('No tienes permisos para cancelar la solicitud para edición.'))
+
+            # Si ya se recibió, anula los movimientos de entrada para recalcular existencia.
+            if request.state == 'recibida':
+                done_moves = request.movement_ids.filtered(lambda move: move.state == 'done')
+                if done_moves:
+                    done_moves.action_cancel()
+
+            request.write({
+                'state': 'activa',
+                'received_by_id': False,
+                'approved_by_id': False,
+            })
+
     def action_process_receipt_from_checklist(self, receiver_user=False, warehouse=False):
         self.ensure_one()
         if not self.line_ids:

@@ -18,6 +18,15 @@
         />
 
         <menuitem
+            id="menu_compras_seguimiento"
+            name="Seguimiento de Órdenes"
+            parent="menu_compras_root"
+            action="purchase_request_tracking_action"
+            sequence="20"
+            groups="compras_fruvemex.group_compras_usuario,compras_fruvemex.group_compras_encargado"
+        />
+
+        <menuitem
             id="menu_almacen_root"
             name="Almacén"
             sequence="30"

@@ -129,33 +129,44 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
         }
 
         rows_by_employee = {}
+        rows_by_employee_id = {}
+        punches_by_employee = {}
 
-        def _build_or_get_row(employee):
-            row = rows_by_employee.get(employee.id)
+        def _build_or_get_row(employee, category_key, absence_type, occurrence_key=None, event_date=''):
+            row_key = (employee.id, absence_type, occurrence_key or 'default')
+            row = rows_by_employee.get(row_key)
             if row:
+                if event_date and not row.get('event_date'):
+                    row['event_date'] = event_date
                 return row
+
+            punches = punches_by_employee.get(employee.id, {})
             row = {
                 'employee_id': employee.id,
                 'employee_code': employee.biometric_id or '',
                 'turno': employee.sudo().turno_id.turno_name or '',
                 'name': employee.name or '',
-                'absence_type': '',
-                'absence_color': '',
-                'absence_font_color': '',
+                'event_date': event_date or '',
+                'absence_type': absence_type,
+                'absence_color': categories[category_key]['color'],
+                'absence_font_color': '#FFFFFF' if category_key in ('faltas', 'incapacidades', 'bajas') else '#243447',
                 'regreso': '',
-                'salida': '',
-                'entrada': '',
+                'salida': punches.get('salida', ''),
+                'entrada': punches.get('entrada', ''),
             }
-            rows_by_employee[employee.id] = row
+            rows_by_employee[row_key] = row
+            rows_by_employee_id.setdefault(employee.id, []).append(row)
             return row
 
-        def _set_category(category_key, employee, absence_type, regreso=''):
+        def _set_category(category_key, employee, absence_type, regreso='', occurrence_key=None, event_date=''):
             categories[category_key]['employees'].add(employee.id)
-            row = _build_or_get_row(employee)
-            if not row['absence_type']:
-                row['absence_type'] = absence_type
-                row['absence_color'] = categories[category_key]['color']
-                row['absence_font_color'] = '#FFFFFF' if category_key in ('faltas', 'incapacidades', 'bajas') else '#243447'
+            row = _build_or_get_row(
+                employee,
+                category_key,
+                absence_type,
+                occurrence_key=occurrence_key,
+                event_date=event_date,
+            )
             if regreso and not row['regreso']:
                 row['regreso'] = regreso
 
@@ -193,13 +204,26 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
             leave_name = self._normalize_label(leave.holiday_status_id.name)
             category_key = leave_category_map.get(leave_name, 'permisos')
             regreso_date = ''
+            leave_event_date = ''
+            if leave.date_from:
+                leave_start = leave.date_from
+                if leave_start.tzinfo is None:
+                    leave_start = pytz.utc.localize(leave_start)
+                leave_event_date = self._fmt_date(leave_start.astimezone(company_tz).date())
             if leave.date_to:
                 leave_end = leave.date_to
                 if leave_end.tzinfo is None:
                     leave_end = pytz.utc.localize(leave_end)
                 regreso_date = self._fmt_date((leave_end.astimezone(company_tz).date() + timedelta(days=1)))
 
-            _set_category(category_key, employee, leave.holiday_status_id.name or 'Permiso', regreso_date)
+            _set_category(
+                category_key,
+                employee,
+                leave.holiday_status_id.name or 'Permiso',
+                regreso_date,
+                occurrence_key=f'leave:{leave.id}',
+                event_date=leave_event_date,
+            )
 
         attendance_records = Attendance.search([
             ('employee_id.company_id', '=', self.company_id.id),
@@ -233,13 +257,32 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
             status = att.punctuality_status or ''
             if status in status_map:
                 category_key, absence_label = status_map[status]
-                _set_category(category_key, employee, absence_label)
+                occurrence_date = ''
+                if att.check_in:
+                    check_in_dt = att.check_in
+                    if check_in_dt.tzinfo is None:
+                        check_in_dt = pytz.utc.localize(check_in_dt)
+                    local_check_date = check_in_dt.astimezone(company_tz).date()
+                    occurrence_date = local_check_date.isoformat()
+                _set_category(
+                    category_key,
+                    employee,
+                    absence_label,
+                    occurrence_key=f'att:{occurrence_date or att.id}',
+                    event_date=self._fmt_date(local_check_date) if occurrence_date else '',
+                )
 
-            row = _build_or_get_row(employee)
-            if status == 'LunchS' and not row['salida']:
-                row['salida'] = self._fmt_dt(att.check_in, company_tz)
-            elif status == 'LunchE' and not row['entrada']:
-                row['entrada'] = self._fmt_dt(att.check_in, company_tz)
+            employee_punches = punches_by_employee.setdefault(employee.id, {'salida': '', 'entrada': ''})
+            if status == 'LunchS' and not employee_punches['salida']:
+                employee_punches['salida'] = self._fmt_dt(att.check_in, company_tz)
+                for row in rows_by_employee_id.get(employee.id, []):
+                    if not row['salida']:
+                        row['salida'] = employee_punches['salida']
+            elif status == 'LunchE' and not employee_punches['entrada']:
+                employee_punches['entrada'] = self._fmt_dt(att.check_in, company_tz)
+                for row in rows_by_employee_id.get(employee.id, []):
+                    if not row['entrada']:
+                        row['entrada'] = employee_punches['entrada']
 
         inactive_domain = [
             ('company_id', '=', self.company_id.id),
@@ -263,7 +306,24 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
 
         inactive_employees = Employee.search(inactive_domain)
         for employee in inactive_employees:
-            _set_category('bajas', employee, 'Baja', regreso='N/A')
+            departure_value = ''
+            event_date = ''
+            if 'departure_date' in Employee._fields and employee.departure_date:
+                departure_value = fields.Date.to_string(employee.departure_date)
+                event_date = self._fmt_date(employee.departure_date)
+            elif employee.write_date:
+                write_dt = employee.write_date
+                if write_dt.tzinfo is None:
+                    write_dt = pytz.utc.localize(write_dt)
+                event_date = self._fmt_date(write_dt.astimezone(company_tz).date())
+            _set_category(
+                'bajas',
+                employee,
+                'Baja',
+                regreso='N/A',
+                occurrence_key=f'baja:{departure_value or employee.id}',
+                event_date=event_date,
+            )
 
         # Altas nuevas del dia exacto (datetime completo), evita mezclar anios anteriores.
         new_hire_domain = [
@@ -280,7 +340,21 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
 
         new_hires = Employee.search(new_hire_domain)
         for employee in new_hires:
-            _set_category('ingresos', employee, 'Ingreso', regreso='N/A')
+            create_value = fields.Datetime.to_string(employee.create_date) if employee.create_date else ''
+            event_date = ''
+            if employee.create_date:
+                create_dt = employee.create_date
+                if create_dt.tzinfo is None:
+                    create_dt = pytz.utc.localize(create_dt)
+                event_date = self._fmt_date(create_dt.astimezone(company_tz).date())
+            _set_category(
+                'ingresos',
+                employee,
+                'Ingreso',
+                regreso='N/A',
+                occurrence_key=f'ingreso:{create_value or employee.id}',
+                event_date=event_date,
+            )
 
         for key, info in categories.items():
             info['count'] = len(info['employees'])
@@ -293,6 +367,8 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
                 int(row['employee_code']) if str(row['employee_code']).isdigit() else 9999999,
                 row['employee_code'] or '',
                 row['name'] or '',
+                row['event_date'] or '',
+                row['absence_type'] or '',
             ),
         )
 
@@ -398,6 +474,7 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
                 f'<td>{_html.escape(str(row["employee_code"] or ""))}</td>'
                 f'<td>{_html.escape(str(row["turno"] or ""))}</td>'
                 f'<td>{_html.escape(str(row["name"] or ""))}</td>'
+                f'<td>{_html.escape(str(row["event_date"] or ""))}</td>'
                 f'<td{absence_style}>{_html.escape(str(row["absence_type"] or ""))}</td>'
                 f'<td>{_html.escape(str(row["regreso"] or ""))}</td>'
                 f'<td>{_html.escape(str(row["salida"] or ""))}</td>'
@@ -406,7 +483,7 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
             )
 
         if not rows_html:
-            rows_html.append('<tr><td colspan="7" class="empty">No hay ausencias para la fecha seleccionada.</td></tr>')
+            rows_html.append('<tr><td colspan="8" class="empty">No hay ausencias para la fecha seleccionada.</td></tr>')
 
         html = f"""<!DOCTYPE html>
 <html lang=\"es\">
@@ -444,7 +521,7 @@ body {{ margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: line
 .table-card {{ margin-top: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 8px 18px rgba(36,52,71,.06); overflow: hidden; }}
 .table-title {{ padding: 12px 14px; font-weight: 700; border-bottom: 1px solid var(--line); background: #f8fafc; }}
 .table-wrap {{ overflow-x: auto; }}
-table {{ width: 100%; border-collapse: collapse; min-width: 940px; }}
+table {{ width: 100%; border-collapse: collapse; min-width: 1040px; }}
 th, td {{ border-bottom: 1px solid #e5e7eb; padding: 9px 10px; font-size: 13px; text-align: left; white-space: nowrap; }}
 th {{ background: #f1f5f9; color: #334155; position: sticky; top: 0; z-index: 1; }}
 tr:hover td {{ background: #f8fbff; }}
@@ -495,6 +572,7 @@ tr:hover td {{ background: #f8fbff; }}
             <th>Empleado</th>
             <th>Turno</th>
             <th>Nombre</th>
+            <th>Fecha</th>
             <th>Tipo Ausencia</th>
             <th>Regreso</th>
             <th>Salida</th>

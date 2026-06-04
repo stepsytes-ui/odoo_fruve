@@ -196,20 +196,43 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
             ('date_to', '>=', start_utc_str),
         ])
 
+        # Para evitar duplicados en permisos multi-dia, marcamos los dias cubiertos
+        # por cada hr.leave aprobado (por empleado y fecha local).
+        leave_dates_by_employee = {}
+
         for leave in approved_leaves:
             employee = leave.employee_id
             if not employee:
                 continue
 
+            leave_start_date = None
+            leave_end_date = None
+            if leave.date_from:
+                leave_start_dt = leave.date_from
+                if leave_start_dt.tzinfo is None:
+                    leave_start_dt = pytz.utc.localize(leave_start_dt)
+                leave_start_date = leave_start_dt.astimezone(company_tz).date()
+            if leave.date_to:
+                leave_end_dt = leave.date_to
+                if leave_end_dt.tzinfo is None:
+                    leave_end_dt = pytz.utc.localize(leave_end_dt)
+                leave_end_date = leave_end_dt.astimezone(company_tz).date()
+
+            if leave_start_date and leave_end_date:
+                range_start = max(leave_start_date, date_from)
+                range_end = min(leave_end_date, date_to)
+                if range_start <= range_end:
+                    current_day = range_start
+                    while current_day <= range_end:
+                        leave_dates_by_employee.setdefault(employee.id, set()).add(current_day)
+                        current_day += timedelta(days=1)
+
             leave_name = self._normalize_label(leave.holiday_status_id.name)
             category_key = leave_category_map.get(leave_name, 'permisos')
             regreso_date = ''
             leave_event_date = ''
-            if leave.date_from:
-                leave_start = leave.date_from
-                if leave_start.tzinfo is None:
-                    leave_start = pytz.utc.localize(leave_start)
-                leave_event_date = self._fmt_date(leave_start.astimezone(company_tz).date())
+            if leave_start_date:
+                leave_event_date = self._fmt_date(leave_start_date)
             if leave.date_to:
                 leave_end = leave.date_to
                 if leave_end.tzinfo is None:
@@ -258,12 +281,19 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
             if status in status_map:
                 category_key, absence_label = status_map[status]
                 occurrence_date = ''
+                local_check_date = None
                 if att.check_in:
                     check_in_dt = att.check_in
                     if check_in_dt.tzinfo is None:
                         check_in_dt = pytz.utc.localize(check_in_dt)
                     local_check_date = check_in_dt.astimezone(company_tz).date()
                     occurrence_date = local_check_date.isoformat()
+
+                # Si el estatus de attendance es de permiso/vacaciones y ese dia ya esta
+                # cubierto por un hr.leave aprobado, no creamos otro renglon.
+                if status != 'absence' and local_check_date and local_check_date in leave_dates_by_employee.get(employee.id, set()):
+                    continue
+
                 _set_category(
                     category_key,
                     employee,

@@ -23,11 +23,22 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
         readonly=True,
         default=lambda self: self.env.company,
     )
-    target_date = fields.Date(
-        string='Fecha',
+    date_from = fields.Date(
+        string='Fecha Desde',
         required=True,
         default=lambda self: fields.Date.context_today(self),
     )
+    date_to = fields.Date(
+        string='Fecha Hasta',
+        required=True,
+        default=lambda self: fields.Date.context_today(self),
+    )
+
+    @api.constrains('date_from', 'date_to')
+    def _check_dates(self):
+        for record in self:
+            if record.date_from and record.date_to and record.date_from > record.date_to:
+                raise ValueError(_('La fecha "Desde" no puede ser posterior a la fecha "Hasta"'))
 
     def action_preview_dashboard(self):
         self.ensure_one()
@@ -56,6 +67,14 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
         return date_value.strftime('%d/%m/%Y') if date_value else ''
 
     @staticmethod
+    def _fmt_date_range(date_from, date_to):
+        if not date_from and not date_to:
+            return ''
+        if date_from == date_to:
+            return AttendanceAbsenteeismWizard._fmt_date(date_from)
+        return f"{AttendanceAbsenteeismWizard._fmt_date(date_from)} al {AttendanceAbsenteeismWizard._fmt_date(date_to)}"
+
+    @staticmethod
     def _fmt_dt(dt_value, tz):
         if not dt_value:
             return ''
@@ -78,10 +97,11 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
         self.ensure_one()
 
         company_tz = self._get_company_tz()
-        target_date = self.target_date
+        date_from = self.date_from
+        date_to = self.date_to
 
-        start_local = company_tz.localize(datetime.combine(target_date, time.min))
-        end_local = company_tz.localize(datetime.combine(target_date, time.max))
+        start_local = company_tz.localize(datetime.combine(date_from, time.min))
+        end_local = company_tz.localize(datetime.combine(date_to, time.max))
         start_utc = start_local.astimezone(pytz.utc)
         end_utc = end_local.astimezone(pytz.utc)
         start_utc_str = fields.Datetime.to_string(start_utc)
@@ -231,7 +251,10 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
         # Usar fecha de baja real para evitar que cambios administrativos (write_date)
         # cuenten al empleado como baja del dia actual.
         if 'departure_date' in Employee._fields:
-            inactive_domain.append(('departure_date', '=', target_date))
+            inactive_domain.extend([
+                ('departure_date', '>=', date_from),
+                ('departure_date', '<=', date_to),
+            ])
         else:
             inactive_domain.extend([
                 ('write_date', '>=', start_utc_str),
@@ -312,19 +335,20 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
                 'pct': pct,
             }
 
-        week_start_date = target_date - timedelta(days=6)
-        month_start_date = target_date.replace(day=1)
-        year_start_date = target_date.replace(month=1, day=1)
+        week_start_date = date_to - timedelta(days=6)
+        month_start_date = date_to.replace(day=1)
+        year_start_date = date_to.replace(month=1, day=1)
 
         rotations = {
-            'weekly': _rotation_pct(week_start_date, target_date),
-            'monthly': _rotation_pct(month_start_date, target_date),
-            'yearly': _rotation_pct(year_start_date, target_date),
+            'weekly': _rotation_pct(week_start_date, date_to),
+            'monthly': _rotation_pct(month_start_date, date_to),
+            'yearly': _rotation_pct(year_start_date, date_to),
         }
 
         return {
             'company_name': self.company_id.display_name,
-            'target_date': target_date,
+            'date_from': date_from,
+            'date_to': date_to,
             'categories': categories,
             'rows': rows,
             'total_absences': total_absences,
@@ -389,7 +413,7 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
 <head>
 <meta charset=\"UTF-8\">
 <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
-<title>Ausentismo {_html.escape(str(data['target_date']))}</title>
+    <title>Ausentismo {_html.escape(self._fmt_date_range(data['date_from'], data['date_to']))}</title>
 <style>
 :root {{
   --bg: #f3f4f6;
@@ -436,7 +460,7 @@ tr:hover td {{ background: #f8fbff; }}
 <div class=\"wrapper\">
   <section class=\"header\">
     <h1>Ausentismo</h1>
-    <p>Empresa: {_html.escape(data['company_name'])} | Fecha: {_html.escape(self._fmt_date(data['target_date']))}</p>
+        <p>Empresa: {_html.escape(data['company_name'])} | Periodo: {_html.escape(self._fmt_date_range(data['date_from'], data['date_to']))}</p>
   </section>
 
   <section class=\"kpi-grid\">

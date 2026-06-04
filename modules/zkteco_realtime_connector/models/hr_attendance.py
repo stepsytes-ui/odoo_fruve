@@ -939,7 +939,7 @@ class HrAttendance(models.Model):
         recipients_tuple_list = [(4, pid) for pid in recipient_partner_ids]
 
         # Construir la URL y el cuerpo (body, url, subject, etc.)
-        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        base_url = employee_company.get_attendance_reports_base_url()
         employee_url = f"{base_url}/web#id={employee.id}&view_type=form&model=hr.employee"
         subject = _("🚨 ALERTA: Cuarta Falta de Asistencia - %s") % employee.name
         body = _("""

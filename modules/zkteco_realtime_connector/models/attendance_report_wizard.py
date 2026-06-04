@@ -87,7 +87,7 @@ class AttendanceReportWizard(models.TransientModel):
         }
 
     def _build_late_weekly_form_url(self, report_id):
-        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        base_url = self.company_id.get_attendance_reports_base_url()
         action = self.env.ref('zkteco_realtime_connector.action_attendance_late_weekly_report', raise_if_not_found=False)
         action_part = f"&action={action.id}" if action else ""
         return f"{base_url}/web#id={report_id}&model=attendance.late.weekly.report&view_type=form{action_part}"

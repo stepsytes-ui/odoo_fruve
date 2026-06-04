@@ -10,6 +10,7 @@
                     <group>
                         <group>
                             <field name="timezone" required="1" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="attendance_reports_base_url" placeholder="http://192.168.1.239:8069"/>
                         </group>
                     </group>
                     <field name="device_ids" nolabel="1">

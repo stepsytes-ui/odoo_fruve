@@ -413,10 +413,11 @@ class AttendanceReportWizard(models.TransientModel):
   .s0 {{ position: sticky; left: 0;   z-index: 5; background: inherit; min-width: 75px;  max-width: 75px; }}
   .s1 {{ position: sticky; left: 75px; z-index: 5; background: inherit; min-width: 170px; max-width: 170px; }}
   .s2 {{ position: sticky; left: 245px; z-index: 5; background: inherit; min-width: 110px; max-width: 110px; }}
-    .s3 {{ position: sticky; left: 355px; z-index: 5; background: inherit; min-width: 95px; max-width: 95px; text-align: center; }}
+    .s3 {{ position: sticky; left: 355px; z-index: 5; background: inherit; min-width: 95px; max-width: 95px; text-align: center; box-shadow: 2px 0 0 0 #ccc; }}
     .obs-col {{ min-width: 170px; max-width: 260px; }}
     th.s0, th.s1, th.s2, th.s3 {{ z-index: 20; }}
     th.s0, th.s1, th.s2, th.s3 {{ background-color: #4472C4 !important; color: #FFFFFF !important; }}
+    th.s3 {{ box-shadow: 2px 0 0 0 #2a53a0 !important; }}
   .day-cell {{ min-width: 95px; max-width: 130px; }}
     .neto-link {{ color: #1b5fbd; font-weight: 700; text-decoration: none; }}
     .neto-link:hover {{ text-decoration: underline; }}
@@ -446,6 +447,30 @@ class AttendanceReportWizard(models.TransientModel):
     tr:hover td * {{ color: #000 !important; }}
     td:hover {{ background-color: #dce8ff !important; color: #000 !important; }}
     td:hover * {{ color: #000 !important; }}
+    .col-hidden {{ display: none !important; }}
+    .col-menu {{
+        position: fixed;
+        z-index: 500;
+        min-width: 230px;
+        background: #fff;
+        border: 1px solid #cfd5e3;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+        border-radius: 6px;
+        padding: 6px;
+        display: none;
+    }}
+    .col-menu button {{
+        width: 100%;
+        border: none;
+        background: transparent;
+        text-align: left;
+        padding: 8px 10px;
+        font-size: 12px;
+        border-radius: 4px;
+        cursor: pointer;
+    }}
+    .col-menu button:hover {{ background: #eef3ff; }}
+    .col-menu .sep {{ border-top: 1px solid #e2e7f0; margin: 6px 0; }}
 </style>
 </head>
 <body>
@@ -467,23 +492,23 @@ class AttendanceReportWizard(models.TransientModel):
 <div class="table-wrap">
 <table id="attendance-preview-table">
 <thead><tr>
-  <th class="s0">No. Emp.</th>
-  <th class="s1">Nombre</th>
-  <th class="s2">Turno</th>
+    <th class="s0" data-hideable="1" data-col-label="No. Emp.">No. Emp.</th>
+    <th class="s1" data-hideable="1" data-col-label="Nombre">Nombre</th>
+    <th class="s2" data-hideable="1" data-col-label="Turno">Turno</th>
 ''')
 
         if show_neto_total:
-            parts.append('  <th class="s3">Neto Total</th>\n')
+                        parts.append('  <th class="s3" data-hideable="1" data-col-label="Neto Total">Neto Total</th>\n')
 
         for date_obj in date_list:
             day_name = day_names[date_obj.weekday()]
             parts.append(
-                f'  <th class="day-cell">{esc(day_name)}<br>'
+                f'  <th class="day-cell" data-hideable="1" data-col-label="{esc(day_name)} {date_obj.strftime("%d/%m")}">{esc(day_name)}<br>'
                 f'<span style="font-weight:normal;font-size:10px">{date_obj.strftime("%d/%m")}</span></th>\n'
             )
 
         if show_neto_total:
-            parts.append('  <th class="obs-col">Observaciones</th>\n')
+            parts.append('  <th class="obs-col" data-hideable="1" data-col-label="Observaciones">Observaciones</th>\n')
 
         parts.append('</tr></thead>\n<tbody>\n')
 
@@ -531,6 +556,142 @@ class AttendanceReportWizard(models.TransientModel):
 <script>
 (() => {{
     const table = document.getElementById('attendance-preview-table');
+    const hiddenColumns = new Map();
+    let activeCell = null;
+
+    const menu = document.createElement('div');
+    menu.className = 'col-menu';
+    menu.id = 'column-context-menu';
+    document.body.appendChild(menu);
+    let contextColumnIndex = -1;
+
+    function isCellVisible(cell) {{
+        return !!cell && !cell.classList.contains('col-hidden');
+    }}
+
+    function getBodyRows() {{
+        return table ? Array.from(table.querySelectorAll('tbody tr')) : [];
+    }}
+
+    function getColumnLabel(index) {{
+        if (!table) return '';
+        const th = table.querySelectorAll('thead th')[index];
+        if (!th) return `Columna ${{index + 1}}`;
+        return th.dataset.colLabel || th.textContent.trim().replace(/\s+/g, ' ') || `Columna ${{index + 1}}`;
+    }}
+
+    function hideMenu() {{
+        menu.style.display = 'none';
+    }}
+
+    function renderMenu() {{
+        const actions = [];
+        const currentLabel = getColumnLabel(contextColumnIndex);
+        actions.push(
+            `<button type="button" data-action="hide-current">Ocultar columna: ${{currentLabel}}</button>`
+        );
+
+        if (hiddenColumns.size) {{
+            actions.push('<div class="sep"></div>');
+            actions.push('<button type="button" data-action="show-all">Mostrar todas</button>');
+            hiddenColumns.forEach((label, index) => {{
+                actions.push(
+                    `<button type="button" data-action="show-one" data-index="${{index}}">Mostrar: ${{label}}</button>`
+                );
+            }});
+        }}
+
+        menu.innerHTML = actions.join('');
+    }}
+
+    function setColumnHidden(index, hidden) {{
+        if (!table || index < 0) return;
+        const rows = table.querySelectorAll('tr');
+        rows.forEach((row) => {{
+            const cell = row.children[index];
+            if (cell) cell.classList.toggle('col-hidden', hidden);
+        }});
+
+        if (hidden) {{
+            hiddenColumns.set(index, getColumnLabel(index));
+            if (activeCell && activeCell.cellIndex === index) {{
+                clearCrosshair();
+                activeCell = null;
+            }}
+        }} else {{
+            hiddenColumns.delete(index);
+        }}
+
+        updateStickyOffsets();
+    }}
+
+    function updateStickyOffsets() {{
+        if (!table) return;
+
+        const stickyClasses = ['s0', 's1', 's2', 's3'];
+        const stickyHeaders = Array.from(
+            table.querySelectorAll('thead th.s0, thead th.s1, thead th.s2, thead th.s3')
+        );
+        let left = 0;
+        let lastVisibleIndex = -1;
+
+        stickyHeaders.forEach((headerCell) => {{
+            const isHidden = headerCell.classList.contains('col-hidden');
+            if (!isHidden) lastVisibleIndex = headerCell.cellIndex;
+        }});
+
+        stickyHeaders.forEach((headerCell) => {{
+            const colIndex = headerCell.cellIndex;
+            const isHidden = headerCell.classList.contains('col-hidden');
+            const isLastSticky = colIndex === lastVisibleIndex;
+
+            table.querySelectorAll('tr').forEach((row) => {{
+                const cell = row.children[colIndex];
+                if (!cell) return;
+                if (!stickyClasses.some((cls) => cell.classList.contains(cls))) return;
+                cell.style.left = isHidden ? '' : `${{left}}px`;
+                const isHeader = cell.tagName === 'TH';
+                if (isLastSticky && !isHidden) {{
+                    cell.style.boxShadow = isHeader ? '2px 0 0 0 #2a53a0' : '2px 0 0 0 #ccc';
+                }} else {{
+                    cell.style.boxShadow = '';
+                }}
+            }});
+
+            if (!isHidden) {{
+                left += headerCell.offsetWidth;
+            }}
+        }});
+    }}
+
+    function focusCell(cell) {{
+        if (!cell || !isCellVisible(cell)) return;
+        applyCrosshair(cell);
+        activeCell = cell;
+        cell.focus({{ preventScroll: true }});
+    }}
+
+    function findNearestVisibleCell(row, preferredIndex) {{
+        if (!row) return null;
+        if (isCellVisible(row.children[preferredIndex])) return row.children[preferredIndex];
+        for (let distance = 1; distance < row.children.length; distance += 1) {{
+            const left = preferredIndex - distance;
+            const right = preferredIndex + distance;
+            if (left >= 0 && isCellVisible(row.children[left])) return row.children[left];
+            if (right < row.children.length && isCellVisible(row.children[right])) return row.children[right];
+        }}
+        return null;
+    }}
+
+    function findHorizontalCell(row, fromIndex, direction) {{
+        if (!row) return null;
+        let index = fromIndex + direction;
+        while (index >= 0 && index < row.children.length) {{
+            if (isCellVisible(row.children[index])) return row.children[index];
+            index += direction;
+        }}
+        return null;
+    }}
 
     function clearCrosshair() {{
         if (!table) return;
@@ -554,18 +715,94 @@ class AttendanceReportWizard(models.TransientModel):
         rowCells.forEach((td) => td.classList.add('is-active-row'));
         table.querySelectorAll('tbody tr').forEach((tr) => {{
             const td = tr.children[colIndex];
-            if (td) td.classList.add('is-active-col');
+            if (isCellVisible(td)) td.classList.add('is-active-col');
         }});
         cell.classList.add('is-active-cell');
     }}
 
     if (table) {{
+        updateStickyOffsets();
+
+        table.querySelectorAll('tbody td').forEach((td) => {{
+            td.tabIndex = -1;
+        }});
+
         table.addEventListener('click', (ev) => {{
             const cell = ev.target.closest('td');
             if (!cell || !table.contains(cell)) return;
-            applyCrosshair(cell);
+            if (!isCellVisible(cell)) return;
+            focusCell(cell);
+        }});
+
+        table.addEventListener('contextmenu', (ev) => {{
+            const th = ev.target.closest('thead th[data-hideable="1"]');
+            if (!th || !table.contains(th)) return;
+            ev.preventDefault();
+
+            contextColumnIndex = th.cellIndex;
+            renderMenu();
+            menu.style.left = `${{ev.clientX}}px`;
+            menu.style.top = `${{ev.clientY}}px`;
+            menu.style.display = 'block';
+        }});
+
+        table.addEventListener('keydown', (ev) => {{
+            if (!activeCell) return;
+
+            const key = ev.key;
+            if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) return;
+            ev.preventDefault();
+
+            const rows = getBodyRows();
+            const row = activeCell.parentElement;
+            const rowIndex = rows.indexOf(row);
+            const colIndex = activeCell.cellIndex;
+            let target = null;
+
+            if (key === 'ArrowLeft') {{
+                target = findHorizontalCell(row, colIndex, -1);
+            }}
+            if (key === 'ArrowRight') {{
+                target = findHorizontalCell(row, colIndex, 1);
+            }}
+            if (key === 'ArrowUp' || key === 'ArrowDown') {{
+                const step = key === 'ArrowUp' ? -1 : 1;
+                let nextIndex = rowIndex + step;
+                while (nextIndex >= 0 && nextIndex < rows.length) {{
+                    target = findNearestVisibleCell(rows[nextIndex], colIndex);
+                    if (target) break;
+                    nextIndex += step;
+                }}
+            }}
+
+            if (target) focusCell(target);
         }});
     }}
+
+    menu.addEventListener('click', (ev) => {{
+        const button = ev.target.closest('button[data-action]');
+        if (!button) return;
+
+        const action = button.dataset.action;
+        if (action === 'hide-current') {{
+            setColumnHidden(contextColumnIndex, true);
+        }}
+        if (action === 'show-all') {{
+            Array.from(hiddenColumns.keys()).forEach((index) => setColumnHidden(index, false));
+        }}
+        if (action === 'show-one') {{
+            const index = parseInt(button.dataset.index || '-1', 10);
+            setColumnHidden(index, false);
+        }}
+        hideMenu();
+    }});
+
+    document.addEventListener('click', (ev) => {{
+        if (!menu.contains(ev.target)) hideMenu();
+    }});
+
+    document.addEventListener('scroll', hideMenu, true);
+    window.addEventListener('resize', hideMenu);
 
     async function saveObservation(payload) {{
         const response = await fetch('/attendance/report/save_weekly_observation', {{

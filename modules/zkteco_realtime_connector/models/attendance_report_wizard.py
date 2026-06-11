@@ -556,6 +556,7 @@ class AttendanceReportWizard(models.TransientModel):
 <script>
 (() => {{
     const table = document.getElementById('attendance-preview-table');
+    const tableWrap = table ? table.closest('.table-wrap') : null;
     const hiddenColumns = new Map();
     let activeCell = null;
 
@@ -669,6 +670,27 @@ class AttendanceReportWizard(models.TransientModel):
         applyCrosshair(cell);
         activeCell = cell;
         cell.focus({{ preventScroll: true }});
+        ensureCellInView(cell);
+    }}
+
+    function ensureCellInView(cell) {{
+        if (!cell || !tableWrap) return;
+
+        const pad = 12;
+        const wrapRect = tableWrap.getBoundingClientRect();
+        const cellRect = cell.getBoundingClientRect();
+
+        if (cellRect.left < wrapRect.left + pad) {{
+            tableWrap.scrollLeft -= (wrapRect.left + pad - cellRect.left);
+        }} else if (cellRect.right > wrapRect.right - pad) {{
+            tableWrap.scrollLeft += (cellRect.right - (wrapRect.right - pad));
+        }}
+
+        if (cellRect.top < wrapRect.top + pad) {{
+            tableWrap.scrollTop -= (wrapRect.top + pad - cellRect.top);
+        }} else if (cellRect.bottom > wrapRect.bottom - pad) {{
+            tableWrap.scrollTop += (cellRect.bottom - (wrapRect.bottom - pad));
+        }}
     }}
 
     function findNearestVisibleCell(row, preferredIndex) {{

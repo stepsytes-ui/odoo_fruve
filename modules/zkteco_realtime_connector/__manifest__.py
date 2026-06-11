@@ -14,7 +14,7 @@ Modulo para integración de ZKTeco en odoo
     'version': '18.0.0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base','hr','hr_attendance', 'web','contacts','mail'],
+    'depends': ['base','hr','hr_attendance', 'web','contacts','mail','auth_signup'],
 
     # always loaded
     'data': [

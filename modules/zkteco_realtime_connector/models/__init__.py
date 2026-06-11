@@ -14,3 +14,4 @@ from . import attendance_late_weekly_adjustment
 from . import attendance_late_weekly_report
 from . import hr_leave
 from . import hr_leave_report_calendar
+from . import res_partner

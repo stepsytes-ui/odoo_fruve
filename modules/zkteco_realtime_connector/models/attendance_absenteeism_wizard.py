@@ -318,8 +318,6 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
             ('company_id', '=', self.company_id.id),
             ('employee_status', '=', 'inactive'),
         ]
-        if 'finiquitado' in Employee._fields:
-            inactive_domain.append(('finiquitado', '=', True))
 
         # Usar fecha de baja real para evitar que cambios administrativos (write_date)
         # cuenten al empleado como baja del dia actual.
@@ -338,6 +336,9 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
         for employee in inactive_employees:
             departure_value = ''
             event_date = ''
+            absence_label = 'Baja'
+            if 'finiquitado' in Employee._fields and not employee.finiquitado:
+                absence_label = 'En proceso de finiquito'
             if 'departure_date' in Employee._fields and employee.departure_date:
                 departure_value = fields.Date.to_string(employee.departure_date)
                 event_date = self._fmt_date(employee.departure_date)
@@ -349,7 +350,7 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
             _set_category(
                 'bajas',
                 employee,
-                'Baja',
+                absence_label,
                 regreso='N/A',
                 occurrence_key=f'baja:{departure_value or employee.id}',
                 event_date=event_date,
@@ -418,8 +419,6 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
                 ('company_id', '=', self.company_id.id),
                 ('employee_status', '=', 'inactive'),
             ]
-            if 'finiquitado' in Employee._fields:
-                rotation_domain.append(('finiquitado', '=', True))
 
             if 'departure_date' in Employee._fields:
                 rotation_domain.extend([

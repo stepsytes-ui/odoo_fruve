@@ -1,19 +1,63 @@
 import re
+import math
 
 from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 from odoo.osv import expression
+from odoo.tools import float_is_zero
+
+
+class ComprasProductCategory(models.Model):
+    _name = 'compras.product.category'
+    _description = 'Categoria de Consolidado'
+    _order = 'name'
+
+    name = fields.Char(string='Categoria', required=True)
+
+    _sql_constraints = [
+        ('compras_product_category_name_unique', 'unique(name)', 'La categoria ya existe.'),
+    ]
+
+
+class ComprasProductSubcategory(models.Model):
+    _name = 'compras.product.subcategory'
+    _description = 'Subcategoria de Consolidado'
+    _order = 'category_id, name'
+
+    name = fields.Char(string='Subcategoria', required=True)
+    category_id = fields.Many2one('compras.product.category', string='Categoria', required=True, ondelete='cascade')
+
+    _sql_constraints = [
+        (
+            'compras_product_subcategory_unique',
+            'unique(name, category_id)',
+            'La subcategoria ya existe en esta categoria.',
+        ),
+    ]
+
+
+class ComprasRepairLine(models.Model):
+    _name = 'compras.repair.line'
+    _description = 'Equipo - Linea a Reparar'
+    _order = 'name'
+
+    name = fields.Char(string='Equipo - Linea a Reparar', required=True)
+
+    _sql_constraints = [
+        ('compras_repair_line_name_unique', 'unique(name)', 'La linea a reparar ya existe.'),
+    ]
 
 
 class ComprasProduct(models.Model):
     _name = 'compras.product'
-    _description = 'Producto de Almacén'
+    _description = 'Consolidado de Productos'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name'
     _sql_constraints = [
         ('compras_product_code_unique', 'unique(code)', 'El código del producto debe ser único.'),
     ]
 
-    name = fields.Char(string='Producto', required=True, tracking=True)
+    name = fields.Char(string='Descripcion', required=True, tracking=True)
     code = fields.Char(
         string='Código',
         required=True,
@@ -21,6 +65,15 @@ class ComprasProduct(models.Model):
         tracking=True,
         default=lambda self: _('Nuevo'),
     )
+    serial = fields.Char(string='Serial')
+    manufacturer = fields.Char(string='Fabricante')
+    category_id = fields.Many2one('compras.product.category', string='Categoria')
+    subcategory_id = fields.Many2one(
+        'compras.product.subcategory',
+        string='Subcategoria',
+        domain="[('category_id', '=', category_id)]",
+    )
+    repair_line_id = fields.Many2one('compras.repair.line', string='Equipo - Linea a Reparar')
     barcode_preview_html = fields.Html(
         string='Código de Barras',
         compute='_compute_barcode_preview_html',
@@ -35,15 +88,79 @@ class ComprasProduct(models.Model):
         tracking=True,
     )
     unit_id = fields.Many2one('uom.uom', string='Unidad', required=True)
-    description = fields.Text(string='Descripción')
+    description = fields.Text(string='Notas')
     brand_id = fields.Many2one('product.brand', string='Marca')
     model_name = fields.Char(string='Modelo')
+    qty_process = fields.Float(string='Qty - Proceso', digits=(16, 2))
+    total_equipment = fields.Float(string='Total Equipos', digits=(16, 2))
+    total_qty_process = fields.Float(
+        string='Total Qty Proceso',
+        compute='_compute_total_qty_process',
+        store=True,
+        digits=(16, 2),
+    )
+    frequency_use_days = fields.Float(string='Frecuencia Uso Dias', digits=(16, 2))
+    lead_time_days = fields.Float(string='Tiempo de Entrega (Dias)', digits=(16, 2))
+    purchase_type = fields.Selection(
+        [
+            ('local', 'Local'),
+            ('internacional', 'Internacional'),
+        ],
+        string='Tipo de Compra',
+        default='local',
+        required=True,
+    )
     vendor_id = fields.Many2one(
         'res.partner',
         string='Proveedor Principal',
         domain=[('supplier_rank', '>', 0)],
     )
     unit_price = fields.Float(string='Precio Unitario', digits=(16, 2))
+    currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda',
+        default=lambda self: self.env.company.currency_id,
+        required=True,
+    )
+    total_cost = fields.Float(
+        string='Costo Total',
+        compute='_compute_total_cost',
+        store=True,
+        digits=(16, 2),
+    )
+    coverage_days = fields.Float(
+        string='Cobertura (Dias)',
+        compute='_compute_planning_metrics',
+        store=True,
+        digits=(16, 2),
+    )
+    min_qty_manual = fields.Boolean(string='MIN Manual', default=False, copy=False)
+    min_qty_manual_value = fields.Float(string='Valor MIN Manual', digits=(16, 0), copy=False)
+    min_qty = fields.Float(
+        string='MIN',
+        compute='_compute_planning_metrics',
+        inverse='_inverse_min_qty',
+        store=True,
+        digits=(16, 0),
+    )
+    reorder_point = fields.Float(
+        string='Punto Reorden',
+        compute='_compute_planning_metrics',
+        store=True,
+        digits=(16, 0),
+    )
+    max_qty = fields.Float(
+        string='MAX',
+        compute='_compute_planning_metrics',
+        store=True,
+        digits=(16, 0),
+    )
+    monthly_budget = fields.Float(
+        string='Presupuesto Mensual',
+        compute='_compute_monthly_budget',
+        store=True,
+        digits=(16, 2),
+    )
     tax_ids = fields.Many2many(
         'account.tax',
         'compras_product_tax_rel',
@@ -58,9 +175,93 @@ class ComprasProduct(models.Model):
     )
     qty_in = fields.Float(string='Entradas', compute='_compute_stock_quantities', store=True)
     qty_out = fields.Float(string='Salidas', compute='_compute_stock_quantities', store=True)
-    qty_on_hand = fields.Float(string='Existencia Actual', compute='_compute_stock_quantities', store=True)
+    qty_on_hand = fields.Float(
+        string='Inventario',
+        compute='_compute_stock_quantities',
+        inverse='_inverse_qty_on_hand',
+        store=True,
+    )
     last_entry_date = fields.Datetime(string='Última Entrada', compute='_compute_last_dates', store=True)
     last_exit_date = fields.Datetime(string='Última Salida', compute='_compute_last_dates', store=True)
+
+    @api.onchange('category_id')
+    def _onchange_category_id(self):
+        if self.subcategory_id and self.subcategory_id.category_id != self.category_id:
+            self.subcategory_id = False
+
+    @api.constrains('qty_process', 'total_equipment', 'frequency_use_days', 'lead_time_days')
+    def _check_positive_numbers(self):
+        for product in self:
+            if product.qty_process < 0 or product.total_equipment < 0:
+                raise ValidationError(_('Qty - Proceso y Total Equipos no pueden ser negativos.'))
+            if product.frequency_use_days < 0 or product.lead_time_days < 0:
+                raise ValidationError(_('Frecuencia de uso y tiempo de entrega no pueden ser negativos.'))
+
+    @api.depends('qty_process', 'total_equipment')
+    def _compute_total_qty_process(self):
+        for product in self:
+            product.total_qty_process = product.total_equipment * product.qty_process
+
+    @api.depends('unit_price', 'qty_on_hand')
+    def _compute_total_cost(self):
+        for product in self:
+            product.total_cost = product.unit_price * product.qty_on_hand
+
+    def _inverse_min_qty(self):
+        for product in self:
+            product.min_qty_manual = True
+            product.min_qty_manual_value = product.min_qty
+            max_increment = 0.0
+            if product.total_qty_process > 0 and product.frequency_use_days > 0:
+                daily_demand = product.total_qty_process / product.frequency_use_days
+                max_increment = math.ceil(daily_demand * product.lead_time_days)
+            if max_increment == 0:
+                max_increment = 1
+            product.reorder_point = product.min_qty
+            product.max_qty = product.reorder_point + max_increment
+
+    @api.onchange('min_qty')
+    def _onchange_min_qty(self):
+        for product in self:
+            if product.min_qty is False:
+                continue
+            product.min_qty_manual = True
+            product.min_qty_manual_value = product.min_qty
+            max_increment = 0.0
+            if product.total_qty_process > 0 and product.frequency_use_days > 0:
+                daily_demand = product.total_qty_process / product.frequency_use_days
+                max_increment = math.ceil(daily_demand * product.lead_time_days)
+            if max_increment == 0:
+                max_increment = 1
+            product.reorder_point = product.min_qty
+            product.max_qty = product.reorder_point + max_increment
+
+    @api.depends('qty_on_hand', 'total_qty_process', 'frequency_use_days', 'lead_time_days', 'min_qty_manual', 'min_qty_manual_value')
+    def _compute_planning_metrics(self):
+        for product in self:
+            calculated_min = 0.0
+            max_increment = 0.0
+            if product.total_qty_process > 0 and product.frequency_use_days > 0:
+                daily_demand = product.total_qty_process / product.frequency_use_days
+                product.coverage_days = (product.qty_on_hand / product.total_qty_process) * product.frequency_use_days
+                calculated_min = math.ceil(daily_demand * (product.lead_time_days + 4))
+                max_increment = math.ceil(daily_demand * product.lead_time_days)
+            else:
+                product.coverage_days = 0.0
+
+            product.min_qty = product.min_qty_manual_value if product.min_qty_manual else calculated_min
+            product.reorder_point = product.min_qty
+            if product.min_qty_manual and max_increment == 0:
+                max_increment = 1
+            product.max_qty = product.reorder_point + max_increment
+
+    @api.depends('total_qty_process', 'frequency_use_days', 'unit_price')
+    def _compute_monthly_budget(self):
+        for product in self:
+            if product.frequency_use_days > 0:
+                product.monthly_budget = ((product.total_qty_process / product.frequency_use_days) * 30.0) * product.unit_price
+            else:
+                product.monthly_budget = 0.0
 
     @api.depends('move_ids.state', 'move_ids.move_type', 'move_ids.quantity_done')
     def _compute_stock_quantities(self):
@@ -71,6 +272,39 @@ class ComprasProduct(models.Model):
             product.qty_in = qty_in
             product.qty_out = qty_out
             product.qty_on_hand = qty_in - qty_out
+
+    def _inverse_qty_on_hand(self):
+        move_model = self.env['compras.inventory.move']
+        for product in self:
+            done_moves = product.move_ids.filtered(lambda move: move.state == 'done')
+            current_qty = (
+                sum(done_moves.filtered(lambda move: move.move_type == 'entrada').mapped('quantity_done'))
+                - sum(done_moves.filtered(lambda move: move.move_type == 'salida').mapped('quantity_done'))
+            )
+            target_qty = product.qty_on_hand
+            delta = target_qty - current_qty
+            rounding = product.unit_id.rounding if product.unit_id else 0.01
+
+            if float_is_zero(delta, precision_rounding=rounding):
+                continue
+
+            if delta < 0:
+                raise ValidationError(_(
+                    'No se puede reducir Inventario desde este campo. Usa una salida de almacen para disminuir existencias.'
+                ))
+
+            adjustment_move = move_model.create({
+                'company_id': product.company_id.id,
+                'move_type': 'entrada',
+                'product_id': product.id,
+                'quantity': delta,
+                'quantity_done': delta,
+                'status': 'completo',
+                'receiver_name': _('Inventario inicial'),
+                'destination': _('Ajuste de inventario existente'),
+                'notes': _('Entrada creada automaticamente por ajuste manual de Inventario en Consolidado.'),
+            })
+            adjustment_move.action_confirm()
 
     @api.depends('move_ids.state', 'move_ids.move_type', 'move_ids.movement_date')
     def _compute_last_dates(self):

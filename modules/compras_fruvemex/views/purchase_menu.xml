@@ -53,7 +53,7 @@
 
         <menuitem
             id="menu_almacen_productos"
-            name="Productos"
+            name="Consolidado"
             parent="menu_almacen_root"
             action="compras_fruvemex.compras_product_action"
             sequence="30"

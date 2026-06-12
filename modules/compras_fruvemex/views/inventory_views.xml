@@ -4,15 +4,32 @@
             <field name="name">compras.product.list</field>
             <field name="model">compras.product</field>
             <field name="arch" type="xml">
-                <list string="Productos de Almacén">
-                    <field name="code"/>
-                    <field name="name"/>
-                    <field name="brand_id"/>
-                    <field name="model_name"/>
-                    <field name="unit_id"/>
-                    <field name="vendor_id"/>
-                    <field name="unit_price"/>
-                    <field name="qty_on_hand" sum="Total"/>
+                <list string="Consolidado">
+                    <field name="code" optional="show"/>
+                    <field name="name" optional="show"/>
+                    <field name="model_name" optional="show"/>
+                    <field name="serial" optional="show"/>
+                    <field name="manufacturer" optional="show"/>
+                    <field name="category_id" optional="show"/>
+                    <field name="subcategory_id" optional="show"/>
+                    <field name="repair_line_id" optional="show"/>
+                    <field name="qty_process" optional="show"/>
+                    <field name="total_equipment" optional="show"/>
+                    <field name="total_qty_process" optional="show"/>
+                    <field name="frequency_use_days" optional="show"/>
+                    <field name="unit_id" optional="show"/>
+                    <field name="unit_price" optional="show"/>
+                    <field name="total_cost" optional="show"/>
+                    <field name="currency_id" optional="show"/>
+                    <field name="qty_on_hand" optional="show"/>
+                    <field name="coverage_days" optional="show"/>
+                    <field name="min_qty" optional="show"/>
+                    <field name="max_qty" optional="show"/>
+                    <field name="reorder_point" optional="show"/>
+                    <field name="lead_time_days" optional="show"/>
+                    <field name="purchase_type" optional="show"/>
+                    <field name="vendor_id" optional="show"/>
+                    <field name="monthly_budget" sum="Total" optional="show"/>
                 </list>
             </field>
         </record>
@@ -21,7 +38,7 @@
             <field name="name">compras.product.form</field>
             <field name="model">compras.product</field>
             <field name="arch" type="xml">
-                <form string="Producto de Almacén">
+                <form string="Consolidado">
                     <sheet>
                         <div class="oe_title">
                             <h1>
@@ -32,21 +49,38 @@
                             </h2>
                         </div>
                         <group>
-                            <group string="Información General">
+                            <group string="Informacion General">
                                 <field name="company_id"/>
                                 <field name="code" placeholder="Escanee el codigo aqui"/>
-                                <field name="unit_id"/>
-                                <field name="brand_id"/>
+                                <field name="serial"/>
+                                <field name="manufacturer"/>
+                                <field name="category_id"/>
+                                <field name="subcategory_id"/>
+                                <field name="repair_line_id"/>
                                 <field name="model_name"/>
+                                <field name="unit_id"/>
+                                <field name="qty_process"/>
+                                <field name="total_equipment"/>
+                                <field name="total_qty_process" readonly="1"/>
+                                <field name="frequency_use_days"/>
+                                <field name="lead_time_days"/>
+                                <field name="purchase_type"/>
                                 <field name="vendor_id"/>
+                                <field name="currency_id"/>
                                 <field name="unit_price"/>
+                                <field name="total_cost" readonly="1"/>
+                                <field name="coverage_days" readonly="1"/>
+                                <field name="min_qty"/>
+                                <field name="reorder_point" readonly="1"/>
+                                <field name="max_qty" readonly="1"/>
+                                <field name="monthly_budget" readonly="1"/>
                                 <field name="tax_ids" widget="many2many_tags"/>
                             </group>
                             <group string="Código de Barras">
                                 <field name="barcode_preview_html" widget="html" nolabel="1" readonly="1"/>
                             </group>
                             <group string="Existencias en Tiempo Real">
-                                <field name="qty_on_hand" readonly="1"/>
+                                <field name="qty_on_hand"/>
                                 <field name="qty_in" readonly="1"/>
                                 <field name="qty_out" readonly="1"/>
                                 <field name="last_entry_date" readonly="1"/>
@@ -54,7 +88,7 @@
                                 <field name="active"/>
                             </group>
                         </group>
-                        <group string="Descripción">
+                        <group string="Notas">
                             <field name="description" nolabel="1"/>
                         </group>
                         <notebook>
@@ -86,14 +120,18 @@
             <field name="name">compras.product.search</field>
             <field name="model">compras.product</field>
             <field name="arch" type="xml">
-                <search string="Buscar Productos">
+                <search string="Buscar Consolidado">
                     <field name="name"/>
                     <field name="code"/>
-                    <field name="brand_id"/>
+                    <field name="serial"/>
+                    <field name="manufacturer"/>
+                    <field name="category_id"/>
+                    <field name="subcategory_id"/>
                     <field name="vendor_id"/>
                     <filter name="con_existencia" string="Con Existencia" domain="[('qty_on_hand', '&gt;', 0)]"/>
                     <group string="Agrupar por" expand="0">
-                        <filter name="group_brand" string="Marca" context="{'group_by': 'brand_id'}"/>
+                        <filter name="group_category" string="Categoria" context="{'group_by': 'category_id'}"/>
+                        <filter name="group_subcategory" string="Subcategoria" context="{'group_by': 'subcategory_id'}"/>
                         <filter name="group_vendor" string="Proveedor" context="{'group_by': 'vendor_id'}"/>
                     </group>
                 </search>
@@ -288,7 +326,7 @@
         </record>
 
         <record id="compras_product_action" model="ir.actions.act_window">
-            <field name="name">Productos de Almacén</field>
+            <field name="name">Consolidado</field>
             <field name="res_model">compras.product</field>
             <field name="view_mode">list,form</field>
         </record>

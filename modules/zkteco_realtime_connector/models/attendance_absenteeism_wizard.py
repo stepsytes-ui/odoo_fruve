@@ -93,6 +93,26 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
 
         return Employee.search_count(domain)
 
+    def _get_active_employee_gender_summary(self):
+        Employee = self.env['hr.employee'].with_context(active_test=False)
+        domain = [('company_id', '=', self.company_id.id)]
+
+        if 'employee_status' in Employee._fields:
+            domain.append(('employee_status', '=', 'active'))
+        else:
+            domain.append(('active', '=', True))
+
+        active_employees = Employee.search(domain)
+        summary = {'male': 0, 'female': 0, 'other': 0, 'unassigned': 0}
+
+        for employee in active_employees:
+            if employee.gender in summary:
+                summary[employee.gender] += 1
+            else:
+                summary['unassigned'] += 1
+
+        return summary
+
     def _get_absenteeism_data(self):
         self.ensure_one()
 
@@ -116,7 +136,9 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
             active_employee_domain.append(('employee_status', '=', 'active'))
         else:
             active_employee_domain.append(('active', '=', True))
-        active_employee_ids = set(Employee.search(active_employee_domain).ids)
+        active_employees = Employee.search(active_employee_domain)
+        active_employee_ids = set(active_employees.ids)
+        gender_summary = self._get_active_employee_gender_summary()
 
         categories = {
             'vacaciones': {'label': 'Vacaciones', 'color': '#8FC5A5', 'count': 0, 'employees': set()},
@@ -480,6 +502,7 @@ class AttendanceAbsenteeismWizard(models.TransientModel):
             'total_employees': total_employees,
             'absence_rate': absence_rate,
             'rotations': rotations,
+            'gender_summary': gender_summary,
         }
 
     def _build_preview_html(self):
@@ -553,12 +576,14 @@ body {{ margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: line
 .header {{ background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: 0 10px 22px rgba(36,52,71,.07); }}
 .header h1 {{ margin: 0; font-size: 24px; }}
 .header p {{ margin: 4px 0 0; color: var(--muted); font-size: 13px; }}
-.kpi-grid {{ margin-top: 14px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }}
+.kpi-grid {{ margin-top: 14px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }}
 .kpi-card {{ background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; box-shadow: 0 8px 18px rgba(36,52,71,.06); }}
 .kpi-main {{ font-size: 28px; font-weight: 700; margin: 0; }}
 .kpi-label {{ color: var(--muted); margin-top: 2px; font-size: 13px; }}
 .rotation-line {{ display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #e5e7eb; font-size: 14px; }}
 .rotation-line:last-child {{ border-bottom: 0; }}
+.gender-line {{ display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px dashed #e5e7eb; font-size: 14px; }}
+.gender-line:last-child {{ border-bottom: 0; }}
 .chart-card {{ margin-top: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; box-shadow: 0 8px 18px rgba(36,52,71,.06); }}
 .chart-layout {{ display: grid; grid-template-columns: 330px 1fr; gap: 14px; align-items: center; }}
 .pie-wrap {{ display: flex; justify-content: center; align-items: center; }}
@@ -588,17 +613,22 @@ tr:hover td {{ background: #f8fbff; }}
         <p>Empresa: {_html.escape(data['company_name'])} | Periodo: {_html.escape(self._fmt_date_range(data['date_from'], data['date_to']))}</p>
   </section>
 
-  <section class=\"kpi-grid\">
-    <div class=\"kpi-card\">
-      <p class=\"kpi-main\">Total Ausencias: {data['total_absences']}/{data['total_employees']}</p>
-      <p class=\"kpi-label\">Ausencia al: {data['absence_rate']:.2f}%</p>
-    </div>
-    <div class=\"kpi-card\">
-      <div class=\"rotation-line\"><span>Rotacion Semanal:</span><strong>{data['rotations']['weekly']['count']} ({data['rotations']['weekly']['pct']:.2f}%)</strong></div>
-      <div class=\"rotation-line\"><span>Rotacion Mensual:</span><strong>{data['rotations']['monthly']['count']} ({data['rotations']['monthly']['pct']:.2f}%)</strong></div>
-      <div class=\"rotation-line\"><span>Rotacion Anual:</span><strong>{data['rotations']['yearly']['count']} ({data['rotations']['yearly']['pct']:.2f}%)</strong></div>
-    </div>
-  </section>
+    <section class=\"kpi-grid\">
+        <div class=\"kpi-card\">
+            <p class=\"kpi-main\">Total Ausencias: {data['total_absences']}/{data['total_employees']}</p>
+            <p class=\"kpi-label\">Ausencia al: {data['absence_rate']:.2f}%</p>
+        </div>
+        <div class=\"kpi-card\">
+            <div class=\"rotation-line\"><span>Rotacion Semanal:</span><strong>{data['rotations']['weekly']['count']} ({data['rotations']['weekly']['pct']:.2f}%)</strong></div>
+            <div class=\"rotation-line\"><span>Rotacion Mensual:</span><strong>{data['rotations']['monthly']['count']} ({data['rotations']['monthly']['pct']:.2f}%)</strong></div>
+            <div class=\"rotation-line\"><span>Rotacion Anual:</span><strong>{data['rotations']['yearly']['count']} ({data['rotations']['yearly']['pct']:.2f}%)</strong></div>
+        </div>
+        <div class=\"kpi-card\">
+            <div class=\"gender-line\"><span>Masculino:</span><strong>{data['gender_summary']['male']}</strong></div>
+            <div class=\"gender-line\"><span>Femenino:</span><strong>{data['gender_summary']['female']}</strong></div>
+            <div class=\"gender-line\"><span>Otro:</span><strong>{data['gender_summary']['other']}</strong></div>
+        </div>
+    </section>
 
   <section class=\"chart-card\">
     <div class=\"chart-layout\">

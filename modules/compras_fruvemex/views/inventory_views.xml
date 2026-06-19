@@ -7,12 +7,16 @@
                 <list string="Consolidado">
                     <field name="code" optional="show"/>
                     <field name="name" optional="show"/>
+                    <field name="location" optional="show"/>
                     <field name="model_name" optional="show"/>
                     <field name="serial" optional="show"/>
                     <field name="manufacturer" optional="show"/>
+                    <field name="classification" optional="show"/>
                     <field name="category_id" optional="show"/>
                     <field name="subcategory_id" optional="show"/>
+                    <field name="subcategory_2" optional="show"/>
                     <field name="repair_line_id" optional="show"/>
+                    <field name="expiration_date" optional="show"/>
                     <field name="qty_process" optional="show"/>
                     <field name="total_equipment" optional="show"/>
                     <field name="total_qty_process" optional="show"/>
@@ -54,10 +58,13 @@
                                 <field name="code" placeholder="Escanee el codigo aqui"/>
                                 <field name="serial"/>
                                 <field name="manufacturer"/>
+                                <field name="classification"/>
                                 <field name="category_id"/>
                                 <field name="subcategory_id"/>
+                                <field name="subcategory_2"/>
                                 <field name="repair_line_id"/>
                                 <field name="model_name"/>
+                                <field name="expiration_date" invisible="not is_chemical_category"/>
                                 <field name="unit_id"/>
                                 <field name="qty_process"/>
                                 <field name="total_equipment"/>
@@ -89,6 +96,7 @@
                             </group>
                         </group>
                         <group string="Notas">
+                            <field name="location"/>
                             <field name="description" nolabel="1"/>
                         </group>
                         <notebook>

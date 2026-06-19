@@ -67,12 +67,17 @@ class ComprasProduct(models.Model):
     )
     serial = fields.Char(string='Serial')
     manufacturer = fields.Char(string='Fabricante')
+    classification = fields.Char(string='Clasificacion')
     category_id = fields.Many2one('compras.product.category', string='Categoria')
     subcategory_id = fields.Many2one(
         'compras.product.subcategory',
         string='Subcategoria',
         domain="[('category_id', '=', category_id)]",
     )
+    subcategory_2 = fields.Char(string='Sub-Categoria 2')
+    location = fields.Char(string='Locacion')
+    expiration_date = fields.Date(string='Fecha de Caducidad')
+    is_chemical_category = fields.Boolean(compute='_compute_is_chemical_category')
     repair_line_id = fields.Many2one('compras.repair.line', string='Equipo - Linea a Reparar')
     barcode_preview_html = fields.Html(
         string='Código de Barras',
@@ -188,6 +193,20 @@ class ComprasProduct(models.Model):
     def _onchange_category_id(self):
         if self.subcategory_id and self.subcategory_id.category_id != self.category_id:
             self.subcategory_id = False
+
+    @api.depends('category_id', 'category_id.name')
+    def _compute_is_chemical_category(self):
+        for product in self:
+            category_name = (product.category_id.name or '').strip().lower()
+            normalized = (
+                category_name
+                .replace('á', 'a')
+                .replace('é', 'e')
+                .replace('í', 'i')
+                .replace('ó', 'o')
+                .replace('ú', 'u')
+            )
+            product.is_chemical_category = normalized.startswith('quimic')
 
     @api.constrains('qty_process', 'total_equipment', 'frequency_use_days', 'lead_time_days')
     def _check_positive_numbers(self):

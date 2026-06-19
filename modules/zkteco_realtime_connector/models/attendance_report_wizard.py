@@ -108,6 +108,7 @@ class AttendanceReportWizard(models.TransientModel):
         processed_companies = 0
 
         for company in companies:
+            company_name = company.display_name or company.name or _('Empresa')
             tz_name = company.timezone or FIXED_DEVICE_TIMEZONE_NAME
             try:
                 company_tz = pytz.timezone(tz_name)
@@ -166,17 +167,20 @@ class AttendanceReportWizard(models.TransientModel):
 
             date_from_txt = week_start.strftime('%d/%m/%Y')
             date_to_txt = week_end.strftime('%d/%m/%Y')
-            subject = _('ASISTENCIA SEMANA %(week)s - %(start)s al %(end)s') % {
+            subject = _('ASISTENCIA SEMANA %(week)s - %(company)s - %(start)s al %(end)s') % {
                 'week': iso_week,
+                'company': company_name,
                 'start': date_from_txt,
                 'end': date_to_txt,
             }
             body = _(
                 '<p>Hola,</p>'
                 '<p>Adjuntamos el reporte de asistencia semanal de Odoo.</p>'
+                '<p>Empresa: <strong>%(company)s</strong>.</p>'
                 '<p>Periodo: <strong>%(start)s</strong> al <strong>%(end)s</strong> (Semana %(week)s).</p>'
                 '<p>Saludos.</p>'
             ) % {
+                'company': company_name,
                 'start': date_from_txt,
                 'end': date_to_txt,
                 'week': iso_week,
@@ -995,7 +999,16 @@ class AttendanceReportWizard(models.TransientModel):
         wb.save(output)
         output.seek(0)
 
-        filename = f'Reporte_Asistencia_{date_from}_{date_to}.xlsx'
+        company_name = (data.get('company') and data['company'].display_name) or 'Empresa'
+        safe_company_name = ''.join(
+            char if (char.isalnum() or char in ('-', '_')) else '_'
+            for char in company_name.strip()
+        )
+        safe_company_name = '_'.join(part for part in safe_company_name.split('_') if part)
+        if not safe_company_name:
+            safe_company_name = 'Empresa'
+
+        filename = f'Reporte_Asistencia_{safe_company_name}_{date_from}_{date_to}.xlsx'
         return output.getvalue(), filename
 
     def _format_hour_from_float(self, hour_value):

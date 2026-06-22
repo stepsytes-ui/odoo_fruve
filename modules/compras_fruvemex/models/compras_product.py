@@ -118,7 +118,7 @@ class ComprasProduct(models.Model):
     vendor_id = fields.Many2one(
         'res.partner',
         string='Proveedor Principal',
-        domain=[('supplier_rank', '>', 0)],
+        domain=['|', ('supplier_rank', '>', 0), ('compras_product_ids', '!=', False)],
     )
     unit_price = fields.Float(string='Precio Unitario', digits=(16, 2))
     currency_id = fields.Many2one(

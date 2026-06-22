@@ -100,7 +100,7 @@ class AttendanceReportWizard(models.TransientModel):
             raise_if_not_found=False,
         )
         if not group:
-            _logger.warning('[WEEKLY ATTENDANCE EMAIL] Grupo de destinatarios no encontrado.')
+            _logger.warning('[WEEKLY ATTENDANCE EMAIL] Grupo de destinatarios no encontrado.')  
             return {'sent': 0, 'companies': 0, 'skipped': 'group_not_found'}
 
         companies = self.env['res.company'].sudo().search([])

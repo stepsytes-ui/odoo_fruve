@@ -8,3 +8,5 @@ from . import purchase_request_line
 from . import purchase_request
 from . import purchase_rejection_wizard
 from . import purchase_receipt_wizard
+from . import compras_product_excel_import_wizard
+from . import res_partner_extension

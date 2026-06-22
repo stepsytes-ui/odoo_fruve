@@ -28,7 +28,7 @@ class PurchaseRequestLine(models.Model):
     vendor_id = fields.Many2one(
         'res.partner',
         string='Proveedor',
-        domain=[('supplier_rank', '>', 0)],
+        domain=['|', ('supplier_rank', '>', 0), ('compras_product_ids', '!=', False)],
     )
     unit_price = fields.Float(string='Precio Unitario', digits=(16, 2))
     tax_ids = fields.Many2many(

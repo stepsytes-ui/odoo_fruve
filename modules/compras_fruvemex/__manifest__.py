@@ -36,6 +36,7 @@ Módulo para gestionar solicitudes de compra con flujo de aprobación:
         'views/purchase_request_views.xml',
         'views/purchase_rejection_wizard.xml',
         'views/purchase_receipt_wizard.xml',
+        'views/compras_product_excel_import_wizard.xml',
         'views/purchase_menu.xml',
     ],
 

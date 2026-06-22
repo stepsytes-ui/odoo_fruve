@@ -95,5 +95,54 @@
             sequence="70"
             groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
         />
+
+        <menuitem
+            id="menu_almacen_tools"
+            name="Herramientas"
+            parent="menu_almacen_root"
+            sequence="80"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
+
+        <record id="compras_supplier_action" model="ir.actions.act_window">
+            <field name="name">Proveedores</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">['|', ('supplier_rank', '&gt;', 0), ('compras_product_ids', '!=', False)]</field>
+            <field name="context">{'default_company_type': 'company', 'default_supplier_rank': 1}</field>
+        </record>
+
+        <record id="compras_uom_action" model="ir.actions.act_window">
+            <field name="name">Unidades de Medida</field>
+            <field name="res_model">uom.uom</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <menuitem
+            id="menu_almacen_import_excel"
+            name="Importar registros desde Excel"
+            parent="menu_almacen_tools"
+            action="compras_fruvemex.compras_product_excel_import_wizard_action"
+            sequence="10"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
+
+        <menuitem
+            id="menu_almacen_tools_suppliers"
+            name="Proveedores"
+            parent="menu_almacen_tools"
+            action="compras_fruvemex.compras_supplier_action"
+            sequence="20"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
+
+        <menuitem
+            id="menu_almacen_tools_uom"
+            name="Unidades de medida"
+            parent="menu_almacen_tools"
+            action="compras_fruvemex.compras_uom_action"
+            sequence="30"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
     </data>
 </odoo>

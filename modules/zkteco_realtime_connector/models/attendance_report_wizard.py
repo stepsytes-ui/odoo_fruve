@@ -577,12 +577,12 @@ class AttendanceReportWizard(models.TransientModel):
     function getBodyRows() {{
         return table ? Array.from(table.querySelectorAll('tbody tr')) : [];
     }}
-
+                     
     function getColumnLabel(index) {{
         if (!table) return '';
         const th = table.querySelectorAll('thead th')[index];
         if (!th) return `Columna ${{index + 1}}`;
-        return th.dataset.colLabel || th.textContent.trim().replace(/\s+/g, ' ') || `Columna ${{index + 1}}`;
+        return th.dataset.colLabel || th.textContent.trim().replace(/\\s+/g, ' ') || `Columna ${{index + 1}}`;
     }}
 
     function hideMenu() {{

@@ -25,6 +25,17 @@
         <field name="implied_ids" eval="[(6, 0, [ref('base.group_user'), ref('security_view_time_off.group_time_off_security')])]"/>
     </record>
 
+    <!-- Regla de registro: Amonestaciones filtradas por empresa del usuario -->
+    <record id="employee_warning_rule_company" model="ir.rule">
+        <field name="name">Amonestaciones: Multi-empresa</field>
+        <field name="model_id" ref="employee_modifications.model_employee_warning"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        <field name="perm_read">1</field>
+        <field name="perm_write">1</field>
+        <field name="perm_create">1</field>
+        <field name="perm_unlink">1</field>
+    </record>
+
     <!-- Regla de registro: Supervisores y Guardias no pueden crear ni eliminar empleados -->
     <record id="hr_employee_rule_supervisor_guardia_no_create_delete" model="ir.rule">
         <field name="name">Empleados: Supervisores/Guardias - No crear/eliminar</field>

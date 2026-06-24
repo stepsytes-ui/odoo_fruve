@@ -139,15 +139,7 @@ class ComprasProduct(models.Model):
         store=True,
         digits=(16, 2),
     )
-    min_qty_manual = fields.Boolean(string='MIN Manual', default=False, copy=False)
-    min_qty_manual_value = fields.Float(string='Valor MIN Manual', digits=(16, 0), copy=False)
-    min_qty = fields.Float(
-        string='MIN',
-        compute='_compute_planning_metrics',
-        inverse='_inverse_min_qty',
-        store=True,
-        digits=(16, 0),
-    )
+    min_qty = fields.Float(string='MIN', digits=(16, 0))
     reorder_point = fields.Float(
         string='Punto Reorden',
         compute='_compute_planning_metrics',
@@ -194,6 +186,16 @@ class ComprasProduct(models.Model):
         if self.subcategory_id and self.subcategory_id.category_id != self.category_id:
             self.subcategory_id = False
 
+    @api.onchange('min_qty', 'total_qty_process', 'frequency_use_days', 'lead_time_days')
+    def _onchange_planning_inputs(self):
+        for product in self:
+            product.reorder_point = product.min_qty or 0.0
+            if product.total_qty_process > 0 and product.frequency_use_days > 0:
+                daily_demand = product.total_qty_process / product.frequency_use_days
+                product.max_qty = product.reorder_point + math.ceil(daily_demand * product.lead_time_days)
+            else:
+                product.max_qty = product.reorder_point
+
     @api.depends('category_id', 'category_id.name')
     def _compute_is_chemical_category(self):
         for product in self:
@@ -226,53 +228,17 @@ class ComprasProduct(models.Model):
         for product in self:
             product.total_cost = product.unit_price * product.qty_on_hand
 
-    def _inverse_min_qty(self):
-        for product in self:
-            product.min_qty_manual = True
-            product.min_qty_manual_value = product.min_qty
-            max_increment = 0.0
-            if product.total_qty_process > 0 and product.frequency_use_days > 0:
-                daily_demand = product.total_qty_process / product.frequency_use_days
-                max_increment = math.ceil(daily_demand * product.lead_time_days)
-            if max_increment == 0:
-                max_increment = 1
-            product.reorder_point = product.min_qty
-            product.max_qty = product.reorder_point + max_increment
-
-    @api.onchange('min_qty')
-    def _onchange_min_qty(self):
-        for product in self:
-            if product.min_qty is False:
-                continue
-            product.min_qty_manual = True
-            product.min_qty_manual_value = product.min_qty
-            max_increment = 0.0
-            if product.total_qty_process > 0 and product.frequency_use_days > 0:
-                daily_demand = product.total_qty_process / product.frequency_use_days
-                max_increment = math.ceil(daily_demand * product.lead_time_days)
-            if max_increment == 0:
-                max_increment = 1
-            product.reorder_point = product.min_qty
-            product.max_qty = product.reorder_point + max_increment
-
-    @api.depends('qty_on_hand', 'total_qty_process', 'frequency_use_days', 'lead_time_days', 'min_qty_manual', 'min_qty_manual_value')
+    @api.depends('min_qty', 'qty_on_hand', 'total_qty_process', 'frequency_use_days', 'lead_time_days')
     def _compute_planning_metrics(self):
         for product in self:
-            calculated_min = 0.0
-            max_increment = 0.0
+            product.reorder_point = product.min_qty or 0.0
             if product.total_qty_process > 0 and product.frequency_use_days > 0:
                 daily_demand = product.total_qty_process / product.frequency_use_days
                 product.coverage_days = (product.qty_on_hand / product.total_qty_process) * product.frequency_use_days
-                calculated_min = math.ceil(daily_demand * (product.lead_time_days + 4))
-                max_increment = math.ceil(daily_demand * product.lead_time_days)
+                product.max_qty = product.reorder_point + math.ceil(daily_demand * product.lead_time_days)
             else:
                 product.coverage_days = 0.0
-
-            product.min_qty = product.min_qty_manual_value if product.min_qty_manual else calculated_min
-            product.reorder_point = product.min_qty
-            if product.min_qty_manual and max_increment == 0:
-                max_increment = 1
-            product.max_qty = product.reorder_point + max_increment
+                product.max_qty = product.reorder_point
 
     @api.depends('total_qty_process', 'frequency_use_days', 'unit_price')
     def _compute_monthly_budget(self):

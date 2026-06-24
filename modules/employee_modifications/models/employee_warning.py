@@ -11,6 +11,7 @@ class EmployeeWarning(models.Model):
     _description = 'Amonestaciones de Empleados'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'warning_date desc'
+    _check_company_auto = True
 
     # Folio auto-incrementable
     name = fields.Char(
@@ -110,6 +111,7 @@ class EmployeeWarning(models.Model):
         store=True,
         readonly=True,
         index=True,
+        check_company=True,
         groups="base.group_multi_company"
     )
 

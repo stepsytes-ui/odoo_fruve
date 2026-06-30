@@ -1,5 +1,6 @@
 
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 
 
 class hr_employee(models.Model):
@@ -120,3 +121,42 @@ class hr_employee(models.Model):
             # Retornamos lo que el componente OWL espera
             return employee.read(['id', 'name', 'attendance_state', 'pin'])[0]
         return False
+
+    def action_open_attendance_history_report(self):
+        """
+        Abre el wizard de reporte de asistencia con el empleado actual y
+        un rango automático desde su primera hasta su última asistencia.
+        """
+        self.ensure_one()
+
+        attendance_domain = [
+            ('employee_id', '=', self.id),
+            ('check_in', '!=', False),
+        ]
+        first_attendance = self.env['hr.attendance'].search(
+            attendance_domain,
+            order='check_in asc',
+            limit=1,
+        )
+        last_attendance = self.env['hr.attendance'].search(
+            attendance_domain,
+            order='check_in desc',
+            limit=1,
+        )
+
+        if not first_attendance or not last_attendance:
+            raise UserError(
+                _('El empleado seleccionado no tiene asistencias registradas.')
+            )
+
+        action = self.env.ref('zkteco_realtime_connector.attendance_report_wizard_action').read()[0]
+        action['context'] = {
+            'default_company_id': self.company_id.id or self.env.company.id,
+            'default_open_from_employee': True,
+            'default_period_mode': 'range',
+            'default_date_from': fields.Datetime.to_datetime(first_attendance.check_in).date(),
+            'default_date_to': fields.Datetime.to_datetime(last_attendance.check_in).date(),
+            'default_employee_id': self.id,
+            'default_show_archived': not self.active,
+        }
+        return action

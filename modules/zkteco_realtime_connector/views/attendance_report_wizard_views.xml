@@ -8,14 +8,17 @@
             <field name="arch" type="xml">
                 <form string="Reporte Personalizado de Asistencia">
                     <group>
+                        <field name="open_from_employee" invisible="1" />
                         <group>
                             <field name="company_id" readonly="1" />
-                            <field name="date_from" />
-                            <field name="date_to" />
+                            <field name="period_mode" widget="radio" invisible="not open_from_employee" />
+                            <field name="date_from" invisible="open_from_employee and period_mode == 'full'" />
+                            <field name="date_to" invisible="open_from_employee and period_mode == 'full'" />
                         </group>
                         <group>
-                            <field name="show_archived" />
+                            <field name="show_archived" invisible="open_from_employee" />
                             <field name="employee_id"
+                                invisible="open_from_employee"
                                 domain="[('company_id', '=', company_id), ('active', '=', False)] if show_archived else [('company_id', '=', company_id)]"
                                 context="{'active_test': False}" />
                         </group>
@@ -35,6 +38,7 @@
             <field name="res_model">attendance.report.wizard</field>
             <field name="view_mode">form</field>
             <field name="target">new</field>
+            <field name="context">{'default_open_from_employee': False, 'default_period_mode': 'range'}</field>
         </record>
     </data>
 </odoo>

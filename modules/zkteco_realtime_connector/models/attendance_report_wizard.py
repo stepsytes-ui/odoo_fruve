@@ -23,6 +23,20 @@ class AttendanceReportWizard(models.TransientModel):
     _name = 'attendance.report.wizard'
     _description = 'Wizard para Generar Reporte de Asistencia Personalizado'
 
+    period_mode = fields.Selection(
+        [
+            ('range', 'Rango de fechas'),
+            ('full', 'Completo (primera a ultima asistencia)'),
+        ],
+        string='Periodo',
+        required=True,
+        default='range',
+    )
+    open_from_employee = fields.Boolean(
+        string='Abierto desde Empleado',
+        default=lambda self: bool(self.env.context.get('default_open_from_employee', False)),
+    )
+
     company_id = fields.Many2one(
         'res.company',
         string='Empresa',
@@ -43,6 +57,75 @@ class AttendanceReportWizard(models.TransientModel):
         default=False,
         help='Activa esta opción para ver la asistencia de empleados que ya fueron dados de baja (finiquitados)'
     )
+
+    def _get_employee_attendance_bounds(self, employee):
+        """Retorna (fecha_primera, fecha_ultima) de asistencia para un empleado."""
+        self.ensure_one()
+        attendance_domain = [
+            ('employee_id', '=', employee.id),
+            ('check_in', '!=', False),
+        ]
+        Attendance = self.env['hr.attendance']
+        first_attendance = Attendance.search(attendance_domain, order='check_in asc', limit=1)
+        last_attendance = Attendance.search(attendance_domain, order='check_in desc', limit=1)
+
+        if not first_attendance or not last_attendance:
+            return False, False
+
+        return (
+            fields.Datetime.to_datetime(first_attendance.check_in).date(),
+            fields.Datetime.to_datetime(last_attendance.check_in).date(),
+        )
+
+    @api.model
+    def default_get(self, fields_list):
+        defaults = super().default_get(fields_list)
+
+        open_from_employee = bool(
+            defaults.get('open_from_employee')
+            if 'open_from_employee' in defaults
+            else self.env.context.get('default_open_from_employee', False)
+        )
+        employee_id = defaults.get('employee_id') or self.env.context.get('default_employee_id')
+        period_mode = defaults.get('period_mode') or self.env.context.get('default_period_mode') or 'range'
+
+        if not open_from_employee:
+            defaults['period_mode'] = 'range'
+
+        if not employee_id:
+            return defaults
+
+        employee = self.env['hr.employee'].browse(employee_id)
+        if not employee.exists():
+            return defaults
+
+        first_date, last_date = self.new({})._get_employee_attendance_bounds(employee)
+        if not first_date or not last_date:
+            return defaults
+
+        if open_from_employee and period_mode == 'full':
+            defaults['date_from'] = first_date
+            defaults['date_to'] = last_date
+            return defaults
+
+        if not defaults.get('date_from'):
+            defaults['date_from'] = first_date
+        if not defaults.get('date_to'):
+            defaults['date_to'] = last_date
+        return defaults
+
+    @api.onchange('period_mode', 'employee_id')
+    def _onchange_period_mode_or_employee(self):
+        for record in self:
+            if not record.open_from_employee:
+                record.period_mode = 'range'
+                continue
+            if record.period_mode != 'full' or not record.employee_id:
+                continue
+            first_date, last_date = record._get_employee_attendance_bounds(record.employee_id)
+            if first_date and last_date:
+                record.date_from = first_date
+                record.date_to = last_date
 
     @api.constrains('date_from', 'date_to')
     def _check_dates(self):

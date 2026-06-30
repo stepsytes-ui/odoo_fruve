@@ -765,20 +765,11 @@ class HrEmployeeExtension(models.Model):
         return 'N/A'
 
     def get_company_location(self):
-        """Obtiene la ubicación basada en el nombre de la empresa"""
+        """Obtiene la ubicación para la carta laboral desde la compañía"""
         self.ensure_one()
-        company_name = self.company_id.name if self.company_id else ''
-        
-        if 'MEXICALI' in company_name.upper():
-            return 'MEXICALI, BAJA CALIFORNIA'
-        elif 'IRAPUATO' in company_name.upper():
-            return 'IRAPUATO, GUANAJUATO'
-        elif 'CULIACAN' in company_name.upper():
-            return 'CULIACAN, SINALOA'
-        elif 'ROSARITO' in company_name.upper():
-            return 'ROSARITO, BAJA CALIFORNIA'
-        else:
-            return 'MEXICALI, BAJA CALIFORNIA'  # Default
+        if self.company_id:
+            return self.company_id.get_carta_laboral_location()
+        return ''
 
     def get_fecha_ingreso_formatted(self):
         """Obtiene la fecha de ingreso formateada en español"""

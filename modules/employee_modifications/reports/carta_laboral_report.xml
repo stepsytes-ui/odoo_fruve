@@ -40,15 +40,14 @@
                                 font-size: 12pt;
                                 padding-top: 22mm;
                                 box-sizing: border-box;
+                                text-rendering: optimizeLegibility;
                             }
                             .carta-laboral strong {
-                                display: inline-block;
                                 font-weight: bold;
-                                padding-right: 2px;    /* Reducido de 4px a 2px */
-                                white-space: pre-wrap;
-                                letter-spacing: -0.2px; /* Hace que la negrita sea más compacta */
+                                display: inline-block;
+                                white-space: nowrap;
                             }
-                            /* Ocultar footer de Odoo en pantalla y al imprimir */
+                        
                             .footer, footer, #footer,
                             .o_report_layout_standard .footer,
                             .article + .footer {
@@ -65,7 +64,7 @@
                         <t t-set="anio" t-value="hoy.strftime('%Y')"/>
                         
                         <div style="text-align: right; margin-top: 12px; margin-bottom: 60px;">
-                            <span t-esc="employee.get_company_location()"/>, A <t t-esc="dia"/> DE <t t-esc="mes"/> DE <t t-esc="anio"/>
+                            <span t-esc="company.get_carta_laboral_location()"/>, A <t t-esc="dia"/> DE <t t-esc="mes"/> DE <t t-esc="anio"/>
                         </div>
 
                         <!-- Título -->
@@ -75,8 +74,8 @@
 
                         <!-- Cuerpo del documento -->
                         <div style="text-align: justify; line-height: 1.8; margin-bottom: 60px;">
-                            <p style="text-align: justify; line-height: 1.8;">
-                                Por medio de la presente hacemos constar que el/la C. <strong><t t-esc="employee.name.upper()"/></strong> labora en esta empresa denominada <strong><t t-esc="employee.company_id.name"/></strong> con domicilio en 
+                            <p style="text-align: justify; line-height: 1.8; word-spacing: normal; text-align-last: left;">
+                                Por medio de la presente hacemos constar que el/la C. <strong><t t-esc="employee.name.upper()"/></strong> labora en esta empresa denominada <strong><t t-esc="company.get_carta_laboral_name()"/></strong> con domicilio en 
                                 <span t-if="employee.company_id.partner_id.street">
                                     <t t-esc="employee.company_id.partner_id.street"/><t t-if="employee.company_id.partner_id.street2">, <t t-esc="employee.company_id.partner_id.street2"/></t><t t-if="employee.company_id.partner_id.city">, <t t-esc="employee.company_id.partner_id.city"/></t><t t-if="employee.company_id.partner_id.state_id">, <t t-esc="employee.company_id.partner_id.state_id.name"/></t><t t-if="employee.company_id.partner_id.zip">, C.P. <t t-esc="employee.company_id.partner_id.zip"/></t>
                                 </span> desde el día <strong><t t-esc="employee.get_fecha_ingreso_formatted()"/></strong>. Desempeñando el puesto de 
@@ -86,7 +85,7 @@
                                 <t t-else="">
                                     <strong>SIN PUESTO ASIGNADO</strong>
                                 </t> 
-                                con un horario hasta el día de hoy de <strong><t t-esc="employee.get_horario_trabajo().upper()"/></strong>,&#160; percibiendo ingresos mensuales de $ <strong><t t-esc="employee.get_salario_mensual_formatted()"/></strong> (<strong><t t-esc="employee.get_salario_mensual_letras()"/></strong>)
+                                con un horario hasta el día de hoy de <strong><t t-esc="employee.get_horario_trabajo().upper()"/></strong>, percibiendo ingresos mensuales de $ <strong><t t-esc="employee.get_salario_mensual_formatted()"/></strong> (<strong><t t-esc="employee.get_salario_mensual_letras()"/></strong>)
                                 <t t-if="employee.rfc">, Registro Federal de Contribuyentes es: <strong><t t-esc="employee.rfc.upper()"/></strong></t>
                                 <t t-if="employee.ssnid"> con número de IMSS <strong><t t-esc="employee.ssnid"/></strong></t>
                                 <t t-if="employee.company_id.partner_id.company_registry"> el Registro Patronal de la empresa es <strong><t t-esc="employee.company_id.partner_id.company_registry"/></strong></t>
@@ -102,9 +101,9 @@
                             <p style="font-weight: bold;">ATENTAMENTE:</p>
                             <div style="margin-top: 60px;">
                                 <p>____________________________________</p>
-                                <p style="font-weight: bold; margin-top: 5px;">ING. BARBARA MONROY URIBE</p>
+                                <p style="font-weight: bold; margin-top: 5px;" t-esc="company.get_carta_laboral_responsable_rh()"/>
                                 <p style="font-weight: bold;">RECURSOS HUMANOS</p>
-                                <p style="font-weight: bold;" t-esc="employee.company_id.name"/>
+                                <p style="font-weight: bold;" t-esc="company.get_carta_laboral_name()"/>
                             </div>
                         </div>
 

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_company_form_carta_laboral_inherit" model="ir.ui.view">
+        <field name="name">res.company.form.carta.laboral.inherit</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook/page[last()]" position="after">
+                <page string="Carta Laboral" name="carta_laboral">
+                    <group>
+                        <field name="carta_laboral_name" placeholder="Nombre de la empresa para carta laboral"/>
+                        <field name="carta_laboral_responsable_rh" domain="[('company_id', '=', id)]"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

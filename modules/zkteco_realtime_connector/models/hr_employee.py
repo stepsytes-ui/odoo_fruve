@@ -1,6 +1,6 @@
 
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, AccessError
 
 
 class hr_employee(models.Model):
@@ -128,6 +128,14 @@ class hr_employee(models.Model):
         un rango automático desde su primera hasta su última asistencia.
         """
         self.ensure_one()
+
+        has_custom_hr = self.env.user.has_group('zkteco_realtime_connector.group_hr_manager_custom')
+        has_hr_officer = self.env.user.has_group('hr.group_hr_user')
+        has_hr_manager = self.env.user.has_group('hr.group_hr_manager')
+        if not (has_custom_hr or has_hr_officer or has_hr_manager):
+            raise AccessError(
+                _('No tiene permisos para abrir el historial de asistencias.')
+            )
 
         attendance_domain = [
             ('employee_id', '=', self.id),

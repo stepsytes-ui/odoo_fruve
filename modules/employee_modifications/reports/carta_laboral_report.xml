@@ -38,14 +38,13 @@
                             .carta-laboral {
                                 font-family: Arial, sans-serif;
                                 font-size: 12pt;
-                                padding-top: 22mm;
+                                padding-top: 16mm;
                                 box-sizing: border-box;
                                 text-rendering: optimizeLegibility;
                             }
                             .carta-laboral strong {
                                 font-weight: bold;
-                                display: inline-block;
-                                white-space: nowrap;
+                                white-space: normal;
                             }
                         
                             .footer, footer, #footer,
@@ -63,18 +62,18 @@
                         <t t-set="mes" t-value="meses[hoy.strftime('%m').lstrip('0')]"/>
                         <t t-set="anio" t-value="hoy.strftime('%Y')"/>
                         
-                        <div style="text-align: right; margin-top: 12px; margin-bottom: 60px;">
+                        <div style="text-align: right; margin-top: 8px; margin-bottom: 32px;">
                             <span t-esc="company.get_carta_laboral_location()"/>, A <t t-esc="dia"/> DE <t t-esc="mes"/> DE <t t-esc="anio"/>
                         </div>
 
                         <!-- Título -->
-                        <div style="text-align: left; margin-bottom: 40px; font-weight: bold;">
+                        <div style="text-align: left; margin-bottom: 24px; font-weight: bold;">
                             <p>A QUIEN CORRESPONDA:</p>
                         </div>
 
                         <!-- Cuerpo del documento -->
-                        <div style="text-align: justify; line-height: 1.8; margin-bottom: 60px;">
-                            <p style="text-align: justify; line-height: 1.8; word-spacing: normal; text-align-last: left;">
+                        <div style="text-align: justify; line-height: 1.45; margin-bottom: 36px;">
+                            <p style="text-align: justify; line-height: 1.45; word-spacing: normal; text-align-last: left;">
                                 Por medio de la presente hacemos constar que el/la C. <strong><t t-esc="employee.name.upper()"/></strong> labora en esta empresa denominada <strong><t t-esc="company.get_carta_laboral_name()"/></strong> con domicilio en 
                                 <span t-if="employee.company_id.partner_id.street">
                                     <t t-esc="employee.company_id.partner_id.street"/><t t-if="employee.company_id.partner_id.street2">, <t t-esc="employee.company_id.partner_id.street2"/></t><t t-if="employee.company_id.partner_id.city">, <t t-esc="employee.company_id.partner_id.city"/></t><t t-if="employee.company_id.partner_id.state_id">, <t t-esc="employee.company_id.partner_id.state_id.name"/></t><t t-if="employee.company_id.partner_id.zip">, C.P. <t t-esc="employee.company_id.partner_id.zip"/></t>
@@ -91,15 +90,15 @@
                                 <t t-if="employee.company_id.partner_id.company_registry"> el Registro Patronal de la empresa es <strong><t t-esc="employee.company_id.partner_id.company_registry"/></strong></t>
                                 <t t-if="employee.company_id.partner_id.vat"> y el Registro Federal de Contribuyente es <strong><t t-esc="employee.company_id.partner_id.vat"/></strong></t>.
                             </p>
-                            <p style="margin-top: 20px;">
+                            <p style="margin-top: 10px;">
                                 Se extiende la presente carta de trabajo para los fines que el interesado considere convenientes.
                             </p>
                         </div>
 
                         <!-- Firma -->
-                        <div style="text-align: center; margin-top: 80px;">
+                        <div style="text-align: center; margin-top: 44px;">
                             <p style="font-weight: bold;">ATENTAMENTE:</p>
-                            <div style="margin-top: 60px;">
+                            <div style="margin-top: 34px;">
                                 <p>____________________________________</p>
                                 <p style="font-weight: bold; margin-top: 5px;" t-esc="company.get_carta_laboral_responsable_rh()"/>
                                 <p style="font-weight: bold;">RECURSOS HUMANOS</p>

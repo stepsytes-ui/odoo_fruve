@@ -157,14 +157,19 @@ class hr_employee(models.Model):
                 _('El empleado seleccionado no tiene asistencias registradas.')
             )
 
-        action = self.env.ref('zkteco_realtime_connector.attendance_report_wizard_action').read()[0]
-        action['context'] = {
-            'default_company_id': self.company_id.id or self.env.company.id,
-            'default_open_from_employee': True,
-            'default_period_mode': 'range',
-            'default_date_from': fields.Datetime.to_datetime(first_attendance.check_in).date(),
-            'default_date_to': fields.Datetime.to_datetime(last_attendance.check_in).date(),
-            'default_employee_id': self.id,
-            'default_show_archived': not self.active,
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Reporte Personalizado de Asistencia'),
+            'res_model': 'attendance.report.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_company_id': self.company_id.id or self.env.company.id,
+                'default_open_from_employee': True,
+                'default_period_mode': 'range',
+                'default_date_from': fields.Datetime.to_datetime(first_attendance.check_in).date(),
+                'default_date_to': fields.Datetime.to_datetime(last_attendance.check_in).date(),
+                'default_employee_id': self.id,
+                'default_show_archived': not self.active,
+            },
         }
-        return action

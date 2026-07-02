@@ -20,8 +20,15 @@
         <record id="compras_warehouse_company_rule" model="ir.rule">
             <field name="name">Compras Warehouse Multi-Company Rule</field>
             <field name="model_id" ref="model_compras_warehouse"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">[(1, '=', 1)]</field>
             <field name="global" eval="True"/>
+        </record>
+
+        <record id="compras_warehouse_company_rule_usuario" model="ir.rule">
+            <field name="name">Compras Warehouse User Company Rule</field>
+            <field name="model_id" ref="model_compras_warehouse"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('compras_fruvemex.group_compras_usuario'))]"/>
         </record>
 
         <record id="compras_product_company_rule" model="ir.rule">

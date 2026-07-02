@@ -1,4 +1,4 @@
-from odoo import api, fields, models, _
+from odoo import SUPERUSER_ID, api, fields, models, _
 
 
 class ComprasWarehouse(models.Model):
@@ -28,12 +28,65 @@ class ComprasWarehouse(models.Model):
         string='Movimientos de Entrada',
     )
     movement_count = fields.Integer(string='Movimientos', compute='_compute_movement_count')
+    inventory_line_count = fields.Integer(string='Productos en Inventario', compute='_compute_inventory_line_count')
 
     @api.depends('source_move_ids', 'destination_move_ids')
     def _compute_movement_count(self):
         for warehouse in self:
             warehouse.movement_count = len(warehouse.source_move_ids | warehouse.destination_move_ids)
 
+    def _compute_inventory_line_count(self):
+        inventory_model = self.env['compras.warehouse.inventory']
+        grouped = inventory_model.read_group(
+            [('warehouse_id', 'in', self.ids)],
+            ['warehouse_id'],
+            ['warehouse_id'],
+        )
+        grouped_map = {item['warehouse_id'][0]: item['warehouse_id_count'] for item in grouped if item.get('warehouse_id')}
+        for warehouse in self:
+            warehouse.inventory_line_count = grouped_map.get(warehouse.id, 0)
+
+    def action_open_inventory(self):
+        self.ensure_one()
+        action = self.env.ref('compras_fruvemex.compras_warehouse_inventory_action').read()[0]
+        action['domain'] = [('warehouse_id', '=', self.id)]
+        action['context'] = dict(self.env.context, default_warehouse_id=self.id)
+        return action
+
     _sql_constraints = [
         ('code_company_unique', 'unique(code, company_id)', 'El código del almacén debe ser único por empresa.'),
     ]
+
+    @api.model
+    def _register_hook(self):
+        result = super()._register_hook()
+        env = api.Environment(self._cr, SUPERUSER_ID, {})
+
+        warehouse_model = env.ref('compras_fruvemex.model_compras_warehouse', raise_if_not_found=False)
+        if not warehouse_model:
+            return result
+
+        global_rule = env.ref('compras_fruvemex.compras_warehouse_company_rule', raise_if_not_found=False)
+        if global_rule:
+            global_rule.write({
+                'domain_force': "[(1, '=', 1)]",
+                'global': True,
+                'groups': [(5, 0, 0)],
+            })
+
+        user_group = env.ref('compras_fruvemex.group_compras_usuario', raise_if_not_found=False)
+        if user_group:
+            user_rule = env.ref('compras_fruvemex.compras_warehouse_company_rule_usuario', raise_if_not_found=False)
+            user_rule_vals = {
+                'name': 'Compras Warehouse User Company Rule',
+                'model_id': warehouse_model.id,
+                'domain_force': "[('company_id', 'in', company_ids)]",
+                'global': False,
+                'groups': [(6, 0, [user_group.id])],
+            }
+            if user_rule:
+                user_rule.write(user_rule_vals)
+            else:
+                env['ir.rule'].create(user_rule_vals)
+
+        return result

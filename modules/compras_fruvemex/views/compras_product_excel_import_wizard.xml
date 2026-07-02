@@ -8,13 +8,19 @@
                 <form string="Importar registros desde Excel">
                     <group>
                         <field name="file_name" invisible="1"/>
-                        <field name="file_data" filename="file_name" required="1"/>
+                        <field name="file_data" filename="file_name"/>
                     </group>
                     <label
                         for="file_data"
                         string="El archivo debe respetar el orden de columnas definido para Consolidado."
                     />
                     <footer>
+                        <button
+                            string="Descargar plantilla"
+                            type="object"
+                            name="action_download_template"
+                            class="btn-secondary"
+                        />
                         <button
                             string="Importar"
                             type="object"

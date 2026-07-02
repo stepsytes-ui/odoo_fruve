@@ -92,6 +92,91 @@ class ComprasInventoryMove(models.Model):
         ], limit=1)
         return warehouse.id if warehouse else False
 
+    def _is_intercompany_transfer(self):
+        self.ensure_one()
+        return (
+            self.move_type == 'transferencia'
+            and self.destination_warehouse_id
+            and self.destination_warehouse_id.company_id != self.company_id
+        )
+
+    def _prepare_destination_product_vals(self, destination_company):
+        self.ensure_one()
+        product = self.product_id
+        return {
+            'name': product.name,
+            'code': product.code,
+            'serial': product.serial,
+            'manufacturer': product.manufacturer,
+            'classification': product.classification,
+            'category_id': product.category_id.id,
+            'subcategory_id': product.subcategory_id.id,
+            'subcategory_2': product.subcategory_2,
+            'location': product.location,
+            'expiration_date': product.expiration_date,
+            'repair_line_id': product.repair_line_id.id,
+            'company_id': destination_company.id,
+            'unit_id': product.unit_id.id,
+            'description': product.description,
+            'brand_id': product.brand_id.id,
+            'model_name': product.model_name,
+            'qty_process': product.qty_process,
+            'total_equipment': product.total_equipment,
+            'frequency_use_days': product.frequency_use_days,
+            'lead_time_days': product.lead_time_days,
+            'purchase_type': product.purchase_type,
+            'vendor_id': product.vendor_id.id,
+            'unit_price': product.unit_price,
+            'currency_id': product.currency_id.id or destination_company.currency_id.id,
+            'min_qty': product.min_qty,
+            'tax_ids': [(6, 0, product.tax_ids.ids)],
+            'active': product.active,
+        }
+
+    def _get_or_create_destination_product(self):
+        self.ensure_one()
+        destination_company = self.destination_warehouse_id.company_id
+        product_model = self.env['compras.product'].sudo().with_context(
+            allowed_company_ids=[self.company_id.id, destination_company.id],
+        )
+        destination_product = product_model.search([
+            ('company_id', '=', destination_company.id),
+            ('code', '=', self.product_id.code),
+        ], limit=1)
+        if destination_product:
+            return destination_product
+        return product_model.create(self._prepare_destination_product_vals(destination_company))
+
+    def _create_intercompany_destination_move(self):
+        self.ensure_one()
+        destination_company = self.destination_warehouse_id.company_id
+        destination_product = self._get_or_create_destination_product()
+        move_model = self.env['compras.inventory.move'].sudo().with_context(
+            allowed_company_ids=[self.company_id.id, destination_company.id],
+        )
+        destination_move = move_model.create({
+            'company_id': destination_company.id,
+            'movement_date': self.movement_date,
+            'move_type': 'entrada',
+            'product_id': destination_product.id,
+            'source_warehouse_id': False,
+            'destination_warehouse_id': self.destination_warehouse_id.id,
+            'quantity': self.quantity,
+            'quantity_done': self.quantity_done,
+            'receiver_user_id': self.receiver_user_id.id,
+            'receiver_name': self.receiver_name or self.delivered_by_id.name,
+            'delivered_by_id': self.delivered_by_id.id,
+            'signed_by_id': self.signed_by_id.id,
+            'destination': self.destination_warehouse_id.name,
+            'status': 'transferido',
+            'notes': _('Entrada automática generada por transferencia interempresa desde %(source_company)s (%(folio)s).') % {
+                'source_company': self.company_id.display_name,
+                'folio': self.name,
+            },
+            'registered_by_id': self.env.user.id,
+        })
+        destination_move.action_confirm()
+
     @api.onchange('move_type')
     def _onchange_move_type(self):
         if self.move_type == 'entrada':
@@ -100,6 +185,21 @@ class ComprasInventoryMove(models.Model):
             self.status = 'entregado'
         elif self.move_type == 'transferencia':
             self.status = 'transferido'
+
+    @api.onchange('destination_warehouse_id')
+    def _onchange_destination_warehouse_id(self):
+        domain_by_record = [('id', '=', False)]
+        for rec in self:
+            destination_company = rec.destination_warehouse_id.company_id
+            domain = [('id', '=', False)]
+            if destination_company:
+                domain = [('department_id.company_id', '=', destination_company.id)]
+            domain_by_record = domain
+
+            if rec.area_id and rec.area_id.department_id.company_id != destination_company:
+                rec.area_id = False
+
+        return {'domain': {'area_id': domain_by_record}}
 
     @api.constrains('quantity', 'quantity_done')
     def _check_quantities(self):
@@ -122,8 +222,11 @@ class ComprasInventoryMove(models.Model):
                 continue
             previous_qty = rec.product_id.qty_on_hand
             moved_qty = rec.quantity_done or rec.quantity
+            is_intercompany_transfer = rec._is_intercompany_transfer()
             if rec.move_type == 'salida' and moved_qty > previous_qty:
                 raise ValidationError(_('No hay suficiente existencia para dar salida a este producto.'))
+            if is_intercompany_transfer and moved_qty > previous_qty:
+                raise ValidationError(_('No hay suficiente existencia para transferir este producto a otra empresa.'))
             if rec.move_type == 'transferencia' and not rec.destination_warehouse_id:
                 raise ValidationError(_('Debes indicar el almacén destino para una transferencia.'))
             if rec.move_type == 'salida' and not (rec.area_id or rec.destination or rec.receiver_user_id or rec.receiver_name):
@@ -133,6 +236,8 @@ class ComprasInventoryMove(models.Model):
                 new_qty = previous_qty + moved_qty
             elif rec.move_type == 'salida':
                 new_qty = previous_qty - moved_qty
+            elif is_intercompany_transfer:
+                new_qty = previous_qty - moved_qty
             else:
                 new_qty = previous_qty
 
@@ -141,6 +246,9 @@ class ComprasInventoryMove(models.Model):
                 'new_qty': new_qty,
                 'state': 'done',
             })
+
+            if is_intercompany_transfer:
+                rec._create_intercompany_destination_move()
 
     def action_cancel(self):
         self.write({'state': 'cancelled'})

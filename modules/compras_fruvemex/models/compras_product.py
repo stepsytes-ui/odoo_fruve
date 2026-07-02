@@ -54,7 +54,7 @@ class ComprasProduct(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name'
     _sql_constraints = [
-        ('compras_product_code_unique', 'unique(code)', 'El código del producto debe ser único.'),
+        ('compras_product_code_company_unique', 'unique(code, company_id)', 'El código del producto debe ser único por empresa.'),
     ]
 
     name = fields.Char(string='Descripcion', required=True, tracking=True)
@@ -248,12 +248,27 @@ class ComprasProduct(models.Model):
             else:
                 product.monthly_budget = 0.0
 
-    @api.depends('move_ids.state', 'move_ids.move_type', 'move_ids.quantity_done')
+    def _is_intercompany_transfer_move(self, move):
+        return (
+            move.move_type == 'transferencia'
+            and move.destination_warehouse_id
+            and move.destination_warehouse_id.company_id != move.company_id
+        )
+
+    @api.depends(
+        'move_ids.state',
+        'move_ids.move_type',
+        'move_ids.quantity_done',
+        'move_ids.destination_warehouse_id',
+        'move_ids.destination_warehouse_id.company_id',
+    )
     def _compute_stock_quantities(self):
         for product in self:
             done_moves = product.move_ids.filtered(lambda m: m.state == 'done')
             qty_in = sum(done_moves.filtered(lambda m: m.move_type == 'entrada').mapped('quantity_done'))
-            qty_out = sum(done_moves.filtered(lambda m: m.move_type == 'salida').mapped('quantity_done'))
+            qty_out = sum(done_moves.filtered(
+                lambda m: m.move_type == 'salida' or product._is_intercompany_transfer_move(m)
+            ).mapped('quantity_done'))
             product.qty_in = qty_in
             product.qty_out = qty_out
             product.qty_on_hand = qty_in - qty_out
@@ -264,7 +279,9 @@ class ComprasProduct(models.Model):
             done_moves = product.move_ids.filtered(lambda move: move.state == 'done')
             current_qty = (
                 sum(done_moves.filtered(lambda move: move.move_type == 'entrada').mapped('quantity_done'))
-                - sum(done_moves.filtered(lambda move: move.move_type == 'salida').mapped('quantity_done'))
+                - sum(done_moves.filtered(
+                    lambda move: move.move_type == 'salida' or product._is_intercompany_transfer_move(move)
+                ).mapped('quantity_done'))
             )
             target_qty = product.qty_on_hand
             delta = target_qty - current_qty
@@ -291,11 +308,19 @@ class ComprasProduct(models.Model):
             })
             adjustment_move.action_confirm()
 
-    @api.depends('move_ids.state', 'move_ids.move_type', 'move_ids.movement_date')
+    @api.depends(
+        'move_ids.state',
+        'move_ids.move_type',
+        'move_ids.movement_date',
+        'move_ids.destination_warehouse_id',
+        'move_ids.destination_warehouse_id.company_id',
+    )
     def _compute_last_dates(self):
         for product in self:
             done_entries = product.move_ids.filtered(lambda m: m.state == 'done' and m.move_type == 'entrada')
-            done_exits = product.move_ids.filtered(lambda m: m.state == 'done' and m.move_type == 'salida')
+            done_exits = product.move_ids.filtered(
+                lambda m: m.state == 'done' and (m.move_type == 'salida' or product._is_intercompany_transfer_move(m))
+            )
             product.last_entry_date = max(done_entries.mapped('movement_date')) if done_entries else False
             product.last_exit_date = max(done_exits.mapped('movement_date')) if done_exits else False
 

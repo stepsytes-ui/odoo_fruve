@@ -22,6 +22,7 @@ Módulo para gestionar solicitudes de compra con flujo de aprobación:
         'mail',
         'uom',
         'contacts',
+        'web',
         'overtime',
         'product',
         'account',
@@ -37,8 +38,14 @@ Módulo para gestionar solicitudes de compra con flujo de aprobación:
         'views/purchase_rejection_wizard.xml',
         'views/purchase_receipt_wizard.xml',
         'views/compras_product_excel_import_wizard.xml',
+        'views/compras_product_alert_wizard.xml',
         'views/purchase_menu.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'compras_fruvemex/static/src/services/compras_purchase_alert_service.js',
+        ],
+    },
 
     'demo': [],
     'installable': True,

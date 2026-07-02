@@ -3,6 +3,8 @@ from datetime import date, datetime
 from io import BytesIO
 
 from openpyxl import load_workbook
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 from odoo import _, fields, models
 from odoo.exceptions import ValidationError
@@ -12,8 +14,10 @@ class ComprasProductExcelImportWizard(models.TransientModel):
     _name = 'compras.product.excel.import.wizard'
     _description = 'Importar Consolidado desde Excel'
 
-    file_data = fields.Binary(string='Archivo Excel', required=True)
+    file_data = fields.Binary(string='Archivo Excel')
     file_name = fields.Char(string='Nombre de archivo')
+    template_file_data = fields.Binary(string='Plantilla Excel', readonly=True, attachment=False)
+    template_file_name = fields.Char(string='Nombre de plantilla', readonly=True)
 
     _EXPECTED_HEADERS = [
         ('code', {'codigo'}),
@@ -60,6 +64,7 @@ class ComprasProductExcelImportWizard(models.TransientModel):
         self._validate_header_order(header_row)
 
         product_model = self.env['compras.product']
+        company = self.env.company
         created_count = 0
         updated_count = 0
         row_errors = []
@@ -73,13 +78,17 @@ class ComprasProductExcelImportWizard(models.TransientModel):
                     raise ValidationError(_('El Código es obligatorio.'))
 
                 vals = self._build_product_vals_from_row(row)
-                product = product_model.search([('code', '=', code)], limit=1)
+                product = product_model.search([
+                    ('company_id', '=', company.id),
+                    ('code', '=', code),
+                ], limit=1)
 
                 if product:
                     product.write(vals)
                     updated_count += 1
                 else:
                     vals.setdefault('code', code)
+                    vals.setdefault('company_id', company.id)
                     if not vals.get('name'):
                         raise ValidationError(_('La Descripción es obligatoria para crear un nuevo registro.'))
                     if not vals.get('unit_id'):
@@ -112,6 +121,156 @@ class ComprasProductExcelImportWizard(models.TransientModel):
                 'sticky': False,
                 'next': {'type': 'ir.actions.act_window_close'},
             },
+        }
+
+    def action_download_template(self):
+        self.ensure_one()
+
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = 'Plantilla Consolidado'
+
+        header_fill = PatternFill(start_color='1F4E78', end_color='1F4E78', fill_type='solid')
+        example_fill = PatternFill(start_color='EAF2F8', end_color='EAF2F8', fill_type='solid')
+        header_font = Font(bold=True, color='FFFFFF')
+        example_font = Font(italic=True, color='666666')
+        center_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        left_alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+        border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin'),
+        )
+
+        headers = [
+            'Código',
+            'Descripción',
+            'Locación',
+            'Modelo',
+            'Serial',
+            'Fabricante',
+            'Clasificación',
+            'Categoría',
+            'Sub categoría',
+            'Sub categoría 2',
+            'Equipo / línea a reparar',
+            'Fecha de caducidad',
+            'Qty proceso',
+            'Total equipos',
+            'Total qty proceso',
+            'Frecuencia uso días',
+            'UDM',
+            'Costo unitario',
+            'Costo total',
+            'Moneda',
+            'Inventario',
+            'Cobertura',
+            'Min',
+            'Max',
+            'Punto reorden',
+            'Tiempo entrega días',
+            'Tipo compra',
+            'Proveedor principal',
+            'Presupuesto mensual',
+        ]
+        sample_row = [
+            'COD-001',
+            'Bomba centrífuga industrial',
+            'Planta 1',
+            'Modelo X100',
+            'SN-0001',
+            'Acme',
+            'Equipo',
+            'Bombas',
+            'Bombas principales',
+            'Serie A',
+            'Mantenimiento',
+            '2026-12-31',
+            12,
+            3,
+            15,
+            30,
+            'Unidad',
+            1250.50,
+            3751.50,
+            'MXN',
+            8,
+            20,
+            5,
+            25,
+            10,
+            7,
+            'local',
+            'Proveedor Demo SA de CV',
+            50000,
+        ]
+
+        for column_index, header in enumerate(headers, start=1):
+            cell = sheet.cell(row=1, column=column_index, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center_alignment
+            cell.border = border
+
+        for column_index, value in enumerate(sample_row, start=1):
+            cell = sheet.cell(row=2, column=column_index, value=value)
+            cell.fill = example_fill
+            cell.font = example_font
+            cell.alignment = left_alignment
+            cell.border = border
+
+        sheet.freeze_panes = 'A2'
+        sheet.auto_filter.ref = sheet.dimensions
+
+        column_widths = {
+            'A': 16,
+            'B': 28,
+            'C': 18,
+            'D': 20,
+            'E': 16,
+            'F': 18,
+            'G': 18,
+            'H': 20,
+            'I': 20,
+            'J': 18,
+            'K': 24,
+            'L': 18,
+            'M': 14,
+            'N': 14,
+            'O': 16,
+            'P': 16,
+            'Q': 14,
+            'R': 16,
+            'S': 16,
+            'T': 12,
+            'U': 14,
+            'V': 12,
+            'W': 12,
+            'X': 12,
+            'Y': 14,
+            'Z': 14,
+            'AA': 14,
+            'AB': 22,
+            'AC': 16,
+        }
+        for column_name, width in column_widths.items():
+            sheet.column_dimensions[column_name].width = width
+
+        output = BytesIO()
+        workbook.save(output)
+        output.seek(0)
+
+        filename = 'plantilla_consolidado.xlsx'
+        self.write({
+            'template_file_data': base64.b64encode(output.getvalue()),
+            'template_file_name': filename,
+        })
+
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/web/content/?model=compras.product.excel.import.wizard&id={self.id}&field=template_file_data&filename_field=template_file_name&download=true',
+            'target': 'self',
         }
 
     def _read_excel_rows(self):

@@ -273,6 +273,16 @@
             <field name="arch" type="xml">
                 <form string="Almacén">
                     <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button
+                                type="object"
+                                name="action_open_inventory"
+                                class="oe_stat_button"
+                                icon="fa-cubes"
+                            >
+                                <field name="inventory_line_count" string="Inventario" widget="statinfo"/>
+                            </button>
+                        </div>
                         <div class="oe_title">
                             <h1><field name="name"/></h1>
                         </div>
@@ -333,6 +343,35 @@
             </field>
         </record>
 
+        <record id="compras_warehouse_inventory_view_list" model="ir.ui.view">
+            <field name="name">compras.warehouse.inventory.list</field>
+            <field name="model">compras.warehouse.inventory</field>
+            <field name="arch" type="xml">
+                <list string="Inventario por Almacén" create="0" edit="0" delete="0">
+                    <field name="product_db_id"/>
+                    <field name="product_name"/>
+                    <field name="product_description"/>
+                    <field name="quantity"/>
+                    <field name="location"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="compras_warehouse_inventory_view_search" model="ir.ui.view">
+            <field name="name">compras.warehouse.inventory.search</field>
+            <field name="model">compras.warehouse.inventory</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Inventario por Almacén">
+                    <field name="warehouse_id"/>
+                    <field name="product_name"/>
+                    <field name="location"/>
+                    <filter name="group_product" string="Producto" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_warehouse" string="Almacén" context="{'group_by': 'warehouse_id'}"/>
+                    <filter name="group_company" string="Empresa" context="{'group_by': 'company_id'}"/>
+                </search>
+            </field>
+        </record>
+
         <record id="compras_product_action" model="ir.actions.act_window">
             <field name="name">Consolidado</field>
             <field name="res_model">compras.product</field>
@@ -364,6 +403,13 @@
             <field name="name">Almacenes</field>
             <field name="res_model">compras.warehouse</field>
             <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="compras_warehouse_inventory_action" model="ir.actions.act_window">
+            <field name="name">Inventario</field>
+            <field name="res_model">compras.warehouse.inventory</field>
+            <field name="view_mode">list</field>
+            <field name="context">{'search_default_group_product': 0}</field>
         </record>
     </data>
 </odoo>

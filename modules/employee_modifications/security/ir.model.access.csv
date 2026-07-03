@@ -63,3 +63,5 @@ access_employee_resguardo_hr,employee.resguardo.hr,model_employee_resguardo,hr.g
 access_employee_resguardo_line_hr,employee.resguardo.line.hr,model_employee_resguardo_line,hr.group_hr_user,1,1,1,1
 access_employee_resguardo_assign_wizard_hr,employee.resguardo.assign.wizard.hr,model_employee_resguardo_assign_wizard,hr.group_hr_user,1,1,1,1
 access_employee_resguardo_assign_wizard_line_hr,employee.resguardo.assign.wizard.line.hr,model_employee_resguardo_assign_wizard_line,hr.group_hr_user,1,1,1,1
+access_employee_supervisor_user,employee.supervisor.user,model_employee_supervisor,base.group_user,1,0,0,0
+access_employee_supervisor_hr,employee.supervisor.hr,model_employee_supervisor,hr.group_hr_user,1,1,1,1

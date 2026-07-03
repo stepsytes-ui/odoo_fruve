@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_employee_supervisor_list" model="ir.ui.view">
+            <field name="name">employee.supervisor.list</field>
+            <field name="model">employee.supervisor</field>
+            <field name="arch" type="xml">
+                <list string="Supervisores" create="1" edit="1" delete="1">
+                    <field name="company_id"/>
+                    <field name="employee_id"/>
+                    <field name="biometric_id" optional="show"/>
+                    <field name="department_id" optional="show"/>
+                    <field name="active" optional="show"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_employee_supervisor_form" model="ir.ui.view">
+            <field name="name">employee.supervisor.form</field>
+            <field name="model">employee.supervisor</field>
+            <field name="arch" type="xml">
+                <form string="Supervisor">
+                    <sheet>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="employee_id"/>
+                            <field name="biometric_id" readonly="1"/>
+                            <field name="department_id" readonly="1"/>
+                            <field name="active"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_employee_supervisor" model="ir.actions.act_window">
+            <field name="name">Supervisores</field>
+            <field name="res_model">employee.supervisor</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="view_employee_supervisor_list"/>
+            <field name="context">{}</field>
+        </record>
+
+        <menuitem
+            id="menu_hr_employee_supervisores"
+            name="Supervisores"
+            parent="employee_modifications.menu_hr_herramientas"
+            action="employee_modifications.action_employee_supervisor"
+            sequence="13"
+            groups="hr.group_hr_user"/>
+    </data>
+</odoo>

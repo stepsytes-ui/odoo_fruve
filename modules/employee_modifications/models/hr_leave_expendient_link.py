@@ -19,14 +19,75 @@ class HrLeave(models.Model):
         help='Días de vacaciones autorizados por adelantado para esta solicitud.',
     )
 
-    # Campo Supervisor (para todos los tipos de ausencia)
+    # Campo Supervisor (catalogo de empleados configurados por compania)
+    supervisor_employee_id = fields.Many2one(
+        'hr.employee',
+        string='Supervisor',
+        domain=lambda self: self._domain_supervisor_employee(),
+        tracking=True,
+        help='Supervisor asignado desde el catalogo de Supervisores por compania.',
+    )
+
+    # Campo heredado para compatibilidad con modulos que esperan un usuario.
     supervisor_id = fields.Many2one(
         'res.users',
         string='Supervisor',
         domain=lambda self: [('groups_id', 'in', [self.env.ref('overtime.group_overtime_supervisor').id])],
         tracking=True,
-        help='Supervisor asignado (debe pertenecer al grupo Supervisor Tiempo Extra)'
+        help='Supervisor usuario para compatibilidad tecnica con otros modelos.'
     )
+
+    def _get_available_supervisor_employee_ids(self, company=False):
+        company_ids = [self.env.company.id]
+        if company and company.id:
+            company_ids = [company.id]
+
+        return self.env['employee.supervisor'].search([
+            ('company_id', 'in', company_ids),
+            ('active', '=', True),
+        ]).mapped('employee_id').ids
+
+    def _domain_supervisor_employee(self):
+        supervisor_employee_ids = self._get_available_supervisor_employee_ids()
+        if not supervisor_employee_ids:
+            return [('id', '=', False)]
+        return [('id', 'in', supervisor_employee_ids)]
+
+    @api.onchange('company_id')
+    def _onchange_company_id_supervisor_employee(self):
+        for leave in self:
+            valid_ids = leave._get_available_supervisor_employee_ids(leave.company_id)
+            if leave.supervisor_employee_id and leave.supervisor_employee_id.id not in valid_ids:
+                leave.supervisor_employee_id = False
+                leave.supervisor_id = False
+        return {
+            'domain': {
+                'supervisor_employee_id': [('id', 'in', self._get_available_supervisor_employee_ids(self[:1].company_id if self else False))],
+            }
+        }
+
+    @api.onchange('supervisor_employee_id')
+    def _onchange_supervisor_employee_id(self):
+        for leave in self:
+            leave.supervisor_id = leave.supervisor_employee_id.user_id.id if leave.supervisor_employee_id.user_id else False
+
+    @api.constrains('supervisor_employee_id', 'company_id')
+    def _check_supervisor_employee_company(self):
+        for leave in self:
+            if not leave.supervisor_employee_id:
+                continue
+            valid_ids = leave._get_available_supervisor_employee_ids(leave.company_id)
+            if leave.supervisor_employee_id.id not in valid_ids:
+                raise ValidationError(_(
+                    'El supervisor seleccionado no esta configurado para la compania de esta solicitud.'
+                ))
+
+    def _sync_supervisor_user_from_employee_vals(self, vals):
+        vals = dict(vals)
+        if 'supervisor_employee_id' in vals:
+            employee = self.env['hr.employee'].browse(vals['supervisor_employee_id']) if vals['supervisor_employee_id'] else self.env['hr.employee']
+            vals['supervisor_id'] = employee.user_id.id if employee and employee.user_id else False
+        return vals
     
     is_suspension = fields.Boolean(
         string='Es Suspensión',
@@ -359,7 +420,8 @@ class HrLeave(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         """Crear registro de suspensión o incapacidad cuando se crea una ausencia"""
-        leaves = super(HrLeave, self).create(vals_list)
+        normalized_vals_list = [self._sync_supervisor_user_from_employee_vals(vals) for vals in vals_list]
+        leaves = super(HrLeave, self).create(normalized_vals_list)
         
         # Procesar cada ausencia creada
         for leave in leaves:
@@ -383,6 +445,7 @@ class HrLeave(models.Model):
 
     def write(self, vals):
         """Actualizar suspensión o incapacidad cuando se modifica la ausencia"""
+        vals = self._sync_supervisor_user_from_employee_vals(vals)
         res = super(HrLeave, self).write(vals)
         
         for leave in self:

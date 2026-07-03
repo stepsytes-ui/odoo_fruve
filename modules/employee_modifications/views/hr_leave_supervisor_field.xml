@@ -9,7 +9,7 @@
             <field name="arch" type="xml">
                 <!-- Agregar campo supervisor después del campo de descripción (name) -->
                 <xpath expr="//field[@name='name']" position="after">
-                    <field name="supervisor_id" 
+                    <field name="supervisor_employee_id"
                            options="{'no_create': True, 'no_create_edit': True}"
                            placeholder="Seleccione el supervisor..."/>
                 </xpath>

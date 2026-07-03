@@ -47,6 +47,7 @@ Fruvemex requests for employee's module
             'wizard/employee_warning_reject_wizard_views.xml',
             'wizard/employee_vacation_advance_wizard_views.xml',
             'views/employee_menus.xml',
+            'views/employee_supervisor_views.xml',
         ],
     'demo': [
         'demo/demo.xml',

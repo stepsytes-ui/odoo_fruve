@@ -27,6 +27,11 @@ class ComprasWarehouse(models.Model):
         'destination_warehouse_id',
         string='Movimientos de Entrada',
     )
+    location_ids = fields.One2many(
+        'compras.warehouse.location',
+        'warehouse_id',
+        string='Locaciones',
+    )
     movement_count = fields.Integer(string='Movimientos', compute='_compute_movement_count')
     inventory_line_count = fields.Integer(string='Productos en Inventario', compute='_compute_inventory_line_count')
 

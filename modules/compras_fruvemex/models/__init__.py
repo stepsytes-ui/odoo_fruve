@@ -2,6 +2,7 @@
 
 from . import product_brand
 from . import compras_warehouse
+from . import compras_warehouse_location
 from . import compras_warehouse_inventory
 from . import compras_product
 from . import compras_inventory_move

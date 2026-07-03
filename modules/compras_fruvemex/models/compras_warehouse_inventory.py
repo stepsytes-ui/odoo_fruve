@@ -1,4 +1,5 @@
-from odoo import fields, models, tools
+from odoo import _, fields, models, tools
+from odoo.exceptions import ValidationError
 
 
 class ComprasWarehouseInventory(models.Model):
@@ -15,6 +16,47 @@ class ComprasWarehouseInventory(models.Model):
     product_description = fields.Text(string='Descripción de producto', readonly=True)
     quantity = fields.Float(string='Cantidad', readonly=True)
     location = fields.Char(string='Locación', readonly=True)
+
+    def action_remove_selected_inventory(self):
+        move_model = self.env['compras.inventory.move']
+        removed_count = 0
+
+        for line in self:
+            if line.quantity <= 0:
+                raise ValidationError(_(
+                    'El producto %(product)s no tiene cantidad positiva para eliminar en el almacén %(warehouse)s.'
+                ) % {
+                    'product': line.product_name,
+                    'warehouse': line.warehouse_id.display_name,
+                })
+
+            move = move_model.create({
+                'company_id': line.company_id.id,
+                'move_type': 'salida',
+                'product_id': line.product_id.id,
+                'source_warehouse_id': line.warehouse_id.id,
+                'quantity': line.quantity,
+                'quantity_done': line.quantity,
+                'receiver_name': self.env.user.name,
+                'destination': _('Eliminación manual desde inventario'),
+                'status': 'entregado',
+                'notes': _('Salida generada desde la acción "Eliminar del inventario".'),
+            })
+            move.action_confirm()
+            removed_count += 1
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Inventario actualizado'),
+                'message': _('%(count)s producto(s) fueron eliminados del inventario seleccionado.') % {
+                    'count': removed_count,
+                },
+                'type': 'success',
+                'sticky': False,
+            },
+        }
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)

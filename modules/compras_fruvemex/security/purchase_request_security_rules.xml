@@ -41,7 +41,7 @@
         <record id="compras_inventory_move_company_rule" model="ir.rule">
             <field name="name">Compras Inventory Move Multi-Company Rule</field>
             <field name="model_id" ref="model_compras_inventory_move"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="domain_force">['|', '|', ('company_id', 'in', company_ids), ('source_warehouse_id.company_id', 'in', company_ids), ('destination_warehouse_id.company_id', 'in', company_ids)]</field>
             <field name="global" eval="True"/>
         </record>
 

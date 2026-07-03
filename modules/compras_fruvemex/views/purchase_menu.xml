@@ -62,19 +62,10 @@
 
         <menuitem
             id="menu_almacen_salidas"
-            name="Salidas y Transferencias"
-            parent="menu_almacen_root"
-            action="compras_fruvemex.compras_inventory_exit_action"
-            sequence="40"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
-        />
-
-        <menuitem
-            id="menu_almacen_movimientos"
-            name="Bitácora de Movimientos"
+            name="Movimientos"
             parent="menu_almacen_root"
             action="compras_fruvemex.compras_inventory_move_action"
-            sequence="50"
+            sequence="40"
             groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
         />
 
@@ -83,7 +74,7 @@
             name="Reporte de Faltantes"
             parent="menu_almacen_root"
             action="compras_fruvemex.compras_shortage_report_action"
-            sequence="60"
+            sequence="50"
             groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
         />
 
@@ -92,7 +83,7 @@
             name="Almacenes"
             parent="menu_almacen_root"
             action="compras_fruvemex.compras_warehouse_action"
-            sequence="70"
+            sequence="60"
             groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
         />
 
@@ -100,7 +91,7 @@
             id="menu_almacen_tools"
             name="Herramientas"
             parent="menu_almacen_root"
-            sequence="80"
+            sequence="70"
             groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
         />
 

@@ -1,4 +1,4 @@
-from odoo import api, fields, models, _
+from odoo import SUPERUSER_ID, api, fields, models, _
 from odoo.exceptions import ValidationError
 
 
@@ -44,6 +44,7 @@ class ComprasInventoryMove(models.Model):
     source_warehouse_id = fields.Many2one('compras.warehouse', string='Almacén Origen', default=lambda self: self._default_source_warehouse_id())
     destination_warehouse_id = fields.Many2one('compras.warehouse', string='Almacén Destino')
     area_id = fields.Many2one('hr.area', string='Área Destino')
+    location_id = fields.Many2one('compras.warehouse.location', string='Locación Destino')
     request_id = fields.Many2one('purchase.request', string='Solicitud de Compra', readonly=True)
     request_line_id = fields.Many2one('purchase.request.line', string='Línea de Solicitud', readonly=True)
     quantity = fields.Float(string='Cantidad Esperada', required=True, default=1.0)
@@ -84,6 +85,18 @@ class ComprasInventoryMove(models.Model):
         default='draft',
         tracking=True,
     )
+
+    @api.model
+    def _register_hook(self):
+        result = super()._register_hook()
+        env = api.Environment(self._cr, SUPERUSER_ID, {})
+        move_rule = env.ref('compras_fruvemex.compras_inventory_move_company_rule', raise_if_not_found=False)
+        if move_rule:
+            move_rule.write({
+                'domain_force': "['|', '|', ('company_id', 'in', company_ids), ('source_warehouse_id.company_id', 'in', company_ids), ('destination_warehouse_id.company_id', 'in', company_ids)]",
+                'global': True,
+            })
+        return result
 
     def _default_source_warehouse_id(self):
         warehouse = self.env['compras.warehouse'].sudo().search([
@@ -161,13 +174,14 @@ class ComprasInventoryMove(models.Model):
             'product_id': destination_product.id,
             'source_warehouse_id': False,
             'destination_warehouse_id': self.destination_warehouse_id.id,
+            'location_id': self.location_id.id if self.location_id and self.location_id.warehouse_id == self.destination_warehouse_id else False,
             'quantity': self.quantity,
             'quantity_done': self.quantity_done,
             'receiver_user_id': self.receiver_user_id.id,
             'receiver_name': self.receiver_name or self.delivered_by_id.name,
             'delivered_by_id': self.delivered_by_id.id,
             'signed_by_id': self.signed_by_id.id,
-            'destination': self.destination_warehouse_id.name,
+            'destination': self.location_id.name if self.location_id else self.destination_warehouse_id.name,
             'status': 'transferido',
             'notes': _('Entrada automática generada por transferencia interempresa desde %(source_company)s (%(folio)s).') % {
                 'source_company': self.company_id.display_name,
@@ -188,18 +202,45 @@ class ComprasInventoryMove(models.Model):
 
     @api.onchange('destination_warehouse_id')
     def _onchange_destination_warehouse_id(self):
-        domain_by_record = [('id', '=', False)]
+        area_domain_by_record = [('id', '=', False)]
+        location_domain_by_record = [('id', '=', False)]
         for rec in self:
             destination_company = rec.destination_warehouse_id.company_id
-            domain = [('id', '=', False)]
+            area_domain = [('id', '=', False)]
+            location_domain = [('id', '=', False)]
             if destination_company:
-                domain = [('department_id.company_id', '=', destination_company.id)]
-            domain_by_record = domain
+                area_domain = [('department_id.company_id', '=', destination_company.id)]
+            if rec.destination_warehouse_id:
+                location_domain = [('warehouse_id', '=', rec.destination_warehouse_id.id)]
+
+            area_domain_by_record = area_domain
+            location_domain_by_record = location_domain
 
             if rec.area_id and rec.area_id.department_id.company_id != destination_company:
                 rec.area_id = False
+            if rec.location_id and rec.location_id.warehouse_id != rec.destination_warehouse_id:
+                rec.location_id = False
 
-        return {'domain': {'area_id': domain_by_record}}
+        return {
+            'domain': {
+                'area_id': area_domain_by_record,
+                'location_id': location_domain_by_record,
+            }
+        }
+
+    @api.constrains('destination_warehouse_id', 'area_id', 'location_id')
+    def _check_destination_consistency(self):
+        for rec in self:
+            if rec.area_id and not rec.destination_warehouse_id:
+                raise ValidationError(_('Debes seleccionar un almacén destino para poder elegir un área.'))
+            if rec.area_id and rec.destination_warehouse_id:
+                destination_company = rec.destination_warehouse_id.company_id
+                if rec.area_id.department_id.company_id != destination_company:
+                    raise ValidationError(_('El área destino debe pertenecer a la empresa del almacén destino.'))
+            if rec.location_id and rec.destination_warehouse_id and rec.location_id.warehouse_id != rec.destination_warehouse_id:
+                raise ValidationError(_('La locación destino debe pertenecer al almacén destino seleccionado.'))
+            if rec.location_id and not rec.destination_warehouse_id:
+                raise ValidationError(_('Debes seleccionar un almacén destino para poder elegir una locación.'))
 
     @api.constrains('quantity', 'quantity_done')
     def _check_quantities(self):
@@ -229,8 +270,11 @@ class ComprasInventoryMove(models.Model):
                 raise ValidationError(_('No hay suficiente existencia para transferir este producto a otra empresa.'))
             if rec.move_type == 'transferencia' and not rec.destination_warehouse_id:
                 raise ValidationError(_('Debes indicar el almacén destino para una transferencia.'))
-            if rec.move_type == 'salida' and not (rec.area_id or rec.destination or rec.receiver_user_id or rec.receiver_name):
+            if rec.move_type == 'salida' and not (rec.area_id or rec.location_id or rec.destination or rec.receiver_user_id or rec.receiver_name):
                 raise ValidationError(_('Debes indicar a qué área o persona se entregó el producto.'))
+
+            if rec.location_id and not rec.destination:
+                rec.destination = rec.location_id.name
 
             if rec.move_type == 'entrada':
                 new_qty = previous_qty + moved_qty

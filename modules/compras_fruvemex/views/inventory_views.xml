@@ -7,10 +7,12 @@
                 <list string="Consolidado">
                     <field name="code" optional="show"/>
                     <field name="name" optional="show"/>
+                    <field name="packaging_material_id" optional="show"/>
                     <field name="location" optional="show"/>
                     <field name="model_name" optional="show"/>
                     <field name="serial" optional="show"/>
                     <field name="manufacturer" optional="show"/>
+                    <field name="priority" optional="show"/>
                     <field name="classification" optional="show"/>
                     <field name="category_id" optional="show"/>
                     <field name="subcategory_id" optional="show"/>
@@ -59,9 +61,11 @@
                                 <field name="serial"/>
                                 <field name="manufacturer"/>
                                 <field name="classification"/>
+                                <field name="priority"/>
                                 <field name="category_id"/>
                                 <field name="subcategory_id"/>
                                 <field name="subcategory_2"/>
+                                <field name="packaging_material_id"/>
                                 <field name="repair_line_id"/>
                                 <field name="model_name"/>
                                 <field name="expiration_date" invisible="not is_chemical_category"/>
@@ -131,6 +135,8 @@
                 <search string="Buscar Consolidado">
                     <field name="name"/>
                     <field name="code"/>
+                    <field name="priority"/>
+                    <field name="packaging_material_id"/>
                     <field name="serial"/>
                     <field name="manufacturer"/>
                     <field name="category_id"/>
@@ -138,6 +144,8 @@
                     <field name="vendor_id"/>
                     <filter name="con_existencia" string="Con Existencia" domain="[('qty_on_hand', '&gt;', 0)]"/>
                     <group string="Agrupar por" expand="0">
+                        <filter name="group_priority" string="Prioridad" context="{'group_by': 'priority'}"/>
+                        <filter name="group_packaging_material" string="Material de empaque" context="{'group_by': 'packaging_material_id'}"/>
                         <filter name="group_category" string="Categoria" context="{'group_by': 'category_id'}"/>
                         <filter name="group_subcategory" string="Subcategoria" context="{'group_by': 'subcategory_id'}"/>
                         <filter name="group_vendor" string="Proveedor" context="{'group_by': 'vendor_id'}"/>
@@ -424,6 +432,12 @@
             <field name="res_model">compras.warehouse.inventory</field>
             <field name="view_mode">list</field>
             <field name="context">{'search_default_group_product': 0}</field>
+        </record>
+
+        <record id="compras_packaging_material_action" model="ir.actions.act_window">
+            <field name="name">Materiales de empaque</field>
+            <field name="res_model">compras.packaging.material</field>
+            <field name="view_mode">list,form</field>
         </record>
 
         <record id="compras_warehouse_inventory_remove_selected_server_action" model="ir.actions.server">

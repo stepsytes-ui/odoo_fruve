@@ -48,6 +48,23 @@ class ComprasRepairLine(models.Model):
     ]
 
 
+class ComprasPackagingMaterial(models.Model):
+    _name = 'compras.packaging.material'
+    _description = 'Material de Empaque'
+    _order = 'name'
+
+    name = fields.Char(string='Material de empaque', required=True)
+    active = fields.Boolean(string='Activo', default=True)
+
+    _sql_constraints = [
+        (
+            'compras_packaging_material_name_unique',
+            'unique(name)',
+            'El material de empaque ya existe.',
+        ),
+    ]
+
+
 class ComprasProduct(models.Model):
     _name = 'compras.product'
     _description = 'Consolidado de Productos'
@@ -68,6 +85,14 @@ class ComprasProduct(models.Model):
     serial = fields.Char(string='Serial')
     manufacturer = fields.Char(string='Fabricante')
     classification = fields.Char(string='Clasificacion')
+    priority = fields.Selection(
+        [
+            ('a', 'A'),
+            ('b', 'B'),
+            ('c', 'C'),
+        ],
+        string='Prioridad',
+    )
     category_id = fields.Many2one('compras.product.category', string='Categoria')
     subcategory_id = fields.Many2one(
         'compras.product.subcategory',
@@ -94,6 +119,7 @@ class ComprasProduct(models.Model):
     )
     unit_id = fields.Many2one('uom.uom', string='Unidad', required=True)
     description = fields.Text(string='Notas')
+    packaging_material_id = fields.Many2one('compras.packaging.material', string='Material de empaque')
     brand_id = fields.Many2one('product.brand', string='Marca')
     model_name = fields.Char(string='Modelo')
     qty_process = fields.Float(string='Qty - Proceso', digits=(16, 2))

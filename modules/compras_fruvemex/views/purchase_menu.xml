@@ -135,5 +135,14 @@
             sequence="30"
             groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
         />
+
+        <menuitem
+            id="menu_almacen_tools_packaging_material"
+            name="Materiales de empaque"
+            parent="menu_almacen_tools"
+            action="compras_fruvemex.compras_packaging_material_action"
+            sequence="40"
+            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+        />
     </data>
 </odoo>

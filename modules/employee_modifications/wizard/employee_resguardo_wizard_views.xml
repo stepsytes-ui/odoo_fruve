@@ -21,8 +21,9 @@
                             <field name="line_ids" nolabel="1">
                                 <list editable="bottom">
                                     <field name="asset_id" options="{'no_create': False}"/>
+                                    <field name="quantity_object"/>
                                     <field name="tipo_resguardo" readonly="1"/>
-                                    <field name="funcionando_al_entregar"/>
+                                    <!-- <field name="funcionando_al_entregar"/> -->
                                     <field name="observaciones" optional="show"/>
                                 </list>
                             </field>

@@ -35,7 +35,8 @@ class EmployeeResguardoAssignWizard(models.TransientModel):
             'line_ids': [
                 (0, 0, {
                     'asset_id': line.asset_id.id,
-                    'funcionando_al_entregar': line.funcionando_al_entregar,
+                    'quantity_object': line.quantity_object,
+                    # 'funcionando_al_entregar': line.funcionando_al_entregar,
                     'observaciones': line.observaciones,
                 })
                 for line in self.line_ids
@@ -60,12 +61,17 @@ class EmployeeResguardoAssignWizardLine(models.TransientModel):
 
     wizard_id = fields.Many2one('employee.resguardo.assign.wizard', required=True, ondelete='cascade')
     asset_id = fields.Many2one('employee.resguardo.asset', string='Objeto', required=True)
+    quantity_object = fields.Integer(string='Cantidad', required=True, default=1)
     tipo_resguardo = fields.Selection(related='asset_id.tipo_resguardo', string='Tipo', readonly=True)
-    funcionando_al_entregar = fields.Boolean(string='Funcionando al Entregar', default=True)
+    # funcionando_al_entregar = fields.Boolean(string='Funcionando al Entregar', default=True)
     observaciones = fields.Text(string='Observaciones')
+
+    @api.constrains('quantity_object')
+    def _check_quantity_object_positive(self):
+        for record in self:
+            if record.quantity_object < 1:
+                raise ValidationError(_('La cantidad debe ser mayor a 0.'))
 
     @api.onchange('asset_id')
     def _onchange_asset_id(self):
-        for record in self:
-            if record.asset_id:
-                record.funcionando_al_entregar = record.asset_id.funcionando_correctamente
+        return

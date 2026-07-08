@@ -90,7 +90,7 @@
                     <field name="employee_id"/>
                     <field name="biometric_id"/>
                     <field name="fecha_entrega"/>
-                    <field name="fecha_devolucion"/>
+                    <!-- <field name="fecha_devolucion"/> -->
                     <field name="responsable_rh_id"/>
                     <field name="total_items"/>
                     <field name="returned_items"/>
@@ -121,7 +121,7 @@
                             </group>
                             <group>
                                 <field name="fecha_entrega"/>
-                                <field name="fecha_devolucion"/>
+                                <!-- <field name="fecha_devolucion"/> -->
                                 <field name="responsable_rh_id"/>
                             </group>
                         </group>
@@ -138,19 +138,20 @@
                                 <field name="line_ids">
                                     <list editable="bottom">
                                         <field name="asset_id" options="{'no_create': False}" width="220px"/>
+                                        <field name="quantity_object" width="95px"/>
                                         <field name="tipo_resguardo" readonly="1" width="150px"/>
                                         <field name="numero_serie" readonly="1" optional="show" width="160px" invisible="0"/>
-                                        <field name="funcionando_al_entregar" width="170px"/>
+                                        <!-- <field name="funcionando_al_entregar" width="170px"/> -->
                                         <field name="devuelto" width="95px"/>
                                         <field name="fecha_devolucion" width="200px"/>
                                         <field name="funcionando_al_devolver" width="160px"/>
-                                        <field name="check_rh" width="130px"/>
                                         <field name="observaciones" optional="show" width="220px"/>
                                     </list>
                                     <form>
                                         <group>
                                             <group>
                                                 <field name="asset_id" options="{'no_create': False}"/>
+                                                <field name="quantity_object"/>
                                                 <field name="tipo_resguardo" readonly="1"/>
                                                 <field name="nombre" readonly="1"/>
                                                 <field name="color" readonly="1"/>
@@ -160,11 +161,10 @@
                                                 <field name="almacenamiento" readonly="1" invisible="tipo_resguardo != 'dispositivo'"/>
                                             </group>
                                             <group>
-                                                <field name="funcionando_al_entregar"/>
+                                                <!-- <field name="funcionando_al_entregar"/> -->
                                                 <field name="devuelto"/>
                                                 <field name="fecha_devolucion"/>
                                                 <field name="funcionando_al_devolver"/>
-                                                <field name="check_rh"/>
                                             </group>
                                         </group>
                                         <group>

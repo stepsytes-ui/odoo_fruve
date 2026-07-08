@@ -112,7 +112,7 @@ class EmployeeResguardo(models.Model):
     )
 
     fecha_entrega = fields.Date(string='Fecha de Entrega', required=True, default=fields.Date.today, tracking=True)
-    fecha_devolucion = fields.Date(string='Fecha de Devolucion', tracking=True)
+    # fecha_devolucion = fields.Date(string='Fecha de Devolucion', tracking=True)
 
     state = fields.Selection(
         [
@@ -186,6 +186,7 @@ class EmployeeResguardoLine(models.Model):
     employee_id = fields.Many2one('hr.employee', related='resguardo_id.employee_id', string='Empleado', store=True, readonly=True)
 
     asset_id = fields.Many2one('employee.resguardo.asset', string='Objeto', required=True)
+    quantity_object = fields.Integer(string='Cantidad', required=True, default=1)
 
     tipo_resguardo = fields.Selection(related='asset_id.tipo_resguardo', string='Tipo', store=True, readonly=True)
 
@@ -196,18 +197,21 @@ class EmployeeResguardoLine(models.Model):
     numero_serie = fields.Char(string='Numero de Serie', related='asset_id.numero_serie', readonly=True)
     almacenamiento = fields.Char(string='Almacenamiento', related='asset_id.almacenamiento', readonly=True)
 
-    funcionando_al_entregar = fields.Boolean(string='Funcionando al Entregar', default=True)
+    # funcionando_al_entregar = fields.Boolean(string='Funcionando al Entregar', default=True)
     devuelto = fields.Boolean(string='Devuelto') 
     fecha_devolucion = fields.Date(string='Fecha de Devolucion/Objeto')
     funcionando_al_devolver = fields.Boolean(string='Funcionando al Devolver', default=True)
-    check_rh = fields.Boolean(string='Objeto Validado')
     observaciones = fields.Text(string='Observaciones')
+
+    @api.constrains('quantity_object')
+    def _check_quantity_object_positive(self):
+        for record in self:
+            if record.quantity_object < 1:
+                raise ValidationError(_('La cantidad debe ser mayor a 0.'))
 
     @api.onchange('asset_id')
     def _onchange_asset_id(self):
-        for record in self:
-            if record.asset_id:
-                record.funcionando_al_entregar = record.asset_id.funcionando_correctamente
+        return
 
     @api.onchange('devuelto')
     def _onchange_devuelto(self):
@@ -216,10 +220,3 @@ class EmployeeResguardoLine(models.Model):
                 record.fecha_devolucion = fields.Date.today()
             if not record.devuelto:
                 record.fecha_devolucion = False
-                record.check_rh = False
-
-    @api.constrains('check_rh', 'devuelto')
-    def _check_rh_requires_return(self):
-        for record in self:
-            if record.check_rh and not record.devuelto:
-                raise ValidationError(_('No se puede validar checklist RH si el objeto aun no esta marcado como devuelto.'))

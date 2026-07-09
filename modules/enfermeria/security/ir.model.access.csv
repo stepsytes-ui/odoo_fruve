@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_enfermeria_accidente_user,enfermeria.accidente.user,model_enfermeria_accidente,enfermeria.group_enfermeria_user,1,1,1,0
+access_enfermeria_accidente_manager,enfermeria.accidente.manager,model_enfermeria_accidente,enfermeria.group_enfermeria_manager,1,1,1,1

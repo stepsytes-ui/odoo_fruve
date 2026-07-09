@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="group_enfermeria_user" model="res.groups">
+            <field name="name">Enfermería Usuario</field>
+            <field name="comment">Puede registrar y consultar accidentes</field>
+        </record>
+
+        <record id="group_enfermeria_manager" model="res.groups">
+            <field name="name">Enfermería Administrador</field>
+            <field name="comment">Acceso completo al módulo de enfermería</field>
+        </record>
+    </data>
+</odoo>

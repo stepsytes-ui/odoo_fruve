@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ==================== VISTA FORMULARIO ==================== -->
+        <record id="enfermeria_accidente_view_form" model="ir.ui.view">
+            <field name="name">enfermeria.accidente.form</field>
+            <field name="model">enfermeria.accidente</field>
+            <field name="arch" type="xml">
+                <form string="Accidente">
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
+                        </div>
+
+                        <group>
+                            <group string="Datos del Empleado">
+                                <field name="employee_id" options="{'no_create': True}"/>
+                                <field name="no_emp" readonly="1"/>
+                                <field name="nombre" readonly="1"/>
+                            </group>
+                            <group string="Información del Accidente">
+                                <field name="area_id" options="{'no_create': True}"/>
+                                <field name="tipo_causa"/>
+                                <field name="dia_accidente"/>
+                            </group>
+                        </group>
+
+                        <group>
+                            <group string="Documentación IMSS">
+                                <field name="inicia_st7"/>
+                                <field name="cierre_st2"/>
+                                <field name="riesgo_trabajo_imss"/>
+                                <field name="dias_incapacidad"/>
+                            </group>
+                            <group string="Atención Médica">
+                                <field name="atencion"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- ==================== VISTA LISTA ==================== -->
+        <record id="enfermeria_accidente_view_list" model="ir.ui.view">
+            <field name="name">enfermeria.accidente.list</field>
+            <field name="model">enfermeria.accidente</field>
+            <field name="arch" type="xml">
+                <list string="Accidentes">
+                    <field name="name" string="No. Reporte"/>
+                    <field name="no_emp" string="No. EMP"/>
+                    <field name="nombre" string="Nombre"/>
+                    <field name="area_id" string="Área del Accidente"/>
+                    <field name="tipo_causa" string="Tipo de Causa"/>
+                    <field name="dia_accidente" string="Día del Accidente"/>
+                    <field name="inicia_st7" string="Inicia con S-T7"/>
+                    <field name="cierre_st2" string="Cierre con ST-2"/>
+                    <field name="atencion" string="Atención"/>
+                    <field name="riesgo_trabajo_imss" string="Riesgo de Trabajo por IMSS"/>
+                    <field name="dias_incapacidad" string="Días de Incapacidad"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ==================== VISTA BÚSQUEDA ==================== -->
+        <record id="enfermeria_accidente_view_search" model="ir.ui.view">
+            <field name="name">enfermeria.accidente.search</field>
+            <field name="model">enfermeria.accidente</field>
+            <field name="arch" type="xml">
+                <search string="Buscar Accidentes">
+                    <field name="name" string="No. Reporte"/>
+                    <field name="no_emp" string="No. EMP"/>
+                    <field name="nombre" string="Nombre"/>
+                    <field name="employee_id" string="Empleado"/>
+                    <field name="area_id" string="Área"/>
+                    <field name="dia_accidente" string="Día del Accidente"/>
+
+                    <filter name="filter_acto_inseguro"
+                            string="Acto Inseguro"
+                            domain="[('tipo_causa', '=', 'acto_inseguro')]"/>
+                    <filter name="filter_condicion_insegura"
+                            string="Condición Insegura"
+                            domain="[('tipo_causa', '=', 'condicion_insegura')]"/>
+                    <filter name="filter_mixto"
+                            string="Mixto"
+                            domain="[('tipo_causa', '=', 'mixto')]"/>
+
+                    <separator/>
+
+                    <filter name="filter_imss"
+                            string="IMSS"
+                            domain="[('atencion', '=', 'imss')]"/>
+                    <filter name="filter_interno"
+                            string="Interno"
+                            domain="[('atencion', '=', 'interno')]"/>
+                    <filter name="filter_clinica"
+                            string="Clínica"
+                            domain="[('atencion', '=', 'clinica')]"/>
+
+                    <separator/>
+
+                    <group string="Agrupar por" expand="0">
+                        <filter name="group_by_area"
+                                string="Área"
+                                context="{'group_by': 'area_id'}"/>
+                        <filter name="group_by_tipo_causa"
+                                string="Tipo de Causa"
+                                context="{'group_by': 'tipo_causa'}"/>
+                        <filter name="group_by_atencion"
+                                string="Atención"
+                                context="{'group_by': 'atencion'}"/>
+                        <filter name="group_by_dia"
+                                string="Día del Accidente"
+                                context="{'group_by': 'dia_accidente'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- ==================== ACCIÓN ==================== -->
+        <record id="enfermeria_accidente_action" model="ir.actions.act_window">
+            <field name="name">Accidentes</field>
+            <field name="res_model">enfermeria.accidente</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
+                    Registra el primer accidente
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

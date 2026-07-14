@@ -204,6 +204,21 @@ class ComprasProduct(models.Model):
         inverse='_inverse_qty_on_hand',
         store=True,
     )
+    inventory_warehouse_id = fields.Many2one(
+        'compras.warehouse',
+        string='Almacén de Inventario',
+        domain="[('company_id', '=', company_id)]",
+        tracking=True,
+    )
+    inventory_location_id = fields.Many2one(
+        'compras.warehouse.location',
+        string='Locación',
+        domain="[('warehouse_id', '=', inventory_warehouse_id)]",
+        tracking=True,
+    )
+    warehouse_qty_in = fields.Float(string='Entradas (Almacén)', compute='_compute_selected_warehouse_quantities')
+    warehouse_qty_out = fields.Float(string='Salidas (Almacén)', compute='_compute_selected_warehouse_quantities')
+    warehouse_qty_on_hand = fields.Float(string='Inventario (Almacén)', compute='_compute_selected_warehouse_quantities')
     last_entry_date = fields.Datetime(string='Última Entrada', compute='_compute_last_dates', store=True)
     last_exit_date = fields.Datetime(string='Última Salida', compute='_compute_last_dates', store=True)
 
@@ -221,6 +236,17 @@ class ComprasProduct(models.Model):
                 product.max_qty = product.reorder_point + math.ceil(daily_demand * product.lead_time_days)
             else:
                 product.max_qty = product.reorder_point
+
+    @api.onchange('inventory_warehouse_id')
+    def _onchange_inventory_warehouse_id(self):
+        for product in self:
+            if product.inventory_location_id and product.inventory_location_id.warehouse_id != product.inventory_warehouse_id:
+                product.inventory_location_id = False
+
+    @api.onchange('inventory_location_id')
+    def _onchange_inventory_location_id(self):
+        for product in self:
+            product.location = product.inventory_location_id.name or False
 
     @api.depends('category_id', 'category_id.name')
     def _compute_is_chemical_category(self):
@@ -243,6 +269,18 @@ class ComprasProduct(models.Model):
                 raise ValidationError(_('Qty - Proceso y Total Equipos no pueden ser negativos.'))
             if product.frequency_use_days < 0 or product.lead_time_days < 0:
                 raise ValidationError(_('Frecuencia de uso y tiempo de entrega no pueden ser negativos.'))
+
+    @api.constrains('inventory_warehouse_id', 'inventory_location_id')
+    def _check_inventory_location_warehouse(self):
+        for product in self:
+            if product.inventory_location_id and not product.inventory_warehouse_id:
+                raise ValidationError(_('Debes seleccionar un almacén antes de elegir una locación.'))
+            if (
+                product.inventory_location_id
+                and product.inventory_warehouse_id
+                and product.inventory_location_id.warehouse_id != product.inventory_warehouse_id
+            ):
+                raise ValidationError(_('La locación debe pertenecer al almacén de inventario seleccionado.'))
 
     @api.depends('qty_process', 'total_equipment')
     def _compute_total_qty_process(self):
@@ -299,6 +337,48 @@ class ComprasProduct(models.Model):
             product.qty_out = qty_out
             product.qty_on_hand = qty_in - qty_out
 
+    @api.depends(
+        'inventory_warehouse_id',
+        'move_ids.state',
+        'move_ids.move_type',
+        'move_ids.quantity_done',
+        'move_ids.source_warehouse_id',
+        'move_ids.destination_warehouse_id',
+        'move_ids.destination_warehouse_id.company_id',
+        'move_ids.company_id',
+    )
+    def _compute_selected_warehouse_quantities(self):
+        for product in self:
+            warehouse = product.inventory_warehouse_id
+            if not warehouse:
+                product.warehouse_qty_in = 0.0
+                product.warehouse_qty_out = 0.0
+                product.warehouse_qty_on_hand = 0.0
+                continue
+
+            done_moves = product.move_ids.filtered(lambda move: move.state == 'done')
+            qty_in = sum(done_moves.filtered(
+                lambda move: (
+                    move.move_type == 'entrada' and move.destination_warehouse_id == warehouse
+                )
+                or (
+                    move.move_type == 'transferencia'
+                    and move.destination_warehouse_id == warehouse
+                    and move.destination_warehouse_id.company_id == move.company_id
+                )
+            ).mapped('quantity_done'))
+            qty_out = sum(done_moves.filtered(
+                lambda move: (
+                    move.move_type == 'salida' and move.source_warehouse_id == warehouse
+                )
+                or (
+                    move.move_type == 'transferencia' and move.source_warehouse_id == warehouse
+                )
+            ).mapped('quantity_done'))
+            product.warehouse_qty_in = qty_in
+            product.warehouse_qty_out = qty_out
+            product.warehouse_qty_on_hand = qty_in - qty_out
+
     def _inverse_qty_on_hand(self):
         move_model = self.env['compras.inventory.move']
         for product in self:
@@ -321,10 +401,17 @@ class ComprasProduct(models.Model):
                     'No se puede reducir Inventario desde este campo. Usa una salida de almacen para disminuir existencias.'
                 ))
 
+            if not product.inventory_warehouse_id:
+                raise ValidationError(_(
+                    'Selecciona el almacén de inventario para registrar la entrada inicial o el ajuste de Inventario.'
+                ))
+
             adjustment_move = move_model.create({
                 'company_id': product.company_id.id,
                 'move_type': 'entrada',
                 'product_id': product.id,
+                'destination_warehouse_id': product.inventory_warehouse_id.id,
+                'location_id': product.inventory_location_id.id,
                 'quantity': delta,
                 'quantity_done': delta,
                 'status': 'completo',

@@ -27,7 +27,6 @@
                     <field name="unit_price" optional="show"/>
                     <field name="total_cost" optional="show"/>
                     <field name="currency_id" optional="show"/>
-                    <field name="qty_on_hand" optional="show"/>
                     <field name="coverage_days" optional="show"/>
                     <field name="min_qty" optional="show"/>
                     <field name="max_qty" optional="show"/>
@@ -91,17 +90,15 @@
                                 <field name="barcode_preview_html" widget="html" nolabel="1" readonly="1"/>
                             </group>
                             <group string="Existencias en Tiempo Real">
-                                <field name="qty_on_hand"/>
-                                <field name="qty_in" readonly="1"/>
-                                <field name="qty_out" readonly="1"/>
+                                <field name="inventory_warehouse_id"/>
+                                <field name="inventory_location_id" context="{'default_warehouse_id': inventory_warehouse_id}"/>
+                                <field name="warehouse_qty_on_hand" readonly="1"/>
+                                <field name="warehouse_qty_in" readonly="1"/>
+                                <field name="warehouse_qty_out" readonly="1"/>
                                 <field name="last_entry_date" readonly="1"/>
                                 <field name="last_exit_date" readonly="1"/>
                                 <field name="active"/>
                             </group>
-                        </group>
-                        <group string="Notas">
-                            <field name="location"/>
-                            <field name="description" nolabel="1"/>
                         </group>
                         <notebook>
                             <page string="Bitácora de Movimientos">
@@ -142,7 +139,6 @@
                     <field name="category_id"/>
                     <field name="subcategory_id"/>
                     <field name="vendor_id"/>
-                    <filter name="con_existencia" string="Con Existencia" domain="[('qty_on_hand', '&gt;', 0)]"/>
                     <group string="Agrupar por" expand="0">
                         <filter name="group_priority" string="Prioridad" context="{'group_by': 'priority'}"/>
                         <filter name="group_packaging_material" string="Material de empaque" context="{'group_by': 'packaging_material_id'}"/>
@@ -249,7 +245,7 @@
                     <filter name="entries" string="Entradas" domain="[('move_type', '=', 'entrada')]"/>
                     <filter name="exits" string="Salidas" domain="[('move_type', '=', 'salida')]"/>
                     <filter name="transfers" string="Transferencias" domain="[('move_type', '=', 'transferencia')]"/>
-                    <filter name="shortages" string="Faltantes" domain="[('move_type', '=', 'entrada'), ('status', 'in', ['faltante', 'incompleto'])]"/>
+                    <filter name="shortages" string="Faltantes" domain="[('move_type', '=', 'entrada'), ('status', 'in', ['faltante', 'incompleto', 'defectuoso'])]"/>
                     <filter name="done" string="Confirmados" domain="[('state', '=', 'done')]"/>
                     <filter name="today" string="Hoy" domain="[('movement_date', '&gt;=', context_today())]"/>
                     <group string="Agrupar por" expand="0">

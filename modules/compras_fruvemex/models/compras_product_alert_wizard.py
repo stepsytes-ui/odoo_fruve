@@ -20,6 +20,30 @@ class ComprasProductAlertWizard(models.TransientModel):
     total_alert_count = fields.Integer(string='Total de alertas', readonly=True)
 
     @api.model
+    def _get_product_stock_map(self, product_ids, company_ids):
+        stock_map = {product_id: 0.0 for product_id in product_ids}
+        if not product_ids:
+            return stock_map
+
+        inventory_model = self.env['compras.warehouse.inventory'].sudo().with_context(
+            allowed_company_ids=company_ids,
+        )
+        grouped_lines = inventory_model.read_group(
+            [
+                ('product_id', 'in', product_ids),
+                ('company_id', 'in', company_ids),
+            ],
+            ['product_id', 'quantity:sum'],
+            ['product_id'],
+        )
+        for line in grouped_lines:
+            product_data = line.get('product_id')
+            if not product_data:
+                continue
+            stock_map[product_data[0]] = line.get('quantity', 0.0)
+        return stock_map
+
+    @api.model
     def action_open_current_user_wizard(self):
         user = self.env.user
         if not (
@@ -28,16 +52,22 @@ class ComprasProductAlertWizard(models.TransientModel):
         ):
             return False
 
-        product_model = self.env['compras.product']
         company_ids = self.env.companies.ids or [self.env.company.id]
+        product_model = self.env['compras.product'].sudo().with_context(
+            allowed_company_ids=company_ids,
+        )
         today = fields.Date.context_today(self)
         expiration_limit = today + relativedelta(months=1)
 
-        min_stock_products = product_model.search([
+        candidate_min_stock_products = product_model.search([
             ('active', '=', True),
             ('company_id', 'in', company_ids),
             ('min_qty', '>', 0),
-        ]).filtered(lambda product: product.qty_on_hand <= product.min_qty)
+        ])
+        stock_map = self._get_product_stock_map(candidate_min_stock_products.ids, company_ids)
+        min_stock_products = candidate_min_stock_products.filtered(
+            lambda product: stock_map.get(product.id, 0.0) <= product.min_qty
+        )
 
         expiration_products = product_model.search([
             ('active', '=', True),
@@ -53,7 +83,7 @@ class ComprasProductAlertWizard(models.TransientModel):
                 'product_id': product.id,
                 'code': product.code or '',
                 'name': product.name or '',
-                'qty_on_hand': product.qty_on_hand,
+                'qty_on_hand': stock_map.get(product.id, 0.0),
                 'min_qty': product.min_qty,
                 'expiration_date': product.expiration_date,
                 'days_to_expire': False,
@@ -75,7 +105,7 @@ class ComprasProductAlertWizard(models.TransientModel):
                     'product_id': product.id,
                     'code': product.code or '',
                     'name': product.name or '',
-                    'qty_on_hand': product.qty_on_hand,
+                    'qty_on_hand': stock_map.get(product.id, 0.0),
                     'min_qty': product.min_qty,
                     'expiration_date': product.expiration_date,
                     'days_to_expire': days_to_expire,
@@ -87,7 +117,7 @@ class ComprasProductAlertWizard(models.TransientModel):
         if not alert_map:
             return False
 
-        wizard = self.create({
+        wizard = self.sudo().create({
             'min_alert_count': sum(1 for item in alert_map.values() if item['alert_min_qty']),
             'expiration_alert_count': sum(1 for item in alert_map.values() if item['alert_expiration']),
             'total_alert_count': len(alert_map),
@@ -101,9 +131,9 @@ class ComprasProductAlertWizard(models.TransientModel):
             )],
         })
 
-        action = self.env.ref('compras_fruvemex.compras_product_alert_wizard_action').read()[0]
+        action = self.env.ref('compras_fruvemex.compras_product_alert_wizard_action').sudo().read()[0]
         action['res_id'] = wizard.id
-        action['views'] = [(self.env.ref('compras_fruvemex.compras_product_alert_wizard_form').id, 'form')]
+        action['views'] = [(self.env.ref('compras_fruvemex.compras_product_alert_wizard_form').sudo().id, 'form')]
         action['target'] = 'new'
         return action
 

@@ -262,13 +262,15 @@ class PurchaseRequest(models.Model):
                 'approved_by_id': False,
             })
 
-    def action_process_receipt_from_checklist(self, receiver_user=False, warehouse=False):
+    def action_process_receipt_from_checklist(self, receiver_user=False, warehouse=False, location=False):
         self.ensure_one()
         if not self.line_ids:
             raise ValidationError(_('No hay líneas para recibir en esta solicitud.'))
 
         receiver = receiver_user or self.env.user
         warehouse = warehouse or self.warehouse_id
+        if location and location.warehouse_id != warehouse:
+            raise ValidationError(_('La locación seleccionada no pertenece al almacén de recepción.'))
 
         for line in self.line_ids:
             product = self._get_or_create_product_from_line(line)
@@ -284,6 +286,7 @@ class PurchaseRequest(models.Model):
                 'move_type': 'entrada',
                 'product_id': product.id,
                 'destination_warehouse_id': warehouse.id if warehouse else False,
+                'location_id': location.id if location else False,
                 'request_id': self.id,
                 'request_line_id': line.id,
                 'quantity': line.quantity,
@@ -294,7 +297,7 @@ class PurchaseRequest(models.Model):
                 'receiver_name': receiver.name,
                 'delivered_by_id': self.env.user.id,
                 'signed_by_id': self.env.user.id,
-                'destination': warehouse.name if warehouse else 'Almacén Principal',
+                'destination': location.name if location else (warehouse.name if warehouse else 'Almacén Principal'),
                 'status': move_status,
                 'notes': line.receipt_notes or self.comments or '',
                 'registered_by_id': self.env.user.id,

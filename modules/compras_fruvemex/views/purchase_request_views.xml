@@ -101,9 +101,6 @@
                                         <field name="vendor_id" optional="show"/>
                                         <field name="unit_price"/>
                                         <field name="tax_ids" widget="many2many_tags" optional="show"/>
-                                        <field name="received_qty" optional="show"/>
-                                        <field name="receipt_status" optional="show"/>
-                                        <field name="receipt_notes" optional="show"/>
                                         <field name="subtotal" readonly="1"/>
                                     </list>
                                 </field>

@@ -43,6 +43,7 @@ class PurchaseRequestLine(models.Model):
         [
             ('completo', 'Completo'),
             ('incompleto', 'Incompleto'),
+            ('defectuoso', 'Defectuoso'),
             ('faltante', 'Con Faltante'),
         ],
         string='Estado de Recepción',
@@ -94,10 +95,22 @@ class PurchaseRequestLine(models.Model):
             if line.received_qty and line.received_qty > line.quantity:
                 raise ValidationError(_('La cantidad recibida no puede ser mayor a la cantidad solicitada.'))
 
-    @api.depends('quantity', 'unit_price')
+    @api.depends('quantity', 'unit_price', 'tax_ids', 'request_id.company_id', 'vendor_id')
     def _compute_subtotal(self):
         for line in self:
-            line.subtotal = line.quantity * line.unit_price
+            if not line.tax_ids:
+                line.subtotal = line.quantity * line.unit_price
+                continue
+
+            company = line.request_id.company_id or self.env.company
+            currency = company.currency_id
+            tax_result = line.tax_ids.with_company(company).compute_all(
+                line.unit_price,
+                currency=currency,
+                quantity=line.quantity,
+                partner=line.vendor_id,
+            )
+            line.subtotal = tax_result.get('total_included', line.quantity * line.unit_price)
 
     def _is_warehouse_only_user(self):
         user = self.env.user

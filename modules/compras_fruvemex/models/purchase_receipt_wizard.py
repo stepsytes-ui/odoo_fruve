@@ -8,9 +8,13 @@ class PurchaseReceiptWizard(models.TransientModel):
 
     request_id = fields.Many2one('purchase.request', string='Solicitud', required=True)
     warehouse_id = fields.Many2one('compras.warehouse', string='Almacén', required=True)
+    location_id = fields.Many2one(
+        'compras.warehouse.location',
+        string='Locación',
+        domain="[('warehouse_id', '=', warehouse_id)]",
+    )
     receiver_user_id = fields.Many2one('res.users', string='Recibe', default=lambda self: self.env.user, required=True)
     line_ids = fields.One2many('purchase.receipt.wizard.line', 'wizard_id', string='Checklist')
-    notes = fields.Text(string='Observaciones Generales')
 
     @api.model
     def default_get(self, fields_list):
@@ -18,6 +22,11 @@ class PurchaseReceiptWizard(models.TransientModel):
         request = self.env['purchase.request'].browse(self.env.context.get('default_request_id'))
         if request:
             res['warehouse_id'] = request.warehouse_id.id
+            default_location = self.env['compras.warehouse.location'].search([
+                ('warehouse_id', '=', request.warehouse_id.id),
+                ('active', '=', True),
+            ], limit=1)
+            res['location_id'] = default_location.id if default_location else False
             res['line_ids'] = [(0, 0, {
                 'request_line_id': line.id,
                 'product_id': line.warehouse_product_id.id,
@@ -28,10 +37,18 @@ class PurchaseReceiptWizard(models.TransientModel):
             }) for line in request.line_ids]
         return res
 
+    @api.onchange('warehouse_id')
+    def _onchange_warehouse_id(self):
+        for wizard in self:
+            if wizard.location_id and wizard.location_id.warehouse_id != wizard.warehouse_id:
+                wizard.location_id = False
+
     def action_confirm_receipt(self):
         self.ensure_one()
         if not self.line_ids:
             raise ValidationError(_('No hay líneas para recibir.'))
+        if self.location_id and self.location_id.warehouse_id != self.warehouse_id:
+            raise ValidationError(_('La locación seleccionada debe pertenecer al almacén elegido.'))
 
         for wizard_line in self.line_ids:
             if wizard_line.quantity_received < 0:
@@ -46,10 +63,7 @@ class PurchaseReceiptWizard(models.TransientModel):
             request_line.receipt_status = wizard_line.receipt_check
             request_line.receipt_notes = wizard_line.notes
 
-        if self.notes:
-            self.request_id.comments = (self.request_id.comments or '') + '\n\nRecepción: ' + self.notes
-
-        self.request_id.action_process_receipt_from_checklist(self.receiver_user_id, self.warehouse_id)
+        self.request_id.action_process_receipt_from_checklist(self.receiver_user_id, self.warehouse_id, self.location_id)
         return {'type': 'ir.actions.act_window_close'}
 
 
@@ -74,6 +88,7 @@ class PurchaseReceiptWizardLine(models.TransientModel):
     receipt_check = fields.Selection([
         ('completo', 'Llegó completo'),
         ('incompleto', 'Llegó incompleto'),
+        ('defectuoso', 'Llegó defectuoso'),
         ('faltante', 'No llegó / faltante'),
     ], string='Checklist', default='completo', required=True)
     notes = fields.Text(string='Observaciones')

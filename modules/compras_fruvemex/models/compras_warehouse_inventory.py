@@ -107,28 +107,52 @@ class ComprasWarehouseInventory(models.Model):
                       AND move.move_type = 'transferencia'
                       AND move.destination_warehouse_id IS NOT NULL
                       AND destination_warehouse.company_id = move.company_id
+                ),
+                stock_lines AS (
+                    SELECT
+                        move_lines.warehouse_id AS warehouse_id,
+                        move_lines.product_id AS product_id,
+                        SUM(move_lines.qty_delta) AS quantity
+                    FROM move_lines
+                    GROUP BY move_lines.warehouse_id, move_lines.product_id
+                    HAVING SUM(move_lines.qty_delta) <> 0
                 )
                 SELECT
-                    ROW_NUMBER() OVER (ORDER BY move_lines.warehouse_id, product.name, product.id) AS id,
-                    move_lines.warehouse_id AS warehouse_id,
+                    ROW_NUMBER() OVER (ORDER BY stock_lines.warehouse_id, product.name, product.id) AS id,
+                    stock_lines.warehouse_id AS warehouse_id,
                     warehouse.company_id AS company_id,
-                    move_lines.product_id AS product_id,
+                    stock_lines.product_id AS product_id,
                     product.id AS product_db_id,
                     product.name AS product_name,
                     product.description AS product_description,
-                    SUM(move_lines.qty_delta) AS quantity,
-                    product.location AS location
-                FROM move_lines
-                JOIN compras_warehouse warehouse ON warehouse.id = move_lines.warehouse_id
-                JOIN compras_product product ON product.id = move_lines.product_id
-                GROUP BY
-                    move_lines.warehouse_id,
-                    warehouse.company_id,
-                    move_lines.product_id,
-                    product.id,
-                    product.name,
-                    product.description,
-                    product.location
-                HAVING SUM(move_lines.qty_delta) <> 0
+                    stock_lines.quantity AS quantity,
+                    COALESCE(last_location.location_name, product.location) AS location
+                FROM stock_lines
+                JOIN compras_warehouse warehouse ON warehouse.id = stock_lines.warehouse_id
+                JOIN compras_product product ON product.id = stock_lines.product_id
+                LEFT JOIN LATERAL (
+                    SELECT
+                        warehouse_location.name AS location_name
+                    FROM compras_inventory_move move
+                    LEFT JOIN compras_warehouse destination_warehouse
+                        ON destination_warehouse.id = move.destination_warehouse_id
+                    JOIN compras_warehouse_location warehouse_location
+                        ON warehouse_location.id = move.location_id
+                    WHERE move.state = 'done'
+                      AND move.product_id = stock_lines.product_id
+                      AND move.location_id IS NOT NULL
+                      AND (
+                            (move.move_type = 'entrada' AND move.destination_warehouse_id = stock_lines.warehouse_id)
+                         OR (move.move_type = 'salida' AND move.source_warehouse_id = stock_lines.warehouse_id)
+                         OR (move.move_type = 'transferencia' AND move.source_warehouse_id = stock_lines.warehouse_id)
+                         OR (
+                                move.move_type = 'transferencia'
+                            AND move.destination_warehouse_id = stock_lines.warehouse_id
+                            AND destination_warehouse.company_id = move.company_id
+                         )
+                      )
+                    ORDER BY move.movement_date DESC, move.id DESC
+                    LIMIT 1
+                ) AS last_location ON TRUE
             )
         """)

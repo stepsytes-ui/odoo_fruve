@@ -44,7 +44,7 @@ class ComprasInventoryMove(models.Model):
     source_warehouse_id = fields.Many2one('compras.warehouse', string='Almacén Origen', default=lambda self: self._default_source_warehouse_id())
     destination_warehouse_id = fields.Many2one('compras.warehouse', string='Almacén Destino')
     area_id = fields.Many2one('hr.area', string='Área Destino')
-    location_id = fields.Many2one('compras.warehouse.location', string='Locación Destino')
+    location_id = fields.Many2one('compras.warehouse.location', string='Locación')
     request_id = fields.Many2one('purchase.request', string='Solicitud de Compra', readonly=True)
     request_line_id = fields.Many2one('purchase.request.line', string='Línea de Solicitud', readonly=True)
     quantity = fields.Float(string='Cantidad Esperada', required=True, default=1.0)
@@ -60,6 +60,7 @@ class ComprasInventoryMove(models.Model):
         [
             ('completo', 'Completo'),
             ('incompleto', 'Incompleto'),
+            ('defectuoso', 'Defectuoso'),
             ('faltante', 'Con Faltante'),
             ('entregado', 'Entregado'),
             ('transferido', 'Transferido'),
@@ -104,6 +105,23 @@ class ComprasInventoryMove(models.Model):
             ('is_main', '=', True),
         ], limit=1)
         return warehouse.id if warehouse else False
+
+    def _get_stock_warehouse_for_move(self):
+        self.ensure_one()
+        if self.move_type == 'entrada':
+            return self.destination_warehouse_id
+        if self.move_type in ('salida', 'transferencia'):
+            return self.source_warehouse_id
+        return False
+
+    def _get_product_qty_in_warehouse(self, product, warehouse):
+        if not product or not warehouse:
+            return 0.0
+        inventory_line = self.env['compras.warehouse.inventory'].sudo().search([
+            ('warehouse_id', '=', warehouse.id),
+            ('product_id', '=', product.id),
+        ], limit=1)
+        return inventory_line.quantity if inventory_line else 0.0
 
     def _is_intercompany_transfer(self):
         self.ensure_one()
@@ -200,7 +218,26 @@ class ComprasInventoryMove(models.Model):
         elif self.move_type == 'transferencia':
             self.status = 'transferido'
 
-    @api.onchange('destination_warehouse_id')
+    @api.onchange('move_type', 'product_id', 'source_warehouse_id', 'destination_warehouse_id', 'quantity', 'quantity_done')
+    def _onchange_move_preview_quantities(self):
+        for rec in self:
+            warehouse = rec._get_stock_warehouse_for_move()
+            moved_qty = rec.quantity_done or rec.quantity or 0.0
+            if not rec.product_id or not warehouse:
+                rec.previous_qty = 0.0
+                rec.new_qty = 0.0
+                continue
+
+            previous_qty = rec._get_product_qty_in_warehouse(rec.product_id, warehouse)
+            if rec.move_type == 'entrada':
+                rec.new_qty = previous_qty + moved_qty
+            elif rec.move_type in ('salida', 'transferencia'):
+                rec.new_qty = previous_qty - moved_qty
+            else:
+                rec.new_qty = previous_qty
+            rec.previous_qty = previous_qty
+
+    @api.onchange('move_type', 'source_warehouse_id', 'destination_warehouse_id')
     def _onchange_destination_warehouse_id(self):
         area_domain_by_record = [('id', '=', False)]
         location_domain_by_record = [('id', '=', False)]
@@ -210,15 +247,17 @@ class ComprasInventoryMove(models.Model):
             location_domain = [('id', '=', False)]
             if destination_company:
                 area_domain = [('department_id.company_id', '=', destination_company.id)]
-            if rec.destination_warehouse_id:
-                location_domain = [('warehouse_id', '=', rec.destination_warehouse_id.id)]
+
+            location_warehouse = rec._get_stock_warehouse_for_move()
+            if location_warehouse:
+                location_domain = [('warehouse_id', '=', location_warehouse.id)]
 
             area_domain_by_record = area_domain
             location_domain_by_record = location_domain
 
             if rec.area_id and rec.area_id.department_id.company_id != destination_company:
                 rec.area_id = False
-            if rec.location_id and rec.location_id.warehouse_id != rec.destination_warehouse_id:
+            if rec.location_id and rec.location_id.warehouse_id != location_warehouse:
                 rec.location_id = False
 
         return {
@@ -231,16 +270,17 @@ class ComprasInventoryMove(models.Model):
     @api.constrains('destination_warehouse_id', 'area_id', 'location_id')
     def _check_destination_consistency(self):
         for rec in self:
+            location_warehouse = rec._get_stock_warehouse_for_move()
             if rec.area_id and not rec.destination_warehouse_id:
                 raise ValidationError(_('Debes seleccionar un almacén destino para poder elegir un área.'))
             if rec.area_id and rec.destination_warehouse_id:
                 destination_company = rec.destination_warehouse_id.company_id
                 if rec.area_id.department_id.company_id != destination_company:
                     raise ValidationError(_('El área destino debe pertenecer a la empresa del almacén destino.'))
-            if rec.location_id and rec.destination_warehouse_id and rec.location_id.warehouse_id != rec.destination_warehouse_id:
-                raise ValidationError(_('La locación destino debe pertenecer al almacén destino seleccionado.'))
-            if rec.location_id and not rec.destination_warehouse_id:
-                raise ValidationError(_('Debes seleccionar un almacén destino para poder elegir una locación.'))
+            if rec.location_id and not location_warehouse:
+                raise ValidationError(_('Debes seleccionar un almacén antes de elegir una locación.'))
+            if rec.location_id and location_warehouse and rec.location_id.warehouse_id != location_warehouse:
+                raise ValidationError(_('La locación debe pertenecer al almacén correspondiente al movimiento.'))
 
     @api.constrains('quantity', 'quantity_done')
     def _check_quantities(self):
@@ -261,7 +301,13 @@ class ComprasInventoryMove(models.Model):
         for rec in self:
             if rec.state != 'draft':
                 continue
-            previous_qty = rec.product_id.qty_on_hand
+            stock_warehouse = rec._get_stock_warehouse_for_move()
+            if rec.move_type == 'entrada' and not rec.destination_warehouse_id:
+                raise ValidationError(_('Debes indicar el almacén destino para una entrada.'))
+            if rec.move_type in ('salida', 'transferencia') and not rec.source_warehouse_id:
+                raise ValidationError(_('Debes indicar el almacén origen para este movimiento.'))
+
+            previous_qty = rec._get_product_qty_in_warehouse(rec.product_id, stock_warehouse)
             moved_qty = rec.quantity_done or rec.quantity
             is_intercompany_transfer = rec._is_intercompany_transfer()
             if rec.move_type == 'salida' and moved_qty > previous_qty:

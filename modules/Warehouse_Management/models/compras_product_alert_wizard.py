@@ -47,8 +47,8 @@ class ComprasProductAlertWizard(models.TransientModel):
     def action_open_current_user_wizard(self):
         user = self.env.user
         if not (
-            user.has_group('compras_fruvemex.group_compras_encargado')
-            or user.has_group('compras_fruvemex.group_compras_almacenista')
+            user.has_group('Warehouse_Management.group_compras_encargado')
+            or user.has_group('Warehouse_Management.group_compras_almacenista')
         ):
             return False
 
@@ -131,9 +131,9 @@ class ComprasProductAlertWizard(models.TransientModel):
             )],
         })
 
-        action = self.env.ref('compras_fruvemex.compras_product_alert_wizard_action').sudo().read()[0]
+        action = self.env.ref('Warehouse_Management.compras_product_alert_wizard_action').sudo().read()[0]
         action['res_id'] = wizard.id
-        action['views'] = [(self.env.ref('compras_fruvemex.compras_product_alert_wizard_form').sudo().id, 'form')]
+        action['views'] = [(self.env.ref('Warehouse_Management.compras_product_alert_wizard_form').sudo().id, 'form')]
         action['target'] = 'new'
         return action
 

@@ -1,4 +1,5 @@
 from odoo import SUPERUSER_ID, api, fields, models, _
+from odoo.osv import expression
 
 
 class ComprasWarehouse(models.Model):
@@ -53,10 +54,27 @@ class ComprasWarehouse(models.Model):
 
     def action_open_inventory(self):
         self.ensure_one()
-        action = self.env.ref('compras_fruvemex.compras_warehouse_inventory_action').read()[0]
+        action = self.env.ref('Warehouse_Management.compras_warehouse_inventory_action').read()[0]
         action['domain'] = [('warehouse_id', '=', self.id)]
         action['context'] = dict(self.env.context, default_warehouse_id=self.id)
         return action
+
+    @api.model
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        if not self.env.context.get('allow_cross_company_destination_warehouse'):
+            return super().name_search(name=name, args=args, operator=operator, limit=limit)
+
+        args = args or []
+        if name:
+            search_domain = expression.AND([
+                args,
+                ['|', ('name', operator, name), ('code', operator, name)],
+            ])
+        else:
+            search_domain = args
+
+        warehouses = self.sudo().search(search_domain, limit=limit)
+        return warehouses.name_get()
 
     _sql_constraints = [
         ('code_company_unique', 'unique(code, company_id)', 'El código del almacén debe ser único por empresa.'),
@@ -67,11 +85,11 @@ class ComprasWarehouse(models.Model):
         result = super()._register_hook()
         env = api.Environment(self._cr, SUPERUSER_ID, {})
 
-        warehouse_model = env.ref('compras_fruvemex.model_compras_warehouse', raise_if_not_found=False)
+        warehouse_model = env.ref('Warehouse_Management.model_compras_warehouse', raise_if_not_found=False)
         if not warehouse_model:
             return result
 
-        global_rule = env.ref('compras_fruvemex.compras_warehouse_company_rule', raise_if_not_found=False)
+        global_rule = env.ref('Warehouse_Management.compras_warehouse_company_rule', raise_if_not_found=False)
         if global_rule:
             global_rule.write({
                 'domain_force': "[(1, '=', 1)]",
@@ -79,9 +97,9 @@ class ComprasWarehouse(models.Model):
                 'groups': [(5, 0, 0)],
             })
 
-        user_group = env.ref('compras_fruvemex.group_compras_usuario', raise_if_not_found=False)
+        user_group = env.ref('Warehouse_Management.group_compras_usuario', raise_if_not_found=False)
         if user_group:
-            user_rule = env.ref('compras_fruvemex.compras_warehouse_company_rule_usuario', raise_if_not_found=False)
+            user_rule = env.ref('Warehouse_Management.compras_warehouse_company_rule_usuario', raise_if_not_found=False)
             user_rule_vals = {
                 'name': 'Compras Warehouse User Company Rule',
                 'model_id': warehouse_model.id,

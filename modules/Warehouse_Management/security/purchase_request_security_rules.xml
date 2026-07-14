@@ -28,7 +28,7 @@
             <field name="name">Compras Warehouse User Company Rule</field>
             <field name="model_id" ref="model_compras_warehouse"/>
             <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-            <field name="groups" eval="[(4, ref('compras_fruvemex.group_compras_usuario'))]"/>
+            <field name="groups" eval="[(4, ref('Warehouse_Management.group_compras_usuario'))]"/>
         </record>
 
         <record id="compras_product_company_rule" model="ir.rule">
@@ -50,7 +50,7 @@
             <field name="name">Purchase Request Own Records Rule</field>
             <field name="model_id" ref="model_purchase_request"/>
             <field name="domain_force">[('solicitante_id.user_id', '=', user.id)]</field>
-            <field name="groups" eval="[(4, ref('compras_fruvemex.group_compras_usuario'))]"/>
+            <field name="groups" eval="[(4, ref('Warehouse_Management.group_compras_usuario'))]"/>
         </record>
     </data>
 </odoo>

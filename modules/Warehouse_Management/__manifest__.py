@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Compras Fruvemex",
+    'name': "Warehouse Fruvemex",
 
     'summary': "Módulo de solicitudes de compra con flujo de aprobación",
 
@@ -43,7 +43,7 @@ Módulo para gestionar solicitudes de compra con flujo de aprobación:
     ],
     'assets': {
         'web.assets_backend': [
-            'compras_fruvemex/static/src/services/compras_purchase_alert_service.js',
+            'Warehouse_Management/static/src/services/compras_purchase_alert_service.js',
         ],
     },
 

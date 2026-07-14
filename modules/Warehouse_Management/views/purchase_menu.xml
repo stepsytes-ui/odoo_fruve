@@ -3,9 +3,9 @@
         <menuitem
             id="menu_compras_root"
             name="Compras"
-            web_icon="compras_fruvemex,static/description/icon.png"
+            web_icon="Warehouse_Management,static/description/icon.png"
             sequence="20"
-            groups="compras_fruvemex.group_compras_usuario,compras_fruvemex.group_compras_encargado"
+            groups="Warehouse_Management.group_compras_usuario,Warehouse_Management.group_compras_encargado"
         />
 
         <menuitem
@@ -14,7 +14,7 @@
             parent="menu_compras_root"
             action="purchase_request_action"
             sequence="10"
-            groups="compras_fruvemex.group_compras_usuario,compras_fruvemex.group_compras_encargado"
+            groups="Warehouse_Management.group_compras_usuario,Warehouse_Management.group_compras_encargado"
         />
 
         <menuitem
@@ -23,14 +23,14 @@
             parent="menu_compras_root"
             action="purchase_request_tracking_action"
             sequence="20"
-            groups="compras_fruvemex.group_compras_usuario,compras_fruvemex.group_compras_encargado"
+            groups="Warehouse_Management.group_compras_usuario,Warehouse_Management.group_compras_encargado"
         />
 
         <menuitem
             id="menu_almacen_root"
             name="Almacén"
             sequence="30"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
 
         <menuitem
@@ -39,7 +39,7 @@
             parent="menu_almacen_root"
             action="purchase_request_authorized_action"
             sequence="10"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
 
         <menuitem
@@ -48,43 +48,43 @@
             parent="menu_almacen_root"
             action="purchase_request_received_action"
             sequence="20"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
 
         <menuitem
             id="menu_almacen_productos"
             name="Consolidado"
             parent="menu_almacen_root"
-            action="compras_fruvemex.compras_product_action"
+            action="Warehouse_Management.compras_product_action"
             sequence="30"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
 
         <menuitem
             id="menu_almacen_salidas"
             name="Movimientos"
             parent="menu_almacen_root"
-            action="compras_fruvemex.compras_inventory_move_action"
+            action="Warehouse_Management.compras_inventory_move_action"
             sequence="40"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
 
         <menuitem
             id="menu_almacen_faltantes"
             name="Reporte de Faltantes"
             parent="menu_almacen_root"
-            action="compras_fruvemex.compras_shortage_report_action"
+            action="Warehouse_Management.compras_shortage_report_action"
             sequence="50"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
 
         <menuitem
             id="menu_almacen_warehouses"
             name="Almacenes"
             parent="menu_almacen_root"
-            action="compras_fruvemex.compras_warehouse_action"
+            action="Warehouse_Management.compras_warehouse_action"
             sequence="60"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
 
         <menuitem
@@ -92,7 +92,7 @@
             name="Herramientas"
             parent="menu_almacen_root"
             sequence="70"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
 
         <record id="compras_supplier_action" model="ir.actions.act_window">
@@ -113,36 +113,36 @@
             id="menu_almacen_import_excel"
             name="Importar registros desde Excel"
             parent="menu_almacen_tools"
-            action="compras_fruvemex.compras_product_excel_import_wizard_action"
+            action="Warehouse_Management.compras_product_excel_import_wizard_action"
             sequence="10"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
 
         <menuitem
             id="menu_almacen_tools_suppliers"
             name="Proveedores"
             parent="menu_almacen_tools"
-            action="compras_fruvemex.compras_supplier_action"
+            action="Warehouse_Management.compras_supplier_action"
             sequence="20"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
 
         <menuitem
             id="menu_almacen_tools_uom"
             name="Unidades de medida"
             parent="menu_almacen_tools"
-            action="compras_fruvemex.compras_uom_action"
+            action="Warehouse_Management.compras_uom_action"
             sequence="30"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
 
         <menuitem
             id="menu_almacen_tools_packaging_material"
             name="Materiales de empaque"
             parent="menu_almacen_tools"
-            action="compras_fruvemex.compras_packaging_material_action"
+            action="Warehouse_Management.compras_packaging_material_action"
             sequence="40"
-            groups="compras_fruvemex.group_compras_encargado,compras_fruvemex.group_compras_almacenista"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
     </data>
 </odoo>

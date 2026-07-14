@@ -245,8 +245,8 @@ class PurchaseRequest(models.Model):
                 raise ValidationError(_('Solo se pueden cancelar para edición solicitudes Autorizadas o Recibidas.'))
 
             if not (
-                self.env.user.has_group('compras_fruvemex.group_compras_usuario')
-                or self.env.user.has_group('compras_fruvemex.group_compras_encargado')
+                self.env.user.has_group('Warehouse_Management.group_compras_usuario')
+                or self.env.user.has_group('Warehouse_Management.group_compras_encargado')
             ):
                 raise AccessError(_('No tienes permisos para cancelar la solicitud para edición.'))
 
@@ -282,6 +282,7 @@ class PurchaseRequest(models.Model):
             previous_qty = product.qty_on_hand
             self.env['compras.inventory.move'].create({
                 'company_id': self.company_id.id,
+                'destination_company_id': warehouse.company_id.id if warehouse else self.company_id.id,
                 'movement_date': fields.Datetime.now(),
                 'move_type': 'entrada',
                 'product_id': product.id,
@@ -300,6 +301,7 @@ class PurchaseRequest(models.Model):
                 'destination': location.name if location else (warehouse.name if warehouse else 'Almacén Principal'),
                 'status': move_status,
                 'notes': line.receipt_notes or self.comments or '',
+                'registered_employee_id': self.env.user.employee_id.id,
                 'registered_by_id': self.env.user.id,
                 'state': 'done',
             })
@@ -313,8 +315,8 @@ class PurchaseRequest(models.Model):
     def _is_warehouse_only_user(self):
         user = self.env.user
         return (
-            user.has_group('compras_fruvemex.group_compras_almacenista')
-            and not user.has_group('compras_fruvemex.group_compras_encargado')
+            user.has_group('Warehouse_Management.group_compras_almacenista')
+            and not user.has_group('Warehouse_Management.group_compras_encargado')
         )
 
     def _check_warehouse_user_can_edit(self):

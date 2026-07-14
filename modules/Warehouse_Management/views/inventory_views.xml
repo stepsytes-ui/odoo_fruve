@@ -157,22 +157,19 @@
                 <list string="Bitácora de Movimientos">
                     <field name="movement_date"/>
                     <field name="name"/>
+                    <field name="company_id"/>
                     <field name="product_id"/>
                     <field name="move_type"/>
                     <field name="source_warehouse_id"/>
+                    <field name="destination_company_id"/>
                     <field name="destination_warehouse_id"/>
                     <field name="area_id"/>
                     <field name="location_id"/>
-                    <field name="quantity"/>
                     <field name="quantity_done"/>
                     <field name="previous_qty"/>
                     <field name="new_qty"/>
                     <field name="status"/>
-                    <field name="receiver_user_id"/>
-                    <field name="receiver_name"/>
-                    <field name="delivered_by_id"/>
-                    <field name="signed_by_id"/>
-                    <field name="registered_by_id"/>
+                    <field name="registered_employee_id"/>
                     <field name="state" widget="badge"/>
                 </list>
             </field>
@@ -198,22 +195,17 @@
                                 <field name="movement_date"/>
                                 <field name="move_type"/>
                                 <field name="product_id"/>
+                                <field name="quantity"/>
                                 <field name="unit_id" readonly="1"/>
                                 <field name="source_warehouse_id"/>
-                                <field name="destination_warehouse_id"/>
-                            </group>
-                            <group string="Control">
-                                <field name="quantity"/>
-                                <field name="quantity_done"/>
-                                <field name="status"/>
-                                <field name="area_id"/>
                                 <field name="location_id"/>
+                                <field name="area_id"/>
+                            </group>
+                            <group string="Destino y Registro">
+                                <field name="destination_company_selector"/>
+                                <field name="destination_warehouse_id" context="{'allow_cross_company_destination_warehouse': 1}"/>
+                                <field name="registered_employee_id"/>
                                 <field name="destination" invisible="1"/>
-                                <field name="receiver_user_id"/>
-                                <field name="receiver_name"/>
-                                <field name="delivered_by_id"/>
-                                <field name="signed_by_id"/>
-                                <field name="registered_by_id" readonly="1"/>
                             </group>
                         </group>
                         <group string="Existencias">

@@ -3,7 +3,7 @@
 import { registry } from "@web/core/registry";
 import { user } from "@web/core/user";
 
-const PURCHASE_ALERT_STORAGE_KEY = "compras_fruvemex.purchase_alerts_opened";
+const PURCHASE_ALERT_STORAGE_KEY = "Warehouse_Management.purchase_alerts_opened";
 
 registry.category("services").add("compras_purchase_alert_service", {
     dependencies: ["action", "orm", "notification"],
@@ -14,8 +14,8 @@ registry.category("services").add("compras_purchase_alert_service", {
                     return;
                 }
 
-                const isEncargado = await user.hasGroup("compras_fruvemex.group_compras_encargado");
-                const isAlmacenista = await user.hasGroup("compras_fruvemex.group_compras_almacenista");
+                const isEncargado = await user.hasGroup("Warehouse_Management.group_compras_encargado");
+                const isAlmacenista = await user.hasGroup("Warehouse_Management.group_compras_almacenista");
                 if (!isEncargado && !isAlmacenista) {
                     return;
                 }

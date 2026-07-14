@@ -115,8 +115,8 @@ class PurchaseRequestLine(models.Model):
     def _is_warehouse_only_user(self):
         user = self.env.user
         return (
-            user.has_group('compras_fruvemex.group_compras_almacenista')
-            and not user.has_group('compras_fruvemex.group_compras_encargado')
+            user.has_group('Warehouse_Management.group_compras_almacenista')
+            and not user.has_group('Warehouse_Management.group_compras_encargado')
         )
 
     def _check_warehouse_user_can_edit_request(self, requests):

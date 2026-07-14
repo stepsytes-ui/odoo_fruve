@@ -15,7 +15,7 @@
                             type="object"
                             class="btn-primary"
                             invisible="state != 'activa'"
-                            groups="compras_fruvemex.group_compras_encargado"
+                            groups="Warehouse_Management.group_compras_encargado"
                         />
                         <!-- Botón Rechazar: visible solo para encargado_compras cuando está activa -->
                         <button
@@ -24,7 +24,7 @@
                             type="object"
                             class="btn-danger"
                             invisible="state != 'activa'"
-                            groups="compras_fruvemex.group_compras_encargado"
+                            groups="Warehouse_Management.group_compras_encargado"
                         />
                         <!-- Botón Recibida: visible solo para almacenista_compras cuando está autorizada -->
                         <button
@@ -33,7 +33,7 @@
                             type="object"
                             class="btn-primary"
                             invisible="state != 'autorizada'"
-                            groups="compras_fruvemex.group_compras_almacenista"
+                            groups="Warehouse_Management.group_compras_almacenista"
                         />
                         <button
                             name="action_cancel_for_edit"
@@ -41,7 +41,7 @@
                             type="object"
                             class="btn-secondary"
                             invisible="state != 'autorizada' and state != 'recibida'"
-                            groups="compras_fruvemex.group_compras_usuario,compras_fruvemex.group_compras_encargado"
+                            groups="Warehouse_Management.group_compras_usuario,Warehouse_Management.group_compras_encargado"
                             confirm="Esta acción regresará la solicitud a Activa para poder editarla. ¿Deseas continuar?"
                         />
                         <field
@@ -66,11 +66,11 @@
                                 <!-- Para usuario_compras el campo es readonly; encargado_compras puede cambiarlo -->
                                 <field name="solicitante_id"
                                     readonly="1"
-                                    groups="compras_fruvemex.group_compras_usuario"
+                                    groups="Warehouse_Management.group_compras_usuario"
                                     options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True}"
                                 />
                                 <field name="solicitante_id"
-                                    groups="compras_fruvemex.group_compras_encargado"
+                                    groups="Warehouse_Management.group_compras_encargado"
                                     options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True}"
                                 />
                                 <field name="supervisor_id"/>
@@ -116,11 +116,12 @@
                                         <field name="name"/>
                                         <field name="product_id"/>
                                         <field name="move_type"/>
-                                        <field name="quantity"/>
+                                        <field name="company_id"/>
                                         <field name="quantity_done"/>
                                         <field name="status"/>
-                                        <field name="receiver_name"/>
-                                        <field name="registered_by_id"/>
+                                        <field name="location_id"/>
+                                        <field name="area_id"/>
+                                        <field name="registered_employee_id"/>
                                         <field name="state"/>
                                     </list>
                                 </field>
@@ -238,7 +239,7 @@
             <field name="view_mode">list,form</field>
             <field name="domain">[('state', 'in', ['activa', 'inactiva'])]</field>
             <field name="context">{'search_default_my_requests': 1}</field>
-            <field name="groups_id" eval="[(4, ref('compras_fruvemex.group_compras_usuario')), (4, ref('compras_fruvemex.group_compras_encargado'))]"/>
+            <field name="groups_id" eval="[(4, ref('Warehouse_Management.group_compras_usuario')), (4, ref('Warehouse_Management.group_compras_encargado'))]"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
                     Crea tu primera solicitud de compra
@@ -252,7 +253,7 @@
             <field name="res_model">purchase.request</field>
             <field name="view_mode">list,form</field>
             <field name="domain">[('state', '=', 'autorizada')]</field>
-            <field name="groups_id" eval="[(4, ref('compras_fruvemex.group_compras_encargado')), (4, ref('compras_fruvemex.group_compras_almacenista'))]"/>
+            <field name="groups_id" eval="[(4, ref('Warehouse_Management.group_compras_encargado')), (4, ref('Warehouse_Management.group_compras_almacenista'))]"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
                     No hay solicitudes de compra autorizadas pendientes de recibir.
@@ -266,7 +267,7 @@
             <field name="res_model">purchase.request</field>
             <field name="view_mode">list,form</field>
             <field name="domain">[('state', '=', 'recibida')]</field>
-            <field name="groups_id" eval="[(4, ref('compras_fruvemex.group_compras_encargado')), (4, ref('compras_fruvemex.group_compras_almacenista'))]"/>
+            <field name="groups_id" eval="[(4, ref('Warehouse_Management.group_compras_encargado')), (4, ref('Warehouse_Management.group_compras_almacenista'))]"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
                     No hay solicitudes de compra recibidas.
@@ -281,7 +282,7 @@
             <field name="view_mode">list,form</field>
             <field name="domain">[('state', 'in', ['autorizada', 'recibida'])]</field>
             <field name="context">{'search_default_my_requests': 1}</field>
-            <field name="groups_id" eval="[(4, ref('compras_fruvemex.group_compras_usuario')), (4, ref('compras_fruvemex.group_compras_encargado'))]"/>
+            <field name="groups_id" eval="[(4, ref('Warehouse_Management.group_compras_usuario')), (4, ref('Warehouse_Management.group_compras_encargado'))]"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
                     No hay solicitudes autorizadas o recibidas para seguimiento.

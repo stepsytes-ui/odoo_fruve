@@ -42,6 +42,7 @@ class ComprasInventoryMove(models.Model):
     )
     move_type = fields.Selection(
         [
+            ('inicial', 'Inventario inicial')
             ('entrada', 'Entrada'),
             ('salida', 'Salida'),
             ('transferencia', 'Transferencia'),

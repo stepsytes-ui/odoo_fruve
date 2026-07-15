@@ -74,7 +74,7 @@ class ComprasWarehouse(models.Model):
             search_domain = args
 
         warehouses = self.sudo().search(search_domain, limit=limit)
-        return warehouses.name_get()
+        return [(warehouse.id, warehouse.display_name) for warehouse in warehouses]
 
     _sql_constraints = [
         ('code_company_unique', 'unique(code, company_id)', 'El código del almacén debe ser único por empresa.'),

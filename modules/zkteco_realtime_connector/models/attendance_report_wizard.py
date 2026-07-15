@@ -1002,7 +1002,7 @@ class AttendanceReportWizard(models.TransientModel):
         date_columns = {}
         for date_obj in date_list:
             day_name = day_names[date_obj.weekday()]
-            header_text = f'{day_name} {date_obj.day}'
+            header_text = f"{day_name}\n{date_obj.strftime('%d/%m')}"
             cell = ws.cell(row=1, column=col_num, value=header_text)
             cell.fill = header_fill
             cell.font = header_font

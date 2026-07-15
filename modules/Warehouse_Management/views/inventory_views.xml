@@ -202,8 +202,8 @@
                                 <field name="area_id"/>
                             </group>
                             <group string="Destino y Registro">
-                                <field name="destination_company_selector"/>
-                                <field name="destination_warehouse_id" context="{'allow_cross_company_destination_warehouse': 1}"/>
+                                <field name="destination_company_selector" readonly="move_type == 'inicial'"/>
+                                <field name="destination_warehouse_id" context="{'allow_cross_company_destination_warehouse': 1}" readonly="move_type == 'inicial'"/>
                                 <field name="registered_employee_id"/>
                                 <field name="destination" invisible="1"/>
                             </group>

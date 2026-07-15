@@ -42,13 +42,13 @@ class ComprasInventoryMove(models.Model):
     )
     move_type = fields.Selection(
         [
-            ('inicial', 'Inventario inicial')
+            ('inicial', 'Inventario inicial'),
             ('entrada', 'Entrada'),
             ('salida', 'Salida'),
             ('transferencia', 'Transferencia'),
         ],
         string='Tipo de Movimiento',
-        default='salida',
+        default='inicial',
         required=True,
         tracking=True,
     )
@@ -158,7 +158,7 @@ class ComprasInventoryMove(models.Model):
 
     def _get_stock_warehouse_for_move(self):
         self.ensure_one()
-        if self.move_type == 'entrada':
+        if self.move_type in ('entrada', 'inicial'):
             return self.destination_warehouse_id
         if self.move_type in ('salida', 'transferencia'):
             return self.source_warehouse_id
@@ -409,13 +409,29 @@ class ComprasInventoryMove(models.Model):
             if manual_moves:
                 vals = dict(vals, quantity_done=vals['quantity'])
         return super().write(vals)
+    
+    @api.onchange('move_type', 'company_id', 'source_warehouse_id')
+    def _onchange_initial_inventory_sync(self):
+        """
+        Si el tipo de movimiento es inventario inicial, copiamos automaticamente la empresa y almacen de origen hacia los campos de destino.
+        """
+        for rec in self:
+            # Copiamos empresa origen a empresa destino
+            if rec.move_type == 'inicial':
+                if rec.company_id:
+                    rec.destination_company_id = rec.company_id
+                    rec.destination_company_selector = str(rec.company_id.id)
+
+            #Copiamos almacen origen a almacen destino
+            if rec.source_warehouse_id:
+                rec.destination_warehouse_id = rec.source_warehouse_id
 
     def action_confirm(self):
         for rec in self:
             if rec.state != 'draft':
                 continue
             stock_warehouse = rec._get_stock_warehouse_for_move()
-            if rec.move_type == 'entrada' and not rec.destination_warehouse_id:
+            if rec.move_type == ('entrada', 'inicial') and not rec.destination_warehouse_id:
                 raise ValidationError(_('Debes indicar el almacén destino para una entrada.'))
             if rec.move_type in ('salida', 'transferencia') and not rec.source_warehouse_id:
                 raise ValidationError(_('Debes indicar el almacén origen para este movimiento.'))
@@ -435,7 +451,7 @@ class ComprasInventoryMove(models.Model):
             if rec.location_id and not rec.destination:
                 rec.destination = rec.location_id.name
 
-            if rec.move_type == 'entrada':
+            if rec.move_type == ('entrada', 'inicial'):
                 new_qty = previous_qty + moved_qty
             elif rec.move_type == 'salida':
                 new_qty = previous_qty - moved_qty
@@ -449,6 +465,27 @@ class ComprasInventoryMove(models.Model):
                 'new_qty': new_qty,
                 'state': 'done',
             })
+
+            # --- ACTUALIZACIÓN DE STOCK FÍSICO EN EL ALMACÉN ---
+            if stock_warehouse and rec.product_id:
+                inventory_model = rec.env['compras.warehouse.inventory'].sudo()
+                # Buscamos si el producto ya cuenta con un registro en ese almacén
+                inventory_line = inventory_model.search([
+                    ('warehouse_id', '=', stock_warehouse.id),
+                    ('product_id', '=', rec.product_id.id),
+                ], limit=1)
+
+                if inventory_line:
+                    # Si ya existe el registro, le escribimos la nueva cantidad acumulada
+                    inventory_line.write({'quantity': new_qty})
+                else:
+                    # Si no existe (común en inventario inicial de productos nuevos), lo creamos
+                    inventory_model.create({
+                        'warehouse_id': stock_warehouse.id,
+                        'product_id': rec.product_id.id,
+                        'quantity': new_qty,
+                    })
+
 
             if is_intercompany_transfer:
                 rec._create_intercompany_destination_move()

@@ -54,3 +54,4 @@ access_hr_employee_compras_encargado,hr.employee.compras.encargado,hr.model_hr_e
 access_hr_employee_public_compras_encargado,hr.employee.public.compras.encargado,hr.model_hr_employee_public,Warehouse_Management.group_compras_encargado,1,0,0,0
 access_hr_employee_compras_almacenista,hr.employee.compras.almacenista,hr.model_hr_employee,Warehouse_Management.group_compras_almacenista,1,0,0,0
 access_hr_employee_public_compras_almacenista,hr.employee.public.compras.almacenista,hr.model_hr_employee_public,Warehouse_Management.group_compras_almacenista,1,0,0,0
+access_compras_inventory_move_admin,compras.inventory.move.admin,model_compras_inventory_move,base.group_system,1,1,1,1

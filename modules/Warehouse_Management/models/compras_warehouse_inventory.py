@@ -60,6 +60,28 @@ class ComprasWarehouseInventory(models.Model):
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
+
+        # During first-time installation, this SQL view can be initialized
+        # before the table of compras.inventory.move exists.
+        self.env.cr.execute("SELECT to_regclass('compras_inventory_move')")
+        if not self.env.cr.fetchone()[0]:
+            self.env.cr.execute("""
+                CREATE OR REPLACE VIEW compras_warehouse_inventory AS (
+                    SELECT
+                        0::integer AS id,
+                        NULL::integer AS warehouse_id,
+                        NULL::integer AS company_id,
+                        NULL::integer AS product_id,
+                        NULL::integer AS product_db_id,
+                        NULL::varchar AS product_name,
+                        NULL::text AS product_description,
+                        0::double precision AS quantity,
+                        NULL::varchar AS location
+                    WHERE FALSE
+                )
+            """)
+            return
+
         self.env.cr.execute("""
             CREATE OR REPLACE VIEW compras_warehouse_inventory AS (
                 WITH move_lines AS (

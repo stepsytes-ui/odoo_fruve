@@ -1151,6 +1151,38 @@ class AttendanceReportWizard(models.TransientModel):
             return f"{leave_title}\n{punches_text}"
         return leave_title
 
+    def _get_manual_vacation_cell_data(self, employee, target_date):
+        Vacation = self.env['hr.vacation'].sudo()
+        target_date_str = fields.Date.to_string(target_date)
+
+        manual_day_vacation = Vacation.search([
+            ('employee_id', '=', employee.id),
+            ('state', '=', 'validate'),
+            ('leave_id', '=', False),
+            ('request_mode', '=', 'days'),
+            ('requested_day_ids.requested_date', '=', target_date_str),
+        ], limit=1)
+
+        manual_range_vacation = self.env['hr.vacation']
+        if not manual_day_vacation:
+            manual_range_vacation = Vacation.search([
+                ('employee_id', '=', employee.id),
+                ('state', '=', 'validate'),
+                ('leave_id', '=', False),
+                ('request_mode', '!=', 'days'),
+                ('date_from', '<=', target_date_str),
+                ('date_to', '>=', target_date_str),
+            ], limit=1)
+
+        if manual_day_vacation or manual_range_vacation:
+            return {
+                'text': 'Vacaciones',
+                'color': 'FFC7CE',
+                'font_color': 'FF6600',
+                'bold': True,
+            }
+        return False
+
     def _get_cell_data_for_employee_date(self, employee, target_date, company_tz, Attendance):
         """
         Retorna información completa para una celda: texto, color de fondo y color de fuente.
@@ -1360,6 +1392,10 @@ class AttendanceReportWizard(models.TransientModel):
                     'font_color': 'FF6600',  # Naranja oscuro
                     'bold': True
                 }
+
+            manual_vacation_cell = self._get_manual_vacation_cell_data(employee, target_date)
+            if manual_vacation_cell:
+                return manual_vacation_cell
             
             # 5a. Si hay check-ins válidos, mostrarlos
             valid_attendances = Attendance.search([
@@ -1490,6 +1526,10 @@ class AttendanceReportWizard(models.TransientModel):
                 'font_color': 'FF6600',  # Naranja oscuro
                 'bold': True
             }
+
+        manual_vacation_cell = self._get_manual_vacation_cell_data(employee, target_date)
+        if manual_vacation_cell:
+            return manual_vacation_cell
         
         # 4. Buscar attendances
         attendances = Attendance.search([

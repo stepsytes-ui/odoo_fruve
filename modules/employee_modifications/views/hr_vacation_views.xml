@@ -33,14 +33,23 @@
                             <group string="Información del Empleado">
                                 <field name="employee_id" options="{'no_create': True, 'no_create_edit': True}"/>
                                 <field name="biometric_id" readonly="1"/>
-                                <field name="employee_name" readonly="1"/>
+                                <!-- <field name="employee_name" readonly="1"/> -->
                                 <field name="department_id" readonly="1"/>
                                 <field name="turno_id" readonly="1"/>
                             </group>
                             <group string="Información de Vacaciones">
-                                <field name="date_from"/>
-                                <field name="date_to"/>
+                                <field name="request_mode"/>
+                                <field name="date_from" invisible="request_mode != 'range'" required="request_mode == 'range'"/>
+                                <field name="date_to" invisible="request_mode != 'range'" required="request_mode == 'range'"/>
+                                <field name="requested_day_ids" invisible="request_mode != 'days'">
+                                    <list editable="bottom" string="Días Solicitados" create="1" delete="1">
+                                        <field name="requested_date"/>
+                                        <field name="day_name" readonly="1"/>
+                                    </list>
+                                </field>
                                 <field name="vacation_modality"/>
+                                <field name="periodo"/>
+                                <field name="dias_correspondientes" readonly="1"/>
                                 <field name="duration_days" readonly="1"/>
                                 <field name="vacation_days_available" readonly="1"/>
                                 <field name="employee_antiguedad" readonly="1"/>
@@ -55,9 +64,6 @@
                                 <field name="company_id" invisible="1"/>
                                 <field name="leave_id" readonly="1"/>
                             </group>
-                        </group>
-                        <group>
-                            <field name="description" placeholder="Describa detalles adicionales..."/>
                         </group>
                     </sheet>
                 </form>
@@ -77,6 +83,9 @@
                     <field name="biometric_id"/>
                     <field name="department_id"/>
                     <field name="turno_id"/>
+                    <field name="request_mode"/>
+                    <field name="periodo"/>
+                    <field name="dias_correspondientes"/>
                     <field name="date_from"/>
                     <field name="date_to"/>
                     <field name="vacation_modality"/>
@@ -105,6 +114,9 @@
                     <field name="department_id"/>
                     <field name="turno_id"/>
                     <field name="supervisor_id"/>
+                    <separator/>
+                    <filter string="Modo Rango" name="mode_range" domain="[('request_mode', '=', 'range')]"/>
+                    <filter string="Modo Por Días" name="mode_days" domain="[('request_mode', '=', 'days')]"/>
                     <separator/>
                     <filter string="Borrador" name="draft" domain="[('state', '=', 'draft')]"/>
                     <filter string="Confirmado" name="confirm" domain="[('state', '=', 'confirm')]"/>
@@ -142,6 +154,54 @@
                     También puede crear registros manualmente aquí.
                 </p>
             </field>
+        </record>
+
+        <record id="view_hr_vacation_requested_day_calendar" model="ir.ui.view">
+            <field name="name">hr.vacation.requested.day.calendar</field>
+            <field name="model">hr.vacation.requested.day</field>
+            <field name="arch" type="xml">
+                <calendar string="Días Solicitados" date_start="requested_date" mode="month" quick_create="1" event_open_popup="true">
+                    <field name="name"/>
+                    <field name="day_name"/>
+                    <field name="vacation_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                </calendar>
+            </field>
+        </record>
+
+        <record id="view_hr_vacation_requested_day_tree" model="ir.ui.view">
+            <field name="name">hr.vacation.requested.day.tree</field>
+            <field name="model">hr.vacation.requested.day</field>
+            <field name="arch" type="xml">
+                <list string="Días Solicitados">
+                    <field name="requested_date"/>
+                    <field name="day_name"/>
+                    <field name="vacation_id"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_hr_vacation_requested_day_form" model="ir.ui.view">
+            <field name="name">hr.vacation.requested.day.form</field>
+            <field name="model">hr.vacation.requested.day</field>
+            <field name="arch" type="xml">
+                <form string="Día Solicitado">
+                    <sheet>
+                        <group>
+                            <field name="vacation_id" readonly="1"/>
+                            <field name="requested_date"/>
+                            <field name="day_name" readonly="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_hr_vacation_requested_day" model="ir.actions.act_window">
+            <field name="name">Días Solicitados</field>
+            <field name="res_model">hr.vacation.requested.day</field>
+            <field name="view_mode">calendar,list,form</field>
+            <field name="context">{}</field>
         </record>
 
         <!-- Agregar campos de información de vacaciones en hr.leave -->

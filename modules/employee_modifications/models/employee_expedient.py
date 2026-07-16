@@ -150,15 +150,25 @@ class EmployeeExpedient(models.Model):
     @api.depends('dias_vacaciones_saldo_inicial', 'dias_vacaciones_utilizados')
     def _compute_dias_disponibles(self):
         for record in self:
-            record.dias_vacaciones_disponibles = max(
-                record.dias_vacaciones_saldo_inicial - record.dias_vacaciones_utilizados,
-                0.0,
+            record.dias_vacaciones_disponibles = (
+                record.dias_vacaciones_saldo_inicial - record.dias_vacaciones_utilizados
             )
 
     @api.depends('dias_vacaciones_ley', 'dias_vacaciones_ajuste')
     def _compute_dias_inicial_calculado(self):
         for record in self:
             record.dias_vacaciones_saldo_inicial = record.dias_vacaciones_ley + record.dias_vacaciones_ajuste     
+
+    @api.model
+    def _get_vacation_days_for_period(self, period_years):
+        period_years = int(period_years or 0)
+        if period_years <= 0:
+            return 0
+
+        return next(
+            (dias for ini, fin, dias in self.TABLA_VACACIONES if ini <= period_years <= fin),
+            0,
+        )
 
     TABLA_VACACIONES = [
         (1, 1, 12),
@@ -190,10 +200,7 @@ class EmployeeExpedient(models.Model):
             if record.fecha_movimiento and record.employee_id.active:
                 hoy = date.today()
                 years = relativedelta(hoy, record.fecha_movimiento).years
-                record.dias_vacaciones_ley = next(
-                    (dias for ini, fin, dias in self.TABLA_VACACIONES if ini <= years <= fin),
-                    0
-                )
+                record.dias_vacaciones_ley = self._get_vacation_days_for_period(years)
             else:
                 record.dias_vacaciones_ley = 0
 

@@ -645,11 +645,6 @@ class HrLeave(models.Model):
             'state': 'validate' if leave.state in ['validate', 'validate1'] else 'draft',
         }
         
-        # Agregar información del expediente si existe
-        if expedient:
-            vacation_vals['vacation_days_available'] = expedient.dias_vacaciones_disponibles
-            vacation_vals['employee_antiguedad'] = expedient.antiguedad
-        
         # Agregar supervisor si está disponible
         if leave.supervisor_id:
             vacation_vals['supervisor_id'] = leave.supervisor_id.id
@@ -661,22 +656,12 @@ class HrLeave(models.Model):
     def _update_vacation_record(self, leave):
         """Actualiza el registro de vacación existente"""
         if leave.vacation_id:
-            # Obtener información actualizada del expediente
-            expedient = self.env['employee.expedient'].search([
-                ('employee_id', '=', leave.employee_id.id)
-            ], order='fecha_movimiento desc', limit=1)
-            
             update_vals = {
                 'date_from': leave.date_from,
                 'date_to': leave.date_to,
                 'description': leave.name or 'Solicitud de vacaciones',
                 'vacation_modality': leave.vacation_modality,
             }
-            
-            # Actualizar información del expediente si existe
-            if expedient:
-                update_vals['vacation_days_available'] = expedient.dias_vacaciones_disponibles
-                update_vals['employee_antiguedad'] = expedient.antiguedad
             
             # Actualizar supervisor si está disponible
             if leave.supervisor_id:

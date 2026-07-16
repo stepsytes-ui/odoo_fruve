@@ -320,7 +320,7 @@ class ComprasInventoryMove(models.Model):
                 continue
 
             previous_qty = rec._get_product_qty_in_warehouse(rec.product_id, warehouse)
-            if rec.move_type == 'entrada':
+            if rec.move_type in ('entrada', 'inicial'):
                 rec.new_qty = previous_qty + moved_qty
             elif rec.move_type in ('salida', 'transferencia'):
                 rec.new_qty = previous_qty - moved_qty
@@ -430,8 +430,16 @@ class ComprasInventoryMove(models.Model):
         for rec in self:
             if rec.state != 'draft':
                 continue
+            if rec.move_type == 'inicial':
+                # En inventario inicial, origen y destino deben quedar alineados.
+                if rec.company_id and not rec.destination_company_id:
+                    rec.destination_company_id = rec.company_id
+                if rec.source_warehouse_id and not rec.destination_warehouse_id:
+                    rec.destination_warehouse_id = rec.source_warehouse_id
+                elif rec.destination_warehouse_id and not rec.source_warehouse_id:
+                    rec.source_warehouse_id = rec.destination_warehouse_id
             stock_warehouse = rec._get_stock_warehouse_for_move()
-            if rec.move_type == ('entrada', 'inicial') and not rec.destination_warehouse_id:
+            if rec.move_type in ('entrada', 'inicial') and not rec.destination_warehouse_id:
                 raise ValidationError(_('Debes indicar el almacén destino para una entrada.'))
             if rec.move_type in ('salida', 'transferencia') and not rec.source_warehouse_id:
                 raise ValidationError(_('Debes indicar el almacén origen para este movimiento.'))
@@ -451,7 +459,7 @@ class ComprasInventoryMove(models.Model):
             if rec.location_id and not rec.destination:
                 rec.destination = rec.location_id.name
 
-            if rec.move_type == ('entrada', 'inicial'):
+            if rec.move_type in ('entrada', 'inicial'):
                 new_qty = previous_qty + moved_qty
             elif rec.move_type == 'salida':
                 new_qty = previous_qty - moved_qty
@@ -465,27 +473,6 @@ class ComprasInventoryMove(models.Model):
                 'new_qty': new_qty,
                 'state': 'done',
             })
-
-            # --- ACTUALIZACIÓN DE STOCK FÍSICO EN EL ALMACÉN ---
-            if stock_warehouse and rec.product_id:
-                inventory_model = rec.env['compras.warehouse.inventory'].sudo()
-                # Buscamos si el producto ya cuenta con un registro en ese almacén
-                inventory_line = inventory_model.search([
-                    ('warehouse_id', '=', stock_warehouse.id),
-                    ('product_id', '=', rec.product_id.id),
-                ], limit=1)
-
-                if inventory_line:
-                    # Si ya existe el registro, le escribimos la nueva cantidad acumulada
-                    inventory_line.write({'quantity': new_qty})
-                else:
-                    # Si no existe (común en inventario inicial de productos nuevos), lo creamos
-                    inventory_model.create({
-                        'warehouse_id': stock_warehouse.id,
-                        'product_id': rec.product_id.id,
-                        'quantity': new_qty,
-                    })
-
 
             if is_intercompany_transfer:
                 rec._create_intercompany_destination_move()

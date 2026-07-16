@@ -1155,21 +1155,37 @@ class AttendanceReportWizard(models.TransientModel):
         Vacation = self.env['hr.vacation'].sudo()
         target_date_str = fields.Date.to_string(target_date)
 
-        manual_day_vacation = Vacation.search([
+        base_domain = [
             ('employee_id', '=', employee.id),
             ('state', '=', 'validate'),
             ('leave_id', '=', False),
-            ('request_mode', '=', 'days'),
-            ('requested_day_ids.requested_date', '=', target_date_str),
-        ], limit=1)
+        ]
 
+        manual_day_vacation = self.env['hr.vacation']
         manual_range_vacation = self.env['hr.vacation']
-        if not manual_day_vacation:
-            manual_range_vacation = Vacation.search([
-                ('employee_id', '=', employee.id),
-                ('state', '=', 'validate'),
-                ('leave_id', '=', False),
-                ('request_mode', '!=', 'days'),
+
+        try:
+            # Flujo nuevo: vacaciones por dias individuales.
+            manual_day_vacation = Vacation.search(base_domain + [
+                ('request_mode', '=', 'days'),
+                ('requested_day_ids.requested_date', '=', target_date_str),
+            ], limit=1)
+
+            if not manual_day_vacation:
+                manual_range_vacation = Vacation.search(base_domain + [
+                    ('request_mode', '!=', 'days'),
+                    ('date_from', '<=', target_date_str),
+                    ('date_to', '>=', target_date_str),
+                ], limit=1)
+        except Exception:
+            # Compatibilidad con BD sin columnas nuevas en hr_vacation.
+            # En este caso, solo considerar rango date_from/date_to.
+            _logger.warning(
+                '[ATTENDANCE REPORT] hr.vacation sin columnas nuevas (request_mode/requested_day_ids). '
+                'Aplicando fallback por rango de fechas.',
+                exc_info=True,
+            )
+            manual_range_vacation = Vacation.search(base_domain + [
                 ('date_from', '<=', target_date_str),
                 ('date_to', '>=', target_date_str),
             ], limit=1)

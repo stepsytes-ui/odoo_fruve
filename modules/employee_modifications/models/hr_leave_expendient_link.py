@@ -630,15 +630,15 @@ class HrLeave(models.Model):
 
     def _create_vacation_record(self, leave):
         """Crea un registro de vacación asociado a esta ausencia"""
-        # Obtener información del expediente
+
         expedient = self.env['employee.expedient'].search([
             ('employee_id', '=', leave.employee_id.id)
         ], order='fecha_movimiento desc', limit=1)
         
         vacation_vals = {
             'employee_id': leave.employee_id.id,
-            'date_from': leave.date_from,
-            'date_to': leave.date_to,
+            'date_from': leave.request_date_from or fields.Date.to_date(leave.date_from),
+            'date_to': leave.request_date_to or fields.Date.to_date(leave.date_to),
             'description': leave.name or 'Solicitud de vacaciones',
             'leave_id': leave.id,
             'vacation_modality': leave.vacation_modality,
@@ -650,15 +650,15 @@ class HrLeave(models.Model):
             vacation_vals['supervisor_id'] = leave.supervisor_id.id
         
         vacation = self.env['hr.vacation'].create(vacation_vals)
-        leave.vacation_id = vacation.id
+        leave.vacation_id = vacation.id 
         return vacation
 
     def _update_vacation_record(self, leave):
         """Actualiza el registro de vacación existente"""
         if leave.vacation_id:
             update_vals = {
-                'date_from': leave.date_from,
-                'date_to': leave.date_to,
+                'date_from': leave.request_date_from or fields.Date.to_date(leave.date_from),
+                'date_to': leave.request_date_to or fields.Date.to_date(leave.date_to),
                 'description': leave.name or 'Solicitud de vacaciones',
                 'vacation_modality': leave.vacation_modality,
             }

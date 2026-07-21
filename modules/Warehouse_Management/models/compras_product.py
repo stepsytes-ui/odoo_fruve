@@ -117,7 +117,7 @@ class ComprasProduct(models.Model):
         default=lambda self: self.env.company,
         tracking=True,
     )
-    unit_id = fields.Many2one('uom.uom', string='Unidad', required=True)
+    unit_id = fields.Many2one('uom.uom', string='Unidad')
     description = fields.Text(string='Notas')
     packaging_material_id = fields.Many2one('compras.packaging.material', string='Material de empaque')
     brand_id = fields.Many2one('product.brand', string='Marca')
@@ -410,6 +410,7 @@ class ComprasProduct(models.Model):
                 'company_id': product.company_id.id,
                 'move_type': 'entrada',
                 'product_id': product.id,
+                'source_warehouse_id': product.inventory_warehouse_id.id,
                 'destination_warehouse_id': product.inventory_warehouse_id.id,
                 'location_id': product.inventory_location_id.id,
                 'quantity': delta,

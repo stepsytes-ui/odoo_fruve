@@ -179,6 +179,67 @@ class ComprasInventoryMove(models.Model):
         ], limit=1)
         return inventory_line.quantity if inventory_line else 0.0
 
+    def _get_available_product_ids_for_selected_warehouses(self):
+        self.ensure_one()
+        warehouse_ids = [
+            warehouse_id
+            for warehouse_id in [self.source_warehouse_id.id, self.destination_warehouse_id.id]
+            if warehouse_id
+        ]
+        if not warehouse_ids:
+            return []
+
+        inventory_lines = self.env['compras.warehouse.inventory'].sudo().search([
+            ('warehouse_id', 'in', list(set(warehouse_ids))),
+            ('quantity', '>', 0),
+        ])
+        return inventory_lines.mapped('product_id').ids
+
+    def _get_available_location_ids_for_product_source_warehouse(self):
+        self.ensure_one()
+        if not self.source_warehouse_id or not self.product_id:
+            return []
+
+        warehouse_id = self.source_warehouse_id.id
+        product_id = self.product_id.id
+
+        incoming_moves = self.env['compras.inventory.move'].sudo().read_group(
+            domain=[
+                ('state', '=', 'done'),
+                ('move_type', 'in', ['entrada', 'inicial']),
+                ('destination_warehouse_id', '=', warehouse_id),
+                ('product_id', '=', product_id),
+                ('location_id', '!=', False),
+            ],
+            fields=['location_id', 'quantity_done:sum'],
+            groupby=['location_id'],
+            lazy=False,
+        )
+        outgoing_moves = self.env['compras.inventory.move'].sudo().read_group(
+            domain=[
+                ('state', '=', 'done'),
+                ('move_type', 'in', ['salida', 'transferencia']),
+                ('source_warehouse_id', '=', warehouse_id),
+                ('product_id', '=', product_id),
+                ('location_id', '!=', False),
+            ],
+            fields=['location_id', 'quantity_done:sum'],
+            groupby=['location_id'],
+            lazy=False,
+        )
+
+        qty_by_location = {}
+        for item in incoming_moves:
+            if item.get('location_id'):
+                location_id = item['location_id'][0]
+                qty_by_location[location_id] = qty_by_location.get(location_id, 0.0) + (item.get('quantity_done', 0.0) or 0.0)
+        for item in outgoing_moves:
+            if item.get('location_id'):
+                location_id = item['location_id'][0]
+                qty_by_location[location_id] = qty_by_location.get(location_id, 0.0) - (item.get('quantity_done', 0.0) or 0.0)
+
+        return [location_id for location_id, qty in qty_by_location.items() if qty > 0]
+
     def _is_intercompany_transfer(self):
         self.ensure_one()
         return (
@@ -328,44 +389,67 @@ class ComprasInventoryMove(models.Model):
                 rec.new_qty = previous_qty
             rec.previous_qty = previous_qty
 
-    @api.onchange('move_type', 'company_id', 'source_warehouse_id', 'destination_company_id', 'destination_warehouse_id')
+    @api.onchange('move_type', 'company_id', 'source_warehouse_id', 'destination_company_id', 'destination_warehouse_id', 'product_id')
     def _onchange_destination_warehouse_id(self):
         area_domain_by_record = [('id', '=', False)]
         location_domain_by_record = [('id', '=', False)]
         destination_warehouse_domain_by_record = [('id', '=', False)]
+        product_domain_by_record = [('id', '=', False)]
         for rec in self:
             area_company = rec.company_id
             area_domain = [('id', '=', False)]
             location_domain = [('id', '=', False)]
             destination_warehouse_domain = [('id', '=', False)]
+            product_domain = [('id', '=', False)]
             if area_company:
                 area_domain = [('department_id.company_id', '=', area_company.id)]
 
             if rec.destination_company_id:
                 destination_warehouse_domain = [('company_id', '=', rec.destination_company_id.id)]
 
-            location_warehouse = rec.source_warehouse_id
-            if location_warehouse:
-                location_domain = [('warehouse_id', '=', location_warehouse.id)]
+            if rec.source_warehouse_id and rec.product_id:
+                available_location_ids = rec._get_available_location_ids_for_product_source_warehouse()
+                if available_location_ids:
+                    location_domain = [
+                        ('warehouse_id', '=', rec.source_warehouse_id.id),
+                        ('id', 'in', available_location_ids),
+                    ]
+                else:
+                    location_domain = [('id', '=', False)]
+            elif rec.source_warehouse_id:
+                location_domain = [('id', '=', False)]
+
+            available_product_ids = rec._get_available_product_ids_for_selected_warehouses()
+            if available_product_ids:
+                product_domain = [('id', 'in', available_product_ids)]
 
             area_domain_by_record = area_domain
             location_domain_by_record = location_domain
             destination_warehouse_domain_by_record = destination_warehouse_domain
+            product_domain_by_record = product_domain
 
             if rec.destination_warehouse_id and not rec.destination_company_id:
                 rec.destination_company_id = rec.destination_warehouse_id.company_id
             if rec.area_id and rec.area_id.department_id.company_id != area_company:
                 rec.area_id = False
-            if rec.location_id and rec.location_id.warehouse_id != location_warehouse:
+            if rec.location_id and rec.source_warehouse_id and rec.location_id.warehouse_id != rec.source_warehouse_id:
                 rec.location_id = False
             if rec.destination_warehouse_id and rec.destination_warehouse_id.company_id != rec.destination_company_id:
                 rec.destination_warehouse_id = False
+            if rec.location_id and rec.product_id:
+                available_location_ids = rec._get_available_location_ids_for_product_source_warehouse()
+                if rec.location_id.id not in available_location_ids:
+                    rec.location_id = False
+            if rec.product_id and (rec.source_warehouse_id or rec.destination_warehouse_id):
+                if rec.product_id.id not in available_product_ids:
+                    rec.product_id = False
 
         return {
             'domain': {
                 'area_id': area_domain_by_record,
                 'location_id': location_domain_by_record,
                 'destination_warehouse_id': destination_warehouse_domain_by_record,
+                'product_id': product_domain_by_record,
             }
         }
 
@@ -449,6 +533,8 @@ class ComprasInventoryMove(models.Model):
             is_intercompany_transfer = rec._is_intercompany_transfer()
             if rec.move_type == 'salida' and moved_qty > previous_qty:
                 raise ValidationError(_('No hay suficiente existencia para dar salida a este producto.'))
+            if rec.move_type == 'transferencia' and moved_qty > previous_qty:
+                raise ValidationError(_('No hay suficiente existencia para transferir este producto desde el almacén origen.'))
             if is_intercompany_transfer and moved_qty > previous_qty:
                 raise ValidationError(_('No hay suficiente existencia para transferir este producto a otra empresa.'))
             if rec.move_type == 'transferencia' and not rec.destination_warehouse_id:

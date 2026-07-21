@@ -326,10 +326,16 @@
                             </page>
                             <page string="Locaciones">
                                 <field name="location_ids" context="{'default_warehouse_id': id}">
-                                    <list editable="bottom">
+                                    <list>
                                         <field name="name"/>
                                         <field name="company_id" readonly="1"/>
                                         <field name="active"/>
+                                        <button
+                                            name="action_open_location_inventory"
+                                            type="object"
+                                            string="Ver inventario"
+                                            class="btn-link"
+                                        />
                                     </list>
                                 </field>
                             </page>

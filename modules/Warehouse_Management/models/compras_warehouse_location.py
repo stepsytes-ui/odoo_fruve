@@ -52,3 +52,17 @@ class ComprasWarehouseLocation(models.Model):
                         record.warehouse_id.display_name
                     )
                 )
+
+    def action_open_location_inventory(self):
+        self.ensure_one()
+        action = self.env.ref('Warehouse_Management.compras_warehouse_inventory_action').read()[0]
+        action['domain'] = [
+            ('warehouse_id', '=', self.warehouse_id.id),
+            ('location', '=', self.name),
+        ]
+        action['context'] = {
+            'search_default_group_product': 0,
+            'default_warehouse_id': self.warehouse_id.id,
+        }
+        action['name'] = _('Inventario de %s') % self.name
+        return action

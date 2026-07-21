@@ -67,6 +67,9 @@ class ComprasProductExcelImportWizard(models.TransientModel):
         company = self.env.company
         created_count = 0
         updated_count = 0
+        skipped_rows_location = []
+        rows_without_location = []
+        rows_without_inventory_adjustment = []
         row_errors = []
 
         for line_number, row in enumerate(rows[1:], start=2):
@@ -77,7 +80,25 @@ class ComprasProductExcelImportWizard(models.TransientModel):
                 if not code:
                     raise ValidationError(_('El Código es obligatorio.'))
 
-                vals = self._build_product_vals_from_row(row)
+                location_name = self._as_text(self._cell_value(row, 2))
+                warehouse = False
+                location_record = False
+                if location_name:
+                    warehouse, location_record = self._find_or_create_location_by_code(location_name, company)
+                    if not (warehouse and location_record):
+                        skipped_rows_location.append(line_number)
+                        continue
+                else:
+                    rows_without_location.append(line_number)
+
+                qty_on_hand = self._to_float(self._cell_value(row, 20), _('Inventario'))
+
+                vals = self._build_product_vals_from_row(
+                    row,
+                    company,
+                    warehouse=warehouse,
+                    location_record=location_record,
+                )
                 product = product_model.search([
                     ('company_id', '=', company.id),
                     ('code', '=', code),
@@ -85,18 +106,23 @@ class ComprasProductExcelImportWizard(models.TransientModel):
 
                 if product:
                     product.write(vals)
+                    if qty_on_hand is not None:
+                        if warehouse and location_record:
+                            product.write({'qty_on_hand': qty_on_hand})
+                        else:
+                            rows_without_inventory_adjustment.append(line_number)
                     updated_count += 1
                 else:
                     vals.setdefault('code', code)
                     vals.setdefault('company_id', company.id)
                     if not vals.get('name'):
                         raise ValidationError(_('La Descripción es obligatoria para crear un nuevo registro.'))
-                    if not vals.get('unit_id'):
-                        default_unit = self.env.ref('uom.product_uom_unit', raise_if_not_found=False)
-                        if not default_unit:
-                            raise ValidationError(_('No se encontró la unidad por defecto para crear el registro.'))
-                        vals['unit_id'] = default_unit.id
-                    product_model.create(vals)
+                    created_product = product_model.create(vals)
+                    if qty_on_hand is not None:
+                        if warehouse and location_record:
+                            created_product.write({'qty_on_hand': qty_on_hand})
+                        else:
+                            rows_without_inventory_adjustment.append(line_number)
                     created_count += 1
             except ValidationError as validation_error:
                 row_errors.append(_('Fila %(line)s: %(message)s') % {
@@ -111,6 +137,27 @@ class ComprasProductExcelImportWizard(models.TransientModel):
             'created': created_count,
             'updated': updated_count,
         }
+        if skipped_rows_location:
+            summary += ' ' + _(
+                'Se omitieron %(count)s fila(s) porque la locación no coincide con un almacén válido de la empresa: %(rows)s.'
+            ) % {
+                'count': len(skipped_rows_location),
+                'rows': ', '.join(str(line) for line in skipped_rows_location),
+            }
+        if rows_without_location:
+            summary += ' ' + _(
+                'Se detectaron %(count)s fila(s) sin locación; se importaron sin asignar almacén/locación y sin ajustar inventario: %(rows)s.'
+            ) % {
+                'count': len(rows_without_location),
+                'rows': ', '.join(str(line) for line in rows_without_location),
+            }
+        if rows_without_inventory_adjustment:
+            summary += ' ' + _(
+                'No se ajustó inventario en %(count)s fila(s) por falta de almacén/locación válida: %(rows)s.'
+            ) % {
+                'count': len(rows_without_inventory_adjustment),
+                'rows': ', '.join(str(line) for line in rows_without_inventory_adjustment),
+            }
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -169,7 +216,7 @@ class ComprasProductExcelImportWizard(models.TransientModel):
             'Min',
             'Max',
             'Punto reorden',
-            'Tiempo entrega días',
+            'Tiempo de entrega dias',
             'Tipo compra',
             'Proveedor principal',
             'Presupuesto mensual',
@@ -302,16 +349,23 @@ class ComprasProductExcelImportWizard(models.TransientModel):
                     'received': header_row[index] or '',
                 })
 
-    def _build_product_vals_from_row(self, row):
+    def _build_product_vals_from_row(
+        self,
+        row,
+        company,
+        warehouse=False,
+        location_record=False,
+    ):
         vals = {}
 
         name = self._as_text(self._cell_value(row, 1))
         if name:
             vals['name'] = name
 
-        location = self._as_text(self._cell_value(row, 2))
-        if location:
-            vals['location'] = location
+        if warehouse and location_record:
+            vals['inventory_warehouse_id'] = warehouse.id
+            vals['inventory_location_id'] = location_record.id
+            vals['location'] = location_record.name
 
         model_name = self._as_text(self._cell_value(row, 3))
         if model_name:
@@ -378,10 +432,6 @@ class ComprasProductExcelImportWizard(models.TransientModel):
         if currency:
             vals['currency_id'] = currency.id
 
-        qty_on_hand = self._to_float(self._cell_value(row, 20), _('Inventario'))
-        if qty_on_hand is not None:
-            vals['qty_on_hand'] = qty_on_hand
-
         min_qty = self._to_float(self._cell_value(row, 22), _('MIN'))
         if min_qty is not None:
             vals['min_qty'] = min_qty
@@ -395,7 +445,7 @@ class ComprasProductExcelImportWizard(models.TransientModel):
             vals['purchase_type'] = purchase_type
 
         vendor_name = self._as_text(self._cell_value(row, 27))
-        vendor = self._find_vendor(vendor_name)
+        vendor = self._find_or_create_vendor(vendor_name, company)
         if vendor:
             vals['vendor_id'] = vendor.id
 
@@ -432,8 +482,6 @@ class ComprasProductExcelImportWizard(models.TransientModel):
         unit = uom_model.search([('name', '=', unit_name)], limit=1)
         if not unit:
             unit = uom_model.search([('name', 'ilike', unit_name)], limit=1)
-        if not unit:
-            raise ValidationError(_('No se encontró la unidad de medida: %s') % unit_name)
         return unit
 
     def _find_currency(self, currency_name):
@@ -449,16 +497,74 @@ class ComprasProductExcelImportWizard(models.TransientModel):
             raise ValidationError(_('No se encontró la moneda: %s') % currency_name)
         return currency
 
-    def _find_vendor(self, vendor_name):
+    def _find_or_create_vendor(self, vendor_name, company):
         if not vendor_name:
             return False
+
+        vendor_in_products = self.env['compras.product'].search([
+            ('company_id', '=', company.id),
+            ('vendor_id', '!=', False),
+            ('vendor_id.name', '=ilike', vendor_name),
+        ], limit=1)
+        if vendor_in_products and vendor_in_products.vendor_id:
+            return vendor_in_products.vendor_id
+
         partner_model = self.env['res.partner']
         vendor = partner_model.search([('name', '=', vendor_name)], limit=1)
         if not vendor:
             vendor = partner_model.search([('name', 'ilike', vendor_name)], limit=1)
         if not vendor:
-            raise ValidationError(_('No se encontró el proveedor principal: %s') % vendor_name)
+            vendor = partner_model.create({
+                'name': vendor_name,
+                'supplier_rank': 1,
+                'company_type': 'company',
+            })
+        elif vendor.supplier_rank <= 0:
+            vendor.supplier_rank = 1
         return vendor
+
+    def _find_or_create_location_by_code(self, location_name, company):
+        if not location_name:
+            return (False, False)
+
+        normalized_location = self._as_text(location_name)
+        if not normalized_location:
+            return (False, False)
+
+        warehouse_code = normalized_location.split('-', 1)[0].strip()
+        if not warehouse_code:
+            return (False, False)
+
+        warehouse_model = self.env['compras.warehouse']
+        warehouse = warehouse_model.search([
+            ('company_id', '=', company.id),
+            ('code', '=', warehouse_code),
+        ], limit=1)
+        if not warehouse:
+            warehouse = warehouse_model.search([
+                ('company_id', '=', company.id),
+                ('code', '=ilike', warehouse_code),
+            ], limit=1)
+        if not warehouse:
+            return (False, False)
+
+        location_model = self.env['compras.warehouse.location']
+        location = location_model.search([
+            ('warehouse_id', '=', warehouse.id),
+            ('name', '=', normalized_location),
+        ], limit=1)
+        if not location:
+            location = location_model.search([
+                ('warehouse_id', '=', warehouse.id),
+                ('name', '=ilike', normalized_location),
+            ], limit=1)
+        if not location:
+            location = location_model.create({
+                'name': normalized_location,
+                'warehouse_id': warehouse.id,
+            })
+
+        return (warehouse, location)
 
     def _to_purchase_type(self, value):
         purchase_type = self._normalize_header_name(value)

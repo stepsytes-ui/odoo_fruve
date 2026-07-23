@@ -16,5 +16,13 @@
             <field name="domain_force">[('overtime_id.company_id', 'in', company_ids)]</field>
             <field name="global" eval="True"/>
         </record>
+
+        <!-- Regla multi-empresa para overtime.triple.employee -->
+        <record id="overtime_triple_employee_company_rule" model="ir.rule">
+            <field name="name">Overtime Triple Employee Multi-Company Rule</field>
+            <field name="model_id" ref="model_overtime_triple_employee"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
     </data>
 </odoo>

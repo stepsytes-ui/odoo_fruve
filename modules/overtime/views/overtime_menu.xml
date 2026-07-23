@@ -20,5 +20,12 @@
                   action="overtime_request_approved_action" 
                   sequence="20"
                   groups="overtime.group_overtime_hr"/>
+
+        <menuitem id="menu_overtime_triple_employee"
+                  name="Empleados Hora Triple"
+                  parent="menu_overtime_root"
+                  action="overtime_triple_employee_action"
+                  sequence="30"
+                  groups="overtime.group_overtime_hr"/>
     </data>
 </odoo>

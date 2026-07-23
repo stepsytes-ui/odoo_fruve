@@ -5,6 +5,16 @@ from datetime import timedelta
 class HrLeave(models.Model):
     _inherit = 'hr.leave'
 
+    def _get_pending_advance_debt(self, expedient):
+        """Return pending advance debt as a positive number.
+
+        Supports legacy positive storage and new negative storage.
+        """
+        pending_value = expedient.dias_vacaciones_adelantados_pendientes or 0.0
+        if pending_value < 0:
+            return abs(pending_value)
+        return pending_value
+
     vacation_days_subtracted = fields.Boolean(
         string="Días Descontados",
         default=False,
@@ -355,28 +365,37 @@ class HrLeave(models.Model):
                             'Los días adelantados no pueden ser mayores a los días solicitados.'
                         ))
 
-                    new_used_days = expedient.dias_vacaciones_utilizados + days_requested
-                    new_pending_advanced = expedient.dias_vacaciones_adelantados_pendientes + advance_days
+                    if shortage_days <= 0 and advance_days > 0:
+                        raise ValidationError(_(
+                            'No puede registrar días adelantados cuando hay saldo suficiente para cubrir la solicitud.'
+                        ))
+
+                    days_discounted_now = max(days_requested - advance_days, 0.0)
+                    previous_pending_debt = leave._get_pending_advance_debt(expedient)
+                    new_pending_debt = previous_pending_debt + advance_days
+
+                    new_used_days = expedient.dias_vacaciones_utilizados + days_discounted_now
                     expedient.write({
                         'dias_vacaciones_utilizados': new_used_days,
-                        'dias_vacaciones_adelantados_pendientes': new_pending_advanced,
+                        'dias_vacaciones_adelantados_pendientes': -new_pending_debt,
                     })
                     leave.vacation_days_subtracted = True
 
                     if advance_days:
                         body = _(
-                            "**Adelanto y descuento de vacaciones automático:** Se aprobaron %.2f días para la solicitud #%s. Saldo disponible anterior: %.2f días. Días adelantados autorizados: %.2f. Saldo adelantado pendiente por descontar en renovaciones futuras: %.2f días."
+                            "**Adelanto y descuento de vacaciones automático:** Se aprobaron %.2f días para la solicitud #%s. Saldo disponible anterior: %.2f días. Días adelantados autorizados: %.2f. Días descontados del saldo actual: %.2f. Saldo adelantado pendiente por descontar en renovaciones futuras: %.2f días."
                         ) % (
                             days_requested,
                             leave.name,
                             days_available,
                             advance_days,
-                            new_pending_advanced,
+                            days_discounted_now,
+                            new_pending_debt,
                         )
                     else:
                         body = _(
                             "**Descuento de Vacaciones Automático:** Se descontaron %.2f días por la solicitud de ausencias #%s. Saldo disponible anterior: %.2f días. Nuevo Saldo Utilizado: %.2f días."
-                        ) % (days_requested, leave.name, days_available, new_used_days)
+                        ) % (days_discounted_now, leave.name, days_available, new_used_days)
 
                     self.env['mail.message'].create({
                         'model': 'employee.expedient',
@@ -388,25 +407,24 @@ class HrLeave(models.Model):
                     })
 
                 elif leave.state == 'refuse' and leave.vacation_days_subtracted:
-                    new_used_days = max(expedient.dias_vacaciones_utilizados - days_requested, 0.0)
-                    new_pending_advanced = max(
-                        expedient.dias_vacaciones_adelantados_pendientes - advance_days,
-                        0.0,
-                    )
+                    days_discounted_now = max(days_requested - advance_days, 0.0)
+                    new_used_days = max(expedient.dias_vacaciones_utilizados - days_discounted_now, 0.0)
+                    previous_pending_debt = leave._get_pending_advance_debt(expedient)
+                    new_pending_debt = max(previous_pending_debt - advance_days, 0.0)
                     expedient.write({
                         'dias_vacaciones_utilizados': new_used_days,
-                        'dias_vacaciones_adelantados_pendientes': new_pending_advanced,
+                        'dias_vacaciones_adelantados_pendientes': -new_pending_debt,
                     })
                     leave.vacation_days_subtracted = False
 
                     if advance_days:
                         body = _(
                             "**Devolución de Vacaciones Automática:** Se devolvieron %.2f días por el rechazo de la solicitud de ausencias #%s. También se revirtieron %.2f días adelantados. Saldo adelantado pendiente actual: %.2f días."
-                        ) % (days_requested, leave.name, advance_days, new_pending_advanced)
+                        ) % (days_discounted_now, leave.name, advance_days, new_pending_debt)
                     else:
                         body = _(
                             "**Devolución de Vacaciones Automática:** Se devolvieron %.2f días por el rechazo de la solicitud de ausencias #%s. Nuevo Saldo Utilizado: %.2f días."
-                        ) % (days_requested, leave.name, new_used_days)
+                        ) % (days_discounted_now, leave.name, new_used_days)
 
                     self.env['mail.message'].create({
                         'model': 'employee.expedient',

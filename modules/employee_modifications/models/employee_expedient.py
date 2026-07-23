@@ -311,13 +311,14 @@ class EmployeeExpedient(models.Model):
                     0
                 )
                 
-                dias_adelantados_pendientes = expediente.dias_vacaciones_adelantados_pendientes or 0.0
+                pending_value = expediente.dias_vacaciones_adelantados_pendientes or 0.0
+                dias_adelantados_pendientes = abs(pending_value) if pending_value < 0 else pending_value
                 dias_a_descontar_en_renovacion = min(dias_adelantados_pendientes, dias_vacaciones_nuevos)
                 saldo_adelantado_restante = max(dias_adelantados_pendientes - dias_vacaciones_nuevos, 0.0)
 
                 expediente.write({
                     'dias_vacaciones_utilizados': dias_a_descontar_en_renovacion,
-                    'dias_vacaciones_adelantados_pendientes': saldo_adelantado_restante,
+                    'dias_vacaciones_adelantados_pendientes': -saldo_adelantado_restante,
                     'fecha_ultima_renovacion': hoy,
                 })
 

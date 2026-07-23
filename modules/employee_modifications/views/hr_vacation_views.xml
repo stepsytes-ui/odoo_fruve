@@ -16,6 +16,8 @@
                                 invisible="state not in ['confirm', 'validate1']" class="btn-warning"/>
                         <button name="action_cancel" string="Cancelar" type="object" 
                                 invisible="state not in ['draft', 'confirm', 'validate1']" class="btn-danger"/>
+                        <button name="action_reset_approved_to_draft" string="Cancelar a Borrador" type="object"
+                            invisible="state not in ['validate', 'validate1']" class="btn-warning"/>
                         <button name="action_draft" string="Volver a Borrador" type="object" 
                                 invisible="state != 'cancel'"/>
                         <button name="action_open_leave" string="Ver Solicitud" type="object" 
@@ -39,8 +41,8 @@
                             </group>
                             <group string="Información de Vacaciones">
                                 <field name="request_mode"/>
-                                <field name="date_from" invisible="request_mode != 'range'" required="request_mode == 'range'"/>
-                                <field name="date_to" invisible="request_mode != 'range'" required="request_mode == 'range'"/>
+                                <field name="date_from" invisible="request_mode != 'range'" required="request_mode == 'range' and vacation_modality != 'pagadas'"/>
+                                <field name="date_to" invisible="request_mode != 'range'" required="request_mode == 'range' and vacation_modality != 'pagadas'"/>
                                 <field name="requested_day_ids" invisible="request_mode != 'days'">
                                     <list editable="bottom" string="Días Solicitados" create="1" delete="1">
                                         <field name="requested_date"/>
@@ -50,7 +52,7 @@
                                 <field name="vacation_modality"/>
                                 <field name="periodo"/>
                                 <field name="dias_correspondientes" readonly="1"/>
-                                <field name="duration_days" readonly="1"/>
+                                <field name="duration_days" readonly="vacation_modality != 'pagadas'"/>
                                 <field name="vacation_days_available" readonly="1"/>
                                 <field name="employee_antiguedad" readonly="1"/>
                             </group>

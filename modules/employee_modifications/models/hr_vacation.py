@@ -157,8 +157,16 @@ class HrVacation(models.Model):
     duration_days = fields.Float(
         string='Duración (Días)',
         compute='_compute_duration',
+        inverse='_inverse_duration_days',
         store=True,
         help='Duración en días de las vacaciones',
+    )
+
+    paid_duration_days = fields.Float(
+        string='Duración Manual Pagadas',
+        default=0.0,
+        copy=True,
+        help='Duración capturada manualmente cuando la modalidad es Pagadas.',
     )
 
     vacation_days_available = fields.Float(
@@ -206,10 +214,12 @@ class HrVacation(models.Model):
             ], order='fecha_movimiento desc', limit=1) if record.employee_id else False
             record.expedient_id = expedient.id if expedient else False
 
-    @api.depends('vacation_days_available')
+    @api.depends('periodo')
     def _compute_dias_correspondientes(self):
         for record in self:
-            record.dias_correspondientes = record.vacation_days_available
+            record.dias_correspondientes = self.env['employee.expedient']._get_vacation_days_for_period(
+                record.periodo
+            )
 
     def _get_employee_defaults_from_expedient(self, employee):
         defaults = {
@@ -231,7 +241,9 @@ class HrVacation(models.Model):
             years = relativedelta(date.today(), expedient.fecha_movimiento).years
 
         defaults['periodo'] = max(years, 0)
-        defaults['dias_correspondientes'] = expedient.dias_vacaciones_disponibles
+        defaults['dias_correspondientes'] = self.env['employee.expedient']._get_vacation_days_for_period(
+            defaults['periodo']
+        )
         return defaults
 
     @api.model
@@ -289,6 +301,10 @@ class HrVacation(models.Model):
 
     @api.depends(
         'request_mode',
+        'vacation_modality',
+        'periodo',
+        'dias_correspondientes',
+        'paid_duration_days',
         'date_from',
         'date_to',
         'requested_day_ids.requested_date',
@@ -304,6 +320,10 @@ class HrVacation(models.Model):
     )
     def _compute_duration(self):
         for record in self:
+            if record.vacation_modality == 'pagadas':
+                record.duration_days = max(record.paid_duration_days, 0.0)
+                continue
+
             if record.request_mode == 'days':
                 selected_dates = sorted({line.requested_date for line in record.requested_day_ids if line.requested_date})
                 if not selected_dates:
@@ -336,6 +356,11 @@ class HrVacation(models.Model):
                 current_date += timedelta(days=1)
             record.duration_days = count
 
+    def _inverse_duration_days(self):
+        for record in self:
+            if record.vacation_modality == 'pagadas':
+                record.paid_duration_days = max(record.duration_days or 0.0, 0.0)
+
     @api.onchange('request_mode', 'requested_day_ids')
     def _onchange_request_mode_requested_days(self):
         for record in self:
@@ -344,10 +369,13 @@ class HrVacation(models.Model):
                 record.date_from = selected_dates[0] if selected_dates else False
                 record.date_to = selected_dates[-1] if selected_dates else False
 
-    @api.constrains('request_mode', 'date_from', 'date_to', 'requested_day_ids')
+    @api.constrains('request_mode', 'vacation_modality', 'date_from', 'date_to', 'requested_day_ids')
     def _check_request_mode(self):
         for record in self:
             if record.state == 'draft':
+                continue
+
+            if record.vacation_modality == 'pagadas':
                 continue
 
             if record.request_mode == 'range':
@@ -376,6 +404,16 @@ class HrVacation(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            employee_id = vals.get('employee_id')
+            if employee_id:
+                employee = self.env['hr.employee'].browse(employee_id)
+                if employee.exists():
+                    defaults = self._get_employee_defaults_from_expedient(employee)
+                    if not vals.get('periodo'):
+                        vals['periodo'] = defaults['periodo']
+                    if not vals.get('dias_correspondientes'):
+                        vals['dias_correspondientes'] = defaults['dias_correspondientes']
+
             if vals.get('name', _('Nueva')) == _('Nueva'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('hr.vacation') or _('Nueva')
         vacations = super(HrVacation, self).create(vals_list)
@@ -385,6 +423,8 @@ class HrVacation(models.Model):
     @api.constrains('date_from', 'date_to')
     def _check_dates(self):
         for record in self:
+            if record.vacation_modality == 'pagadas':
+                continue
             if record.date_from and record.date_to and record.date_to < record.date_from:
                 raise ValidationError(_('La fecha de fin debe ser posterior a la fecha de inicio.'))
 
@@ -429,6 +469,13 @@ class HrVacation(models.Model):
 
     def action_draft(self):
         self.write({'state': 'draft'})
+
+    def action_reset_approved_to_draft(self):
+        """Allow reverting approved vacations back to draft.
+
+        The write flow already restores deducted days when state moves to draft.
+        """
+        self.filtered(lambda r: r.state in ['validate', 'validate1']).write({'state': 'draft'})
 
     def action_confirm(self):
         self.write({'state': 'confirm'})

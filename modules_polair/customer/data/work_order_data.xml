@@ -1,0 +1,12 @@
+<odoo>
+    <data noupdate="1">
+        <record id="seq_customer_work_order" model="ir.sequence">
+            <field name="name">Orden de Trabajo</field>
+            <field name="code">customer_polair.work.order</field>
+            <field name="prefix">OT-</field>
+            <field name="padding">6</field>
+            <field name="number_increment">1</field>
+            <field name="number_next">1</field>
+        </record>
+    </data>
+</odoo>

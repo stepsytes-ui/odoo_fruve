@@ -1,0 +1,163 @@
+<odoo>
+    <data>
+        <record id="view_customer_work_order_tree" model="ir.ui.view">
+            <field name="name">customer.work.order.tree</field>
+            <field name="model">customer.work.order</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="name"/>
+                    <field name="partner_id"/>
+                    <field name="technician_id"/>
+                    <field name="unit_name"/>
+                    <field name="equipment_status"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_customer_work_order_form" model="ir.ui.view">
+            <field name="name">customer.work.order.form</field>
+            <field name="model">customer.work.order</field>
+            <field name="arch" type="xml">
+                <form string="Orden de Trabajo">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <group string="Informacion principal" col="2">
+                            <group string="Informacion del equipo">
+                                <field name="unit_name"/>
+                                <field name="equipment_brand"/>
+                                <field name="equipment_model"/>
+                                <field name="equipment_serial"/>
+                                <field name="equipment_status"/>
+                            </group>
+                            <group string="Informacion del cliente">
+                                <field name="partner_id"/>
+                                <field name="partner_contact"/>
+                                <field name="partner_city" readonly="1"/>
+                                <field name="partner_street" readonly="1"/>
+                                <field name="work_description"/>
+                                <field name="area"/>
+                                <field name="technician_id"/>
+                            </group>
+                        </group>
+
+                        <group string="Mantenimiento" col="3">
+                            <group string="Checklist de mantenimiento">
+                                <field name="checklist_filter_cleaning"/>
+                                <field name="checklist_condenser_cleaning"/>
+                                <field name="checklist_motor_cleaning"/>
+                                <field name="checklist_injection_temp"/>
+                                <field name="checklist_summer_service"/>
+                                <field name="checklist_leak_fix"/>
+                                <field name="checklist_fuse_change"/>
+                                <field name="checklist_duct_insulation"/>
+                                <field name="checklist_refrigerant_charge"/>
+                                <field name="checklist_capacitor_issues"/>
+                                <field name="checklist_evaporator_cleaning"/>
+                                <field name="checklist_outdoor_cleaning"/>
+                                <field name="checklist_motor_lubrication"/>
+                                <field name="checklist_system_wash"/>
+                                <field name="checklist_pipe_insulation"/>
+                                <field name="checklist_electric_controls"/>
+                                <field name="checklist_belt_tension"/>
+                                <field name="checklist_compressor_change"/>
+                                <field name="checklist_unit_efficiency"/>
+                            </group>
+                            <group string="Correccion otros">
+                                <field name="correction_notes" placeholder="Describa correcciones adicionales"/>
+                            </group>
+                            <group string="Materiales utilizados en reparacion">
+                                <field name="materials_used" placeholder="Liste los materiales utilizados"/>
+                            </group>
+                        </group>
+
+                        <group string="Condiciones">
+                            <group string="Presiones (PSI)" col="4">
+                                <field name="psi_low_circuit_1"/>
+                                <field name="psi_low_circuit_2"/>
+                                <field name="psi_high_circuit_1"/>
+                                <field name="psi_high_circuit_2"/>
+                            </group>
+
+                            <group string="Temperaturas" col="3">
+                                <field name="temp_superheat"/>
+                                <field name="temp_subcooling"/>
+                                <field name="amp_plate"/>
+                            </group>
+
+                            <group string="Voltaje" col="3">
+                                <field name="voltage_l1_l2"/>
+                                <field name="voltage_l2_l3"/>
+                                <field name="voltage_l1_l3"/>
+                            </group>
+
+                            <group col="3">
+                                <group string="Amperaje general">
+                                    <field name="amp_general_l1"/>
+                                    <field name="amp_general_l2"/>
+                                    <field name="amp_general_l3"/>
+                                </group>
+
+                                <group string="Amperaje compresor 1">
+                                    <field name="amp_comp_1_l1"/>
+                                    <field name="amp_comp_1_l2"/>
+                                    <field name="amp_comp_1_l3"/>
+                                </group>
+
+                                <group string="Amperaje compresor 2">
+                                    <field name="amp_comp_2_l1"/>
+                                    <field name="amp_comp_2_l2"/>
+                                    <field name="amp_comp_2_l3"/>
+                                </group>
+                            </group>
+
+                            <group col="3">
+                                <group string="Blower">
+                                    <field name="amp_blower_l1"/>
+                                    <field name="amp_blower_l2"/>
+                                    <field name="amp_blower_l3"/>
+                                </group>
+
+                                <group string="Motor condensador 1">
+                                    <field name="amp_cond_motor_1_l1"/>
+                                    <field name="amp_cond_motor_1_l2"/>
+                                </group>
+
+                                <group string="Motor condensador 2 y 3">
+                                    <field name="amp_cond_motor_23_mc2_l1"/>
+                                    <field name="amp_cond_motor_23_mc2_l2"/>
+                                    <field name="amp_cond_motor_23_mc3_l1"/>
+                                    <field name="amp_cond_motor_23_mc3_l2"/>
+                                </group>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_customer_work_order" model="ir.actions.act_window">
+            <field name="name">Ordenes de trabajo</field>
+            <field name="res_model">customer.work.order</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <menuitem id="menu_customer_work_order"
+                  name="Ordenes de trabajo"
+                  parent="contacts.menu_contacts"
+                  action="action_customer_work_order"
+                  sequence="80"/>
+
+        <menuitem id="menu_customer_work_order" 
+                  name="Ordenes de trabajo"
+                  action="action_customer_work_order" 
+                  web_icon="work_order,static/description/icon.png"
+                  sequence="10"/>
+                  
+
+    </data>
+</odoo>

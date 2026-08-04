@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_inherit_customer_tax_domain" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.customer.tax.domain</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/list/field[@name='tax_id']" position="replace">
+                <field name="custom_tax_option_id" string="Impuesto" options="{'no_open': False}" optional="show"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='custom_tax_option_id']" position="after">
+                <field name="custom_tax_percent" string="Impuesto (%)" widget="percentage" optional="show"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//field[@name='tax_id']" position="replace">
+                <field name="custom_tax_option_id" string="Impuesto" options="{'no_open': False}"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//field[@name='custom_tax_option_id']" position="after">
+                <field name="custom_tax_percent" string="Impuesto (%)" widget="percentage"/>
+            </xpath>
+            <xpath expr="//group[@name='sale_total']/field[@name='tax_totals']" position="replace">
+                <group class="oe_subtotal_footer d-flex flex-column gap-1" colspan="2">
+                    <field name="amount_untaxed" string="Subtotal" widget="monetary" readonly="1"/>
+                    <field name="amount_tax" string="IVA" widget="monetary" readonly="1"/>
+                    <field name="amount_total" string="Total" widget="monetary" readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_sales_order_line_form_inherit_customer_tax_domain" model="ir.ui.view">
+        <field name="name">sale.order.line.form.inherit.customer.tax.domain</field>
+        <field name="model">sale.order.line</field>
+        <field name="inherit_id" ref="sale.sale_order_line_view_form_readonly"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tax_id']" position="replace">
+                <field name="custom_tax_option_id" string="Impuesto"/>
+            </xpath>
+            <xpath expr="//field[@name='custom_tax_option_id']" position="after">
+                <field name="custom_tax_percent" string="Impuesto (%)" widget="percentage"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

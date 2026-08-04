@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="customer_tax_option_16" model="customer.tax.option">
+        <field name="sequence">10</field>
+        <field name="name">16%</field>
+        <field name="percent">16.0</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="customer_tax_option_8" model="customer.tax.option">
+        <field name="sequence">20</field>
+        <field name="name">8%</field>
+        <field name="percent">8.0</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

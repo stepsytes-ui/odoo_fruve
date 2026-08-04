@@ -2,6 +2,7 @@
 
 import logging
 import pytz
+import unicodedata
 
 from odoo import models, fields, api
 from odoo.tools.float_utils import float_round
@@ -31,6 +32,17 @@ class HrLeaveCustom(models.Model):
         readonly=True,
         help='Campo numérico para ordenamiento'
     )
+
+    def _normalize_leave_type_name(self, leave_type_name):
+        normalized = (leave_type_name or '').strip().lower()
+        normalized = unicodedata.normalize('NFKD', normalized)
+        normalized = ''.join(ch for ch in normalized if not unicodedata.combining(ch))
+        return ' '.join(normalized.split())
+
+    def _is_natural_day_leave(self, leave):
+        """Permisos que ignoran horario/calendario y cuentan dias naturales."""
+        leave_name_key = self._normalize_leave_type_name(leave.holiday_status_id.name)
+        return leave_name_key in {'incapacidad', 'permiso por cumpleanos'}
 
     @api.model
     def name_search(self, name='', args=None, operator='ilike', limit=100):
@@ -75,7 +87,7 @@ class HrLeaveCustom(models.Model):
         
         for holiday in self:
             # Las incapacidades pueden sobreponerse sobre cualquier otro permiso.
-            if holiday.holiday_status_id.name == 'Incapacidad':
+            if self._is_natural_day_leave(holiday):
                 continue
 
             domain = [
@@ -138,14 +150,31 @@ Attempting to double-book your time off won't magically make your vacation 2x be
                     "An employee already booked time off which overlaps with this period:%s",
                     "".join(conflicting_holidays_strings)))
 
+    @api.depends('date_from', 'date_to', 'resource_calendar_id', 'holiday_status_id.request_unit', 'holiday_status_id', 'request_date_from', 'request_date_to')
+    def _compute_duration(self):
+        # Base: comportamiento estandar de Odoo.
+        super()._compute_duration()
+
+        # Ajuste: para Incapacidad/Cumpleanos, contar dias naturales aunque no haya jornada laboral.
+        for leave in self:
+            if not self._is_natural_day_leave(leave):
+                continue
+
+            if leave.leave_type_request_unit == 'hour':
+                continue
+
+            if leave.request_date_from and leave.request_date_to:
+                natural_days = (leave.request_date_to - leave.request_date_from).days + 1
+                leave.number_of_days = max(natural_days, 0)
+
     @api.depends('number_of_hours', 'number_of_days', 'leave_type_request_unit', 'holiday_status_id', 'request_date_from', 'request_date_to')
     def _compute_duration_display(self):
         # Primero, llamar al método padre para calcular el valor por defecto
         super()._compute_duration_display()
         
-        # Luego, modificar solo para Incapacidad
+        # Luego, modificar para permisos que cuentan dias naturales.
         for leave in self:
-            if leave.holiday_status_id.name == 'Incapacidad' and leave.request_date_from and leave.request_date_to:
+            if self._is_natural_day_leave(leave) and leave.request_date_from and leave.request_date_to:
                 # Contar días naturales (sin considerar el calendario laboral)
                 date_from = leave.request_date_from
                 date_to = leave.request_date_to

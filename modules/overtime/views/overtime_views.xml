@@ -25,7 +25,7 @@
                                 type="object"
                                 string="Rechazar"
                                 class="btn-secondary"
-                                invisible="state != 'pending'"
+                            invisible="state not in ('pending', 'approved')"
                                 groups="overtime.group_overtime_hr"
                         />
                         </header>

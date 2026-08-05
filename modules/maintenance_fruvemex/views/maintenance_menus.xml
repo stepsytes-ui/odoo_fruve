@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menú Raíz -->
+    <menuitem id="menu_maintenance_root"
+              name="Mantenimiento"
+              sequence="100"/>
+
+    <!-- Menú Principal -->
+    <menuitem id="menu_maintenance_requests"
+              name="Solicitudes"
+              parent="menu_maintenance_root"
+              action="action_maintenance_request"
+              sequence="100"/>
+</odoo>

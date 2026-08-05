@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_fruve_maintenance_request_user,fruve.maintenance.request.user,model_fruve_maintenance_request,base.group_user,1,1,1,1
+access_fruve_maintenance_type_user,fruve.maintenance.type.user,model_fruve_maintenance_type,base.group_user,1,1,1,1
+access_fruve_maintenance_technician_user,fruve.maintenance.technician.user,model_fruve_maintenance_technician,base.group_user,1,1,1,1
+access_fruve_maintenance_cancel_reason_user,fruve.maintenance.cancel.reason.user,model_fruve_maintenance_cancel_reason,base.group_user,1,1,1,1

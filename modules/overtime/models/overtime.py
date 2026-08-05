@@ -349,6 +349,8 @@ class Overtime(models.Model):
 
     def action_reject(self):
         self.ensure_one()
+        if self.state not in ('pending', 'approved'):
+            raise ValidationError(_('Solo se pueden rechazar solicitudes en estado Pendiente o Aprobado.'))
         return {
             'name': 'Motivo de Rechazo',
             'type': 'ir.actions.act_window',

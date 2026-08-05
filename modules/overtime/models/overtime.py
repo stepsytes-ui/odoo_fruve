@@ -344,6 +344,8 @@ class Overtime(models.Model):
 
     def action_approve(self):
         self.ensure_one()
+        if self.state not in ('pending', 'rejected'):
+            raise ValidationError(_('Solo se pueden aprobar solicitudes en estado Pendiente o Rechazado.'))
         self.authorized_by_id = self.env.user.id
         self.state = 'approved'
 

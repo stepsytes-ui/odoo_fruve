@@ -18,7 +18,7 @@
                                 type="object"
                                 string="Aprobar"
                                 class="oe_highlight"
-                                invisible="state != 'pending'"
+                            invisible="state not in ('pending', 'rejected')"
                                 groups="overtime.group_overtime_hr"
                         />
                         <button name="action_reject"

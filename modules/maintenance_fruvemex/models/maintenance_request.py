@@ -88,5 +88,9 @@ class FruveMaintenanceRequest(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('folio', 'Nuevo') == 'Nuevo':
-                vals['folio'] = self.env['ir.sequence'].next_by_code('fruve.maintenance.request') or 'Nuevo'
+                vals['folio'] = (
+                    self.env['ir.sequence'].next_by_code('fruve.maintenance.request')
+                    or self.env['ir.sequence'].next_by_code('maintenance.request')
+                    or 'Nuevo'
+                )
         return super().create(vals_list)

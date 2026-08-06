@@ -58,7 +58,7 @@ class FruveMaintenanceRequest(models.Model):
     ], string='Prioridad', default='normal', required=True)
 
     fecha_asignada = fields.Datetime(string='Fecha Asignada')
-    fecha_cierre = fields.Date(string='Fecha Cierre')
+    fecha_cierre = fields.Datetime(string='Fecha Cierre')
 
     # Cálculo automático de horas totales transcurridas entre Fecha Asignada y Fecha Cierre
     horas_totales = fields.Float(
@@ -76,7 +76,7 @@ class FruveMaintenanceRequest(models.Model):
 
     @api.depends('fecha_asignada', 'fecha_cierre')
     def _compute_horas_totales(self):
-        for record in record:
+        for record in self:
             if record.fecha_asignada and record.fecha_cierre:
                 # Calcula la diferencia exacta en segundos y la convierte a horas
                 diferencia = record.fecha_cierre - record.fecha_asignada

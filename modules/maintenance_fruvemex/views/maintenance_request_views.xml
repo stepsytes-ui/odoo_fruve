@@ -24,6 +24,8 @@
                             <field name="prioridad"/>
                             <field name="tiempo_extra"/>
                             <field name="technician_ids" widget="many2many_tags"/>
+                            <field name="fecha_registro"/>
+                            <field name="fecha_asignada"/>
                             <field name="fecha_cierre"/>
                             <field name="motivo_no_realizacion_id"/>
                         </group>

@@ -16,6 +16,7 @@ Maintenance intern module for work orders for maintenance team.
 
     'depends': ['base', 'hr', 'overtime', 'mail'],
     'data': [
+        'security/maintenance_security.xml',
         'security/ir.model.access.csv',
         'data/maintenance_sequence.xml',
         'views/maintenance_request_views.xml',

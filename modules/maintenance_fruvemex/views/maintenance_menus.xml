@@ -3,6 +3,7 @@
     <!-- Menú Raíz -->
     <menuitem id="menu_maintenance_root"
               name="Mantenimiento"
+              groups="maintenance_fruvemex.group_maintenance_seguridad_higiene"
               sequence="100"/>
 
     <!-- Menú Principal -->
@@ -10,5 +11,6 @@
               name="Solicitudes"
               parent="menu_maintenance_root"
               action="action_maintenance_request"
+              groups="maintenance_fruvemex.group_maintenance_seguridad_higiene"
               sequence="100"/>
 </odoo>

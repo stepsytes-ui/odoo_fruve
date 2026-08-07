@@ -9,7 +9,14 @@ class EmployeeExpedientLine(models.Model):
     tipo_movimiento = fields.Selection([
         ('alta', 'Alta'),
         ('baja', 'Baja'),
-        ('reingreso', 'Reingreso')
+        ('reingreso', 'Reingreso'),
+        ('modificacion', 'Modificación')
     ], string="Tipo", required=True)
     fecha = fields.Date(string="Fecha", required=True)
     motivo = fields.Text(string="Motivo/Detalle")
+    user_id = fields.Many2one(
+        'res.users',
+        string='Usuario que registró el movimiento',
+        default=lambda self: self.env.user,
+        readonly=True,
+    )

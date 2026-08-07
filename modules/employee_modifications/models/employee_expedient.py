@@ -52,7 +52,8 @@ class EmployeeExpedient(models.Model):
     tipo_registro = fields.Selection([
         ('alta', 'Alta'),
         ('baja', 'Baja'),
-        ('reingreso', 'Reingreso')
+        ('reingreso', 'Reingreso'),
+        ('modificacion', 'Modificación')
     ], string='Tipo de Registro', default='alta', required=True)
     
     fecha_movimiento = fields.Date(
@@ -146,6 +147,22 @@ class EmployeeExpedient(models.Model):
             mov_type = dict(record._fields['tipo_registro'].selection).get(record.tipo_registro, '')
             date_str = record.fecha_movimiento.strftime('%Y-%m-%d') if record.fecha_movimiento else ''
             record.name = f"{employee_name} - {mov_type} ({date_str})"
+
+    def _registrar_movimiento(self, tipo_movimiento, fecha_movimiento=None, motivo=False, user_id=None):
+        self.ensure_one()
+        fecha = fecha_movimiento or fields.Date.today()
+        self.env['employee.expedient.line'].create({
+            'expedient_id': self.id,
+            'tipo_movimiento': tipo_movimiento,
+            'fecha': fecha,
+            'motivo': motivo or '',
+            'user_id': user_id or self.env.user.id,
+        })
+        write_vals = {'fecha_movimiento': fecha}
+        if tipo_movimiento in ['alta', 'baja', 'reingreso']:
+            write_vals['tipo_registro'] = tipo_movimiento
+        self.write(write_vals)
+        return True
     
     @api.depends('dias_vacaciones_saldo_inicial', 'dias_vacaciones_utilizados')
     def _compute_dias_disponibles(self):

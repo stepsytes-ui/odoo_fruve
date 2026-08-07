@@ -91,10 +91,12 @@
                                 <field name="history_ids" readonly="1">
                                     <list decoration-info="tipo_movimiento == 'alta'" 
                                         decoration-danger="tipo_movimiento == 'baja'" 
-                                        decoration-success="tipo_movimiento == 'reingreso'">
+                                        decoration-success="tipo_movimiento == 'reingreso'"
+                                        decoration-warning="tipo_movimiento == 'modificacion'">
                                         <field name="fecha"/>
                                         <field name="tipo_movimiento" widget="badge"/>
                                         <field name="motivo"/>
+                                        <field name="user_id"/>
                                     </list>
                                 </field>
                             </page>

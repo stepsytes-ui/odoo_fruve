@@ -443,7 +443,38 @@ class HrEmployeeExtension(models.Model):
                 else:
                     _logger.warning(f"⚠️ Empleado {employee.name} NO es inactivo, estado actual: {employee.employee_status}")
         
+        old_dates = {}
+        for employee in self:
+            old_dates[employee.id] = employee.fecha_ingreso_manual
+
         result = super().write(vals)
+
+        if 'fecha_ingreso_manual' in vals:
+            for employee in self:
+                new_date = vals.get('fecha_ingreso_manual')
+                old_date = old_dates.get(employee.id)
+                if new_date == old_date:
+                    continue
+
+                expediente = self.env['employee.expedient'].search([
+                    ('employee_id', '=', employee.id),
+                ], limit=1)
+                if not expediente:
+                    expediente = self.env['employee.expedient'].create({
+                        'employee_id': employee.id,
+                        'tipo_registro': 'alta',
+                        'fecha_movimiento': new_date or old_date or fields.Date.today(),
+                        'recontratable': 'n/a',
+                        'company_id': employee.company_id.id,
+                    })
+
+                expediente._registrar_movimiento(
+                    'modificacion',
+                    new_date or old_date or fields.Date.today(),
+                    motivo=_('Actualización manual de fecha de ingreso'),
+                    user_id=self.env.user.id,
+                )
+
         _logger.info(f"🔵 write() completado, resultado: {result}")
         return result
 
@@ -462,13 +493,19 @@ class HrEmployeeExtension(models.Model):
         employees = super().create(vals_list)
         for employee, vals in zip(employees, vals_list):
             fecha_alta = vals.get('fecha_ingreso_manual') or fields.Date.today()
-            self.env['employee.expedient'].create({
-                    'employee_id': employee.id,
-                    'tipo_registro': 'alta',
-                    'fecha_movimiento': fecha_alta,
-                    'recontratable': 'n/a',
-                    'company_id': employee.company_id.id,
-                })
+            expediente = self.env['employee.expedient'].create({
+                'employee_id': employee.id,
+                'tipo_registro': 'alta',
+                'fecha_movimiento': fecha_alta,
+                'recontratable': 'n/a',
+                'company_id': employee.company_id.id,
+            })
+            expediente._registrar_movimiento(
+                'alta',
+                fecha_alta,
+                motivo=_('Alta inicial del empleado'),
+                user_id=self.env.user.id,
+            )
         return employees
     
     def unlink(self):

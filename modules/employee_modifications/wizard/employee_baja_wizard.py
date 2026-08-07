@@ -56,20 +56,18 @@ class EmployeeExpedientBajaWizard(models.TransientModel):
         expedient = self.env['employee.expedient'].search([('employee_id', '=', self.employee_id.id)], limit=1)
         
         if expedient:
-            # 2. Agregar la "Baja" al historial (la matriz)
-            self.env['employee.expedient.line'].create({
-                'expedient_id': expedient.id,
-                'tipo_movimiento': 'baja',
-                'fecha': self.fecha_movimiento,
-                'motivo': self.motivo_baja,
-            })
+            expedient._registrar_movimiento(
+                'baja',
+                self.fecha_movimiento,
+                motivo=self.motivo_baja,
+                user_id=self.env.user.id,
+            )
             
-            # 3. Guardar los archivos en el expediente maestro
             expedient.write({
-                'tipo_registro': 'baja',
                 'hoja_renuncia_convenio': self.hoja_renuncia_convenio,
                 'nombre_hoja_renuncia': self.nombre_hoja_renuncia,
                 'recontratable': self.recontratable,
+                'motivo_baja': self.motivo_baja,
             })
 
         # 4. Cambiar estado del empleado a inactivo PERO NO archivarlo todavía

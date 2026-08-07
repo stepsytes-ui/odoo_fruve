@@ -13,18 +13,15 @@ class EmployeeExpedientReingresoWizard(models.TransientModel):
         expedient = self.env['employee.expedient'].search([('employee_id', '=', self.employee_id.id)], limit=1)
         
         if expedient:
-            # 2. Agregar la "Baja" al historial (la matriz)
-            self.env['employee.expedient.line'].create({
-                'expedient_id': expedient.id,
-                'tipo_movimiento': 'reingreso',
-                'fecha': self.fecha_movimiento,
-            })
+            expedient._registrar_movimiento(
+                'reingreso',
+                self.fecha_movimiento,
+                motivo='Reingreso del empleado',
+                user_id=self.env.user.id,
+            )
             
-            # 3. Guardar los archivos en el expediente maestro
             expedient.write({
-                'tipo_registro': 'reingreso',
                 'employee_status': 'active',
-                'fecha_movimiento': self.fecha_movimiento,
             })
 
         self.employee_id.write({

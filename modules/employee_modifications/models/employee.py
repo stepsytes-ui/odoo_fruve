@@ -421,6 +421,9 @@ class HrEmployeeExtension(models.Model):
 
     def write(self, vals):
         """Override para archivar el empleado cuando se marca como finiquitado"""
+        if self._context.get('skip_fecha_ingreso_sync'):
+            return super().write(vals)
+
         _logger.info(f"🔵 write() llamado con vals: {vals}")
         
         # Verificar si el usuario es supervisor o guardia
@@ -468,7 +471,7 @@ class HrEmployeeExtension(models.Model):
                         'company_id': employee.company_id.id,
                     })
 
-                expediente._registrar_movimiento(
+                expediente.with_context(skip_fecha_ingreso_sync=True)._registrar_movimiento(
                     'modificacion',
                     new_date or old_date or fields.Date.today(),
                     motivo=_('Actualización manual de fecha de ingreso'),

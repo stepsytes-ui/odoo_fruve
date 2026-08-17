@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from pytz import timezone
 from io import BytesIO
 import base64
+import re
 
 try:
     from openpyxl import Workbook
@@ -282,6 +283,8 @@ class Overtime(models.Model):
         workbook = Workbook()
         sheet = workbook.active
         sheet.title = 'Tiempo Extra'
+        safe_start_date = re.sub(r'[^0-9A-Za-z_-]', '_', str(start_date or 'inicio'))
+        safe_end_date = re.sub(r'[^0-9A-Za-z_-]', '_', str(end_date or 'fin'))
 
         fixed_headers = ['No. Empleado', 'Nombre', 'Salario Diario']
         day_headers = []
@@ -326,7 +329,7 @@ class Overtime(models.Model):
             workbook.save(output)
             output.seek(0)
             return {
-                'file_name': f'tiempo_extra_{start_date}_{end_date}.xlsx',
+                'file_name': f'tiempo_extra_{safe_start_date}_{safe_end_date}.xlsx',
                 'file_content': base64.b64encode(output.getvalue()).decode('utf-8'),
             }
         finally:

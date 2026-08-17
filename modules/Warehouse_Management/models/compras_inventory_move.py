@@ -345,6 +345,24 @@ class ComprasInventoryMove(models.Model):
             if not rec.request_line_id:
                 rec.quantity_done = rec.quantity or 0.0
 
+            warehouse = rec._get_stock_warehouse_for_move()
+            moved_qty = rec.quantity_done or rec.quantity or 0.0
+            if not rec.product_id or not warehouse:
+                rec.previous_qty = 0.0
+                rec.new_qty = 0.0
+                continue
+
+            previous_qty = rec._get_product_qty_in_warehouse(rec.product_id, warehouse)
+            if rec.move_type in ('entrada', 'inicial'):
+                rec.previous_qty = previous_qty
+                rec.new_qty = previous_qty + moved_qty
+            elif rec.move_type in ('salida', 'transferencia'):
+                rec.previous_qty = previous_qty
+                rec.new_qty = previous_qty - moved_qty
+            else:
+                rec.previous_qty = previous_qty
+                rec.new_qty = previous_qty
+
     @api.onchange('company_id')
     def _onchange_company_id(self):
         for rec in self:

@@ -44,6 +44,9 @@
             <field name="model">compras.product</field>
             <field name="arch" type="xml">
                 <form string="Consolidado">
+                    <header>
+                        <button name="action_create_inventory_move" string="Crear movimiento" type="object" class="btn-primary"/>
+                    </header>
                     <sheet>
                         <div class="oe_title">
                             <h1>

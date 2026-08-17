@@ -453,6 +453,44 @@ class ComprasProduct(models.Model):
                 '</div>'
             ) % code
 
+    def action_create_inventory_move(self):
+        self.ensure_one()
+        warehouse = self.inventory_warehouse_id
+        if not warehouse:
+            raise ValidationError(_('Primero debes seleccionar un almacén de inventario para este producto.'))
+
+        move = self.env['compras.inventory.move'].create({
+            'company_id': self.company_id.id,
+            'destination_company_id': self.company_id.id,
+            'destination_company_selector': str(self.company_id.id),
+            'move_type': 'inicial',
+            'product_id': self.id,
+            'source_warehouse_id': warehouse.id,
+            'destination_warehouse_id': warehouse.id,
+            'location_id': self.inventory_location_id.id if self.inventory_location_id else False,
+            'quantity': 1.0,
+            'quantity_done': 1.0,
+            'status': 'completo',
+            'registered_employee_id': self.env.user.employee_id.id if self.env.user.employee_id else False,
+            'registered_by_id': self.env.user.id,
+        })
+
+        previous_qty = move._get_product_qty_in_warehouse(self, warehouse)
+        move.write({
+            'previous_qty': previous_qty,
+            'new_qty': previous_qty + 1.0,
+        })
+
+        action = self.env.ref('Warehouse_Management.compras_inventory_move_action').read()[0]
+        action.update({
+            'res_id': move.id,
+            'views': [(self.env.ref('Warehouse_Management.compras_inventory_move_view_form').id, 'form')],
+            'view_mode': 'form',
+            'target': 'current',
+            'view_id': self.env.ref('Warehouse_Management.compras_inventory_move_view_form').id,
+        })
+        return action
+
     def name_get(self):
         result = []
         for product in self:

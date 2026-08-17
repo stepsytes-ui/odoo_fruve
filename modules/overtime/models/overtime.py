@@ -310,7 +310,7 @@ class Overtime(models.Model):
                 sheet.cell(row=row_index, column=col_index, value=value)
             row_index += 1
 
-        total_values = ['TOTALES', '', '']
+        total_values = ['TOTALES'] + [''] * (len(fixed_headers) - 1)
         for header in headers:
             date_key = header.get('date')
             day_total = column_totals.get(date_key, {})

@@ -13,6 +13,7 @@ export class OvertimeDashboard extends Component {
 
     setup(){
         this.orm = useService("orm");
+        this.notification = useService("notification");
         
         const today = new Date();
         const localToday = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
@@ -145,6 +146,9 @@ export class OvertimeDashboard extends Component {
             window.URL.revokeObjectURL(url);
         } catch (e) {
             console.error("Error al exportar Excel de tiempo extra:", e);
+            this.notification.add("No fue posible exportar el archivo de Excel.", {
+                type: "danger",
+            });
         }
     }
 

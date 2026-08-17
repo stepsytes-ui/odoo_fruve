@@ -419,9 +419,19 @@ class ComprasInventoryMove(models.Model):
             elif rec.source_warehouse_id:
                 location_domain = [('id', '=', False)]
 
-            available_product_ids = rec._get_available_product_ids_for_selected_warehouses()
-            if available_product_ids:
-                product_domain = [('id', 'in', available_product_ids)]
+            company_for_products = rec.company_id or rec.destination_company_id
+            if company_for_products:
+                product_domain = [('company_id', '=', company_for_products.id)]
+
+            # En inventario inicial, el producto debe poder elegirse sin depender del
+            # stock existente en el almacén. El stock real se toma del almacén
+            # seleccionado al calcular existencias anteriores y posteriores.
+            if rec.move_type == 'inicial':
+                product_domain = [('company_id', '=', company_for_products.id)] if company_for_products else [('id', '=', False)]
+            else:
+                available_product_ids = rec._get_available_product_ids_for_selected_warehouses()
+                if available_product_ids and (rec.source_warehouse_id or rec.destination_warehouse_id):
+                    product_domain = [('id', 'in', available_product_ids)]
 
             area_domain_by_record = area_domain
             location_domain_by_record = location_domain
@@ -440,9 +450,14 @@ class ComprasInventoryMove(models.Model):
                 available_location_ids = rec._get_available_location_ids_for_product_source_warehouse()
                 if rec.location_id.id not in available_location_ids:
                     rec.location_id = False
-            if rec.product_id and (rec.source_warehouse_id or rec.destination_warehouse_id):
-                if rec.product_id.id not in available_product_ids:
-                    rec.product_id = False
+            if (
+                rec.product_id
+                and rec.move_type != 'inicial'
+                and (rec.source_warehouse_id or rec.destination_warehouse_id)
+                and available_product_ids
+                and rec.product_id.id not in available_product_ids
+            ):
+                rec.product_id = False
 
         return {
             'domain': {

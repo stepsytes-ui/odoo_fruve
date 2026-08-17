@@ -8,8 +8,10 @@ import re
 
 try:
     from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 except ImportError:
     Workbook = None
+    Font = PatternFill = Border = Side = Alignment = None
 
 class Overtime(models.Model):
     _name = 'overtime'
@@ -283,6 +285,7 @@ class Overtime(models.Model):
         workbook = Workbook()
         sheet = workbook.active
         sheet.title = 'Tiempo Extra'
+        sheet.sheet_view.showGridLines = False
         safe_start_date = re.sub(r'[^0-9A-Za-z_-]', '_', str(start_date or 'inicio'))
         safe_end_date = re.sub(r'[^0-9A-Za-z_-]', '_', str(end_date or 'fin'))
 
@@ -293,10 +296,55 @@ class Overtime(models.Model):
             day_headers.extend([f'{day_label} Hora', f'{day_label} $'])
         final_headers = fixed_headers + day_headers + ['Total Hrs', 'Total $']
 
-        for col_index, header_name in enumerate(final_headers, start=1):
-            sheet.cell(row=1, column=col_index, value=header_name)
+        purple_fill = PatternFill(fill_type='solid', fgColor='8E6AA8')
+        blue_fill = PatternFill(fill_type='solid', fgColor='D9EAF7')
+        grey_fill = PatternFill(fill_type='solid', fgColor='D9D9D9')
+        green_fill = PatternFill(fill_type='solid', fgColor='2E9B3E')
+        dark_grey_fill = PatternFill(fill_type='solid', fgColor='C7C7C7')
+        white_fill = PatternFill(fill_type='solid', fgColor='FFFFFF')
 
-        row_index = 2
+        border = Border(
+            left=Side(style='thin', color='C0C0C0'),
+            right=Side(style='thin', color='C0C0C0'),
+            top=Side(style='thin', color='C0C0C0'),
+            bottom=Side(style='thin', color='C0C0C0'),
+        )
+
+        def apply_cell_style(cell, fill=None, font=None, align='center', num_format=None, bold=False):
+            if fill is not None:
+                cell.fill = fill
+            if font is not None:
+                cell.font = font
+            else:
+                cell.font = Font(bold=bold, color='000000', size=11)
+            cell.border = border
+            cell.alignment = Alignment(horizontal=align, vertical='center')
+            if num_format:
+                cell.number_format = num_format
+
+        title_row = 1
+        last_col = len(final_headers)
+        sheet.merge_cells(start_row=title_row, start_column=1, end_row=title_row, end_column=last_col)
+        title_cell = sheet.cell(row=title_row, column=1, value='Detalles de Tiempo Extra por Empleado')
+        apply_cell_style(title_cell, fill=purple_fill, font=Font(color='FFFFFF', bold=True, size=14), align='left', bold=True)
+        sheet.row_dimensions[title_row].height = 28
+
+        header_row = 2
+        for col_index, header_name in enumerate(final_headers, start=1):
+            cell = sheet.cell(row=header_row, column=col_index, value=header_name)
+            if col_index <= len(fixed_headers):
+                fill = grey_fill
+            elif col_index > len(final_headers) - 2:
+                fill = green_fill
+            else:
+                fill = blue_fill
+            font = Font(color='000000', bold=True, size=11)
+            if col_index > len(final_headers) - 2:
+                font = Font(color='FFFFFF', bold=True, size=11)
+            apply_cell_style(cell, fill=fill, font=font, align='center', bold=True)
+            sheet.column_dimensions[chr(64 + col_index)].width = 16 if col_index != 2 else 26
+
+        row_index = 3
         for row in rows:
             values = [
                 row.get('employee_number', ''),
@@ -310,11 +358,24 @@ class Overtime(models.Model):
             values.extend([row.get('total_hours', 0.0), row.get('total_amount', 0.0)])
 
             for col_index, value in enumerate(values, start=1):
-                sheet.cell(row=row_index, column=col_index, value=value)
+                cell = sheet.cell(row=row_index, column=col_index, value=value)
+                if col_index in (1, 2, 3):
+                    fill = white_fill
+                    align = 'left' if col_index == 2 else 'center'
+                    if col_index == 3:
+                        cell.number_format = '$#,##0.00'
+                elif col_index > len(final_headers) - 2:
+                    fill = green_fill
+                    align = 'center' if col_index == len(final_headers) - 1 else 'right'
+                    cell.number_format = '$#,##0.00' if col_index == len(final_headers) else '0.00" h"'
+                else:
+                    fill = white_fill
+                    align = 'center' if col_index % 2 == 1 else 'right'
+                    cell.number_format = '0.00" h"' if col_index % 2 == 1 else '$#,##0.00'
+                apply_cell_style(cell, fill=fill, font=Font(color='000000', bold=False), align=align)
             row_index += 1
 
-        fixed_padding_count = max(len(fixed_headers) - 1, 0)
-        total_values = ['TOTALES'] + [''] * fixed_padding_count
+        total_values = ['TOTALES'] + [''] * max(len(fixed_headers) - 1, 0)
         for header in headers:
             date_key = header.get('date')
             day_total = column_totals.get(date_key, {})
@@ -322,7 +383,43 @@ class Overtime(models.Model):
         total_values.extend([grand_total_hours, grand_total_amount])
 
         for col_index, value in enumerate(total_values, start=1):
-            sheet.cell(row=row_index, column=col_index, value=value)
+            cell = sheet.cell(row=row_index, column=col_index, value=value)
+            if col_index == 1:
+                fill = dark_grey_fill
+                font = Font(color='000000', bold=True, size=11)
+                align = 'center'
+            elif col_index > len(final_headers) - 2:
+                fill = green_fill
+                font = Font(color='FFFFFF', bold=True, size=11)
+                align = 'center' if col_index == len(final_headers) - 1 else 'right'
+                cell.number_format = '$#,##0.00' if col_index == len(final_headers) else '0.00" h"'
+            else:
+                fill = blue_fill
+                font = Font(color='000000', bold=True, size=11)
+                align = 'center' if col_index % 2 == 1 else 'right'
+                cell.number_format = '0.00" h"' if col_index % 2 == 1 else '$#,##0.00'
+            apply_cell_style(cell, fill=fill, font=font, align=align)
+
+        # Ajuste de anchos y formato final
+        for col in sheet.columns:
+            first_cell = None
+            for cell in col:
+                if hasattr(cell, 'column_letter'):
+                    first_cell = cell
+                    break
+            if first_cell is None:
+                continue
+
+            max_length = 0
+            column = first_cell.column_letter
+            for cell in col:
+                try:
+                    if hasattr(cell, 'value') and cell.value is not None:
+                        max_length = max(max_length, len(str(cell.value)))
+                except Exception:
+                    pass
+            adjusted_width = max(12, min(max_length + 2, 20))
+            sheet.column_dimensions[column].width = adjusted_width
 
         output = BytesIO()
         try:

@@ -9,9 +9,11 @@ import re
 try:
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+    from openpyxl.utils import get_column_letter
 except ImportError:
     Workbook = None
     Font = PatternFill = Border = Side = Alignment = None
+    get_column_letter = None
 
 class Overtime(models.Model):
     _name = 'overtime'
@@ -322,14 +324,7 @@ class Overtime(models.Model):
             if num_format:
                 cell.number_format = num_format
 
-        title_row = 1
-        last_col = len(final_headers)
-        sheet.merge_cells(start_row=title_row, start_column=1, end_row=title_row, end_column=last_col)
-        title_cell = sheet.cell(row=title_row, column=1, value='Detalles de Tiempo Extra por Empleado')
-        apply_cell_style(title_cell, fill=purple_fill, font=Font(color='FFFFFF', bold=True, size=14), align='left', bold=True)
-        sheet.row_dimensions[title_row].height = 28
-
-        header_row = 2
+        header_row = 1
         for col_index, header_name in enumerate(final_headers, start=1):
             cell = sheet.cell(row=header_row, column=col_index, value=header_name)
             if col_index <= len(fixed_headers):
@@ -342,9 +337,10 @@ class Overtime(models.Model):
             if col_index > len(final_headers) - 2:
                 font = Font(color='FFFFFF', bold=True, size=11)
             apply_cell_style(cell, fill=fill, font=font, align='center', bold=True)
-            sheet.column_dimensions[chr(64 + col_index)].width = 16 if col_index != 2 else 26
+            column_letter = get_column_letter(col_index)
+            sheet.column_dimensions[column_letter].width = 16 if col_index != 2 else 26
 
-        row_index = 3
+        row_index = 2
         for row in rows:
             values = [
                 row.get('employee_number', ''),

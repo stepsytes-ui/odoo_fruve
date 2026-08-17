@@ -1,7 +1,15 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 from datetime import datetime, timedelta
 from pytz import timezone
+from io import BytesIO
+import base64
+import re
+
+try:
+    from openpyxl import Workbook
+except ImportError:
+    Workbook = None
 
 class Overtime(models.Model):
     _name = 'overtime'
@@ -259,6 +267,73 @@ class Overtime(models.Model):
             'grand_total_hours': grand_total_hours,
             'grand_total_amount': grand_total_amount,
         }
+
+    @api.model
+    def export_overtime_table_excel(self, start_date, end_date):
+        if Workbook is None:
+            raise UserError(_('openpyxl no está instalado. Instale la dependencia para exportar Excel.'))
+
+        table_data = self.get_overtime_table_data(start_date, end_date)
+        headers = table_data.get('headers', [])
+        rows = table_data.get('rows', [])
+        column_totals = table_data.get('column_totals', {})
+        grand_total_hours = table_data.get('grand_total_hours', 0.0)
+        grand_total_amount = table_data.get('grand_total_amount', 0.0)
+
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = 'Tiempo Extra'
+        safe_start_date = re.sub(r'[^0-9A-Za-z_-]', '_', str(start_date or 'inicio'))
+        safe_end_date = re.sub(r'[^0-9A-Za-z_-]', '_', str(end_date or 'fin'))
+
+        fixed_headers = ['No. Empleado', 'Nombre', 'Salario Diario']
+        day_headers = []
+        for header in headers:
+            day_label = header.get('day_label', '')
+            day_headers.extend([f'{day_label} Hora', f'{day_label} $'])
+        final_headers = fixed_headers + day_headers + ['Total Hrs', 'Total $']
+
+        for col_index, header_name in enumerate(final_headers, start=1):
+            sheet.cell(row=1, column=col_index, value=header_name)
+
+        row_index = 2
+        for row in rows:
+            values = [
+                row.get('employee_number', ''),
+                row.get('employee_name', ''),
+                row.get('daily_rate', 0.0),
+            ]
+            for header in headers:
+                date_key = header.get('date')
+                day_data = (row.get('days') or {}).get(date_key, {})
+                values.extend([day_data.get('hours', 0.0), day_data.get('amount', 0.0)])
+            values.extend([row.get('total_hours', 0.0), row.get('total_amount', 0.0)])
+
+            for col_index, value in enumerate(values, start=1):
+                sheet.cell(row=row_index, column=col_index, value=value)
+            row_index += 1
+
+        fixed_padding_count = max(len(fixed_headers) - 1, 0)
+        total_values = ['TOTALES'] + [''] * fixed_padding_count
+        for header in headers:
+            date_key = header.get('date')
+            day_total = column_totals.get(date_key, {})
+            total_values.extend([day_total.get('hours', 0.0), day_total.get('amount', 0.0)])
+        total_values.extend([grand_total_hours, grand_total_amount])
+
+        for col_index, value in enumerate(total_values, start=1):
+            sheet.cell(row=row_index, column=col_index, value=value)
+
+        output = BytesIO()
+        try:
+            workbook.save(output)
+            output.seek(0)
+            return {
+                'file_name': f'tiempo_extra_{safe_start_date}_{safe_end_date}.xlsx',
+                'file_content': base64.b64encode(output.getvalue()).decode('utf-8'),
+            }
+        finally:
+            output.close()
 
     @api.model_create_multi
     def create(self, vals_list):

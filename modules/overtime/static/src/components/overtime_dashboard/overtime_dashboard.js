@@ -2,6 +2,7 @@
 
 import {Component, onWillStart, useState} from "@odoo/owl";
 import {useService} from "@web/core/utils/hooks";
+import { downloadFile } from "@web/core/network/download";
 
 export class OvertimeDashboard extends Component {
     static props = {
@@ -13,6 +14,7 @@ export class OvertimeDashboard extends Component {
 
     setup(){
         this.orm = useService("orm");
+        this.notification = useService("notification");
         
         const today = new Date();
         const localToday = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
@@ -112,6 +114,36 @@ export class OvertimeDashboard extends Component {
 
     onPrintDashboard() {
         window.print();
+    }
+
+    async onExportExcel() {
+        try {
+            const result = await this.orm.call(
+                "overtime",
+                "export_overtime_table_excel",
+                [],
+                {
+                    start_date: this.state.start_date,
+                    end_date: this.state.end_date,
+                }
+            );
+            if (!result || !result.file_content) {
+                return;
+            }
+            const mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            const binary = window.atob(result.file_content);
+            const byteArray = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                byteArray[i] = binary.charCodeAt(i);
+            }
+            const blob = new Blob([byteArray], { type: mimeType });
+            downloadFile(blob, result.file_name || "tiempo_extra.xlsx", mimeType);
+        } catch (e) {
+            console.error("Error al exportar Excel de tiempo extra:", e);
+            this.notification.add("No fue posible exportar el archivo de Excel.", {
+                type: "danger",
+            });
+        }
     }
 
 }

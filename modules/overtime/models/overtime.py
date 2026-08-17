@@ -321,13 +321,15 @@ class Overtime(models.Model):
             sheet.cell(row=row_index, column=col_index, value=value)
 
         output = BytesIO()
-        workbook.save(output)
-        output.seek(0)
-
-        return {
-            'file_name': f'tiempo_extra_{start_date}_{end_date}.xlsx',
-            'file_content': base64.b64encode(output.getvalue()).decode('utf-8'),
-        }
+        try:
+            workbook.save(output)
+            output.seek(0)
+            return {
+                'file_name': f'tiempo_extra_{start_date}_{end_date}.xlsx',
+                'file_content': base64.b64encode(output.getvalue()).decode('utf-8'),
+            }
+        finally:
+            output.close()
 
     @api.model_create_multi
     def create(self, vals_list):

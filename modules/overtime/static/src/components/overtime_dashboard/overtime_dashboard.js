@@ -2,7 +2,6 @@
 
 import {Component, onWillStart, useState} from "@odoo/owl";
 import {useService} from "@web/core/utils/hooks";
-import { downloadFile } from "@web/core/network/download";
 
 export class OvertimeDashboard extends Component {
     static props = {
@@ -130,8 +129,20 @@ export class OvertimeDashboard extends Component {
                 return;
             }
             const mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-            const dataUrl = `data:${mimeType};base64,${result.file_content}`;
-            downloadFile(dataUrl, result.file_name || "tiempo_extra.xlsx", mimeType);
+            const binary = window.atob(result.file_content);
+            const byteArray = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                byteArray[i] = binary.charCodeAt(i);
+            }
+            const blob = new Blob([byteArray], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = result.file_name || "tiempo_extra.xlsx";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
         } catch (e) {
             console.error("Error al exportar Excel de tiempo extra:", e);
         }

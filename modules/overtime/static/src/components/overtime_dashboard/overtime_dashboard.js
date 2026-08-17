@@ -143,7 +143,7 @@ export class OvertimeDashboard extends Component {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
+            setTimeout(() => window.URL.revokeObjectURL(url), 200);
         } catch (e) {
             console.error("Error al exportar Excel de tiempo extra:", e);
             this.notification.add("No fue posible exportar el archivo de Excel.", {

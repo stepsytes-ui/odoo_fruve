@@ -2,6 +2,7 @@
 
 import {Component, onWillStart, useState} from "@odoo/owl";
 import {useService} from "@web/core/utils/hooks";
+import { downloadFile } from "@web/core/network/download";
 
 export class OvertimeDashboard extends Component {
     static props = {
@@ -112,6 +113,28 @@ export class OvertimeDashboard extends Component {
 
     onPrintDashboard() {
         window.print();
+    }
+
+    async onExportExcel() {
+        try {
+            const result = await this.orm.call(
+                "overtime",
+                "export_overtime_table_excel",
+                [],
+                {
+                    start_date: this.state.start_date,
+                    end_date: this.state.end_date,
+                }
+            );
+            if (!result || !result.file_content) {
+                return;
+            }
+            const mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            const dataUrl = `data:${mimeType};base64,${result.file_content}`;
+            downloadFile(dataUrl, result.file_name || "tiempo_extra.xlsx", mimeType);
+        } catch (e) {
+            console.error("Error al exportar Excel de tiempo extra:", e);
+        }
     }
 
 }

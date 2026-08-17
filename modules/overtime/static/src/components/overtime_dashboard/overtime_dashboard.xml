@@ -27,6 +27,10 @@
                         <i class="fa fa-print me-1"/>
                         Imprimir
                     </button>
+                    <button class="btn btn-sm btn-success ms-1 o_overtime_print_hide" t-on-click="onExportExcel" title="Exportar Excel">
+                        <i class="fa fa-file-excel-o me-1"/>
+                        Exportar Excel
+                    </button>
                 </div>
             </div>
 

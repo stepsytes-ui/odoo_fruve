@@ -8,7 +8,7 @@
                   groups="enfermeria.group_enfermeria_user,enfermeria.group_enfermeria_manager"/>
 
         <menuitem id="menu_enfermeria_accidentes"
-                  name="Accidentes"
+                  name="Incidentes"
                   parent="menu_enfermeria_root"
                   action="enfermeria_accidente_action"
                   sequence="10"

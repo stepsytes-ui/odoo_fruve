@@ -4,7 +4,7 @@ from odoo import models, fields, api
 
 class EnfermeriaAccidente(models.Model):
     _name = 'enfermeria.accidente'
-    _description = 'Registro de Accidentes'
+    _description = 'Registro de Incidente'
     _order = 'id desc'
 
     name = fields.Char(
@@ -37,7 +37,7 @@ class EnfermeriaAccidente(models.Model):
     # Área del accidente — tomada del modelo hr.area del módulo overtime
     area_id = fields.Many2one(
         'hr.area',
-        string='Área del Accidente',
+        string='Área del Incidente',
     )
 
     tipo_causa = fields.Selection(
@@ -51,7 +51,7 @@ class EnfermeriaAccidente(models.Model):
     )
 
     dia_accidente = fields.Date(
-        string='Día del Accidente',
+        string='Día del Incidente',
         required=True,
     )
 
@@ -86,6 +86,8 @@ class EnfermeriaAccidente(models.Model):
         string='Días de Incapacidad',
         default=0,
     )
+
+    descripcion_accidente = fields.Text(string='Descripción del Incidente')
 
     @api.model_create_multi
     def create(self, vals_list):

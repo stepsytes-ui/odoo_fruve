@@ -25,6 +25,7 @@
                                 <field name="area_id" options="{'no_create': True}"/>
                                 <field name="tipo_causa"/>
                                 <field name="dia_accidente"/>
+                                <field name="descripcion_accidente"/>
                             </group>
                         </group>
 

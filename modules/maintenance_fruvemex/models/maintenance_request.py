@@ -14,8 +14,6 @@ class FruveMaintenanceRequest(models.Model):
         readonly=True, 
         required=True
     )
-
-
     
     # Se usa self.env.user.id para garantizar que retorne un ID entero válido
     # Registro: Por defecto el usuario actual, pero totalmente editable para seleccionar cualquier usuario/empleado
@@ -39,7 +37,7 @@ class FruveMaintenanceRequest(models.Model):
     ], string='Clasificación', required=True, default='correctivo')
     
     # Comodel actualizado a fruve.maintenance.type
-    tipo_id = fields.Many2one('fruve.maintenance.type', string='Tipo', required=True)
+    tipo_id = fields.Many2one('fruve.maintenance.type', string='Unidad', required=True)
     
     # Comodel actualizado a fruve.maintenance.technician
     technician_ids = fields.Many2many(

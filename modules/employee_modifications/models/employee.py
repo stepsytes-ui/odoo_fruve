@@ -105,7 +105,7 @@ class HrEmployeeExtension(models.Model):
 
     periodo_prueba = fields.Selection(
         [
-            ('7', '7 días'),
+            # ('7', '7 días'),
             ('30', '30 días'),
             ('60', '60 días'),
             ('90', '90 días'),

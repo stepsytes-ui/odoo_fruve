@@ -16,4 +16,3 @@ from . import hr_vacation
 from . import employee_resguardo
 from . import res_company
 from . import employee_supervisor
-from . import employee_contracts

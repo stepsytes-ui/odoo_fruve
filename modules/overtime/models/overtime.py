@@ -52,14 +52,16 @@ class Overtime(models.Model):
 
     @api.model
     def _get_overtime_amounts_by_record(self, start_date, end_date, overtimes):
-        """Calcula monto por registro aplicando doble o triple segun el empleado."""
+        """Calcula monto por registro aplicando doble o triple segun el empleado.
+
+        La regla de hora triple se evalua sobre las hours_taken de cada
+        registro individual (no de forma acumulada): las primeras 9 horas
+        se pagan dobles y el excedente, si lo hay, se paga triple.
+        """
         amounts_by_record = {}
         if not overtimes:
             return amounts_by_record
 
-        start_dt = fields.Date.to_date(start_date)
-        end_dt = fields.Date.to_date(end_date)
-        target_ids = set(overtimes.ids)
         employee_ids = overtimes.mapped('employee_id').ids
 
         triple_employee_ids = set(
@@ -69,40 +71,18 @@ class Overtime(models.Model):
             ]).mapped('employee_id').ids
         )
 
-        overtime_history = self.search([
-            ('state', '=', 'approved'),
-            ('employee_id', 'in', employee_ids),
-            ('requested_date', '<=', end_dt),
-        ], order='employee_id, requested_date, id')
-
-        weekly_hours = {}
-
-        for overtime in overtime_history:
-            overtime_date = overtime.requested_date
-            if not overtime_date:
-                continue
-
+        for overtime in overtimes:
             hours = overtime.hours_taken or 0.0
-            employee_id = overtime.employee_id.id
             daily_rate = overtime.employee_id.daily_rate or 0.0
             hourly_rate = daily_rate / 8 if daily_rate else 0.0
 
-            iso_year, iso_week, _ = overtime_date.isocalendar()
-            week_key = (employee_id, iso_year, iso_week)
-            accumulated_week_hours = weekly_hours.get(week_key, 0.0)
-
-            if overtime.id in target_ids and start_dt <= overtime_date <= end_dt:
-                if employee_id in triple_employee_ids:
-                    double_remaining = max(0.0, 9.0 - accumulated_week_hours)
-                    double_hours = min(hours, double_remaining)
-                    triple_hours = max(0.0, hours - double_hours)
-                    amount = (hourly_rate * 2 * double_hours) + (hourly_rate * 3 * triple_hours)
-                else:
-                    amount = hourly_rate * 2 * hours
-                amounts_by_record[overtime.id] = amount
-
-            if employee_id in triple_employee_ids:
-                weekly_hours[week_key] = accumulated_week_hours + hours
+            if overtime.employee_id.id in triple_employee_ids:
+                double_hours = min(hours, 9.0)
+                triple_hours = max(0.0, hours - 9.0)
+                amount = (hourly_rate * 2 * double_hours) + (hourly_rate * 3 * triple_hours)
+            else:
+                amount = hourly_rate * 2 * hours
+            amounts_by_record[overtime.id] = amount
 
         return amounts_by_record
 

@@ -25,6 +25,7 @@ Fruvemex requests for employee's module
             'data/hr_vacation_sequence.xml',
             'data/employee_resguardo_sequence.xml',
             'data/vacation_renewal_cron.xml',
+            'data/periodo_prueba_alert_cron.xml',
             'reports/carta_laboral_report.xml',
             'views/res_company_views.xml',
             'views/hr_employee_views_inherit.xml',
@@ -48,6 +49,7 @@ Fruvemex requests for employee's module
             'wizard/employee_vacation_advance_wizard_views.xml',
             'views/employee_menus.xml',
             'views/employee_supervisor_views.xml',
+            'views/employee_periodo_prueba_views.xml',
         ],
     'demo': [
         'demo/demo.xml',

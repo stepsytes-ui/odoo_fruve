@@ -2,9 +2,11 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import AccessError, ValidationError
 import logging
-from datetime import date
+from datetime import date, timedelta
 
 from dateutil.relativedelta import relativedelta
+
+PERIODO_PRUEBA_ALERTA_DIAS = 7
 
 _logger = logging.getLogger(__name__)
 
@@ -100,7 +102,43 @@ class HrEmployeeExtension(models.Model):
         string='Fecha de Ingreso',
         help="Campo para ingresar la fecha de ingreso del empleado si deja vacio tomara la fecha actual por default"
     )
-    
+
+    periodo_prueba = fields.Selection(
+        [
+            ('7', '7 días'),
+            ('30', '30 días'),
+            ('60', '60 días'),
+            ('90', '90 días'),
+            ('180', '180 días'),
+        ],
+        string='Periodo de Prueba',
+        tracking=True,
+        help='Duracion del periodo de prueba del empleado, contado a partir de su fecha de ingreso.',
+    )
+
+    fecha_fin_periodo_prueba = fields.Date(
+        string='Fin de Periodo de Prueba',
+        compute='_compute_periodo_prueba',
+        store=True,
+    )
+
+    periodo_prueba_dias_restantes = fields.Integer(
+        string='Dias Restantes Periodo de Prueba',
+        compute='_compute_periodo_prueba',
+        store=True,
+    )
+
+    periodo_prueba_pendiente_renovacion = fields.Boolean(
+        string='Pendiente de Renovacion',
+        compute='_compute_periodo_prueba',
+        store=True,
+    )
+
+    periodo_prueba_alerta_enviada = fields.Boolean(
+        string='Alerta de Renovacion Enviada',
+        copy=False,
+    )
+
     expedient_ids = fields.One2many(
         'employee.expedient', 
         'employee_id', 
@@ -333,6 +371,29 @@ class HrEmployeeExtension(models.Model):
 
             diff = relativedelta(fecha_corte, fecha_ingreso)
             employee.antiguedad = f"{diff.years} anos, {diff.months} meses y {diff.days} dias"
+
+    @api.depends('periodo_prueba', 'fecha_ingreso_manual')
+    def _compute_periodo_prueba(self):
+        hoy = date.today()
+        for employee in self:
+            fecha_ingreso = employee.get_fecha_ingreso() if employee.id else employee.fecha_ingreso_manual
+            if not employee.periodo_prueba or not fecha_ingreso:
+                employee.fecha_fin_periodo_prueba = False
+                employee.periodo_prueba_dias_restantes = 0
+                employee.periodo_prueba_pendiente_renovacion = False
+                continue
+
+            fecha_fin = fecha_ingreso + timedelta(days=int(employee.periodo_prueba))
+            dias_restantes = (fecha_fin - hoy).days
+
+            employee.fecha_fin_periodo_prueba = fecha_fin
+            employee.periodo_prueba_dias_restantes = dias_restantes
+            employee.periodo_prueba_pendiente_renovacion = 0 <= dias_restantes <= PERIODO_PRUEBA_ALERTA_DIAS
+
+    def write(self, vals):
+        if ('periodo_prueba' in vals or 'fecha_ingreso_manual' in vals) and 'periodo_prueba_alerta_enviada' not in vals:
+            vals = dict(vals, periodo_prueba_alerta_enviada=False)
+        return super().write(vals)
 
     @api.depends('biometric_id')
     def _compute_biometric_id_numeric(self):
@@ -827,3 +888,87 @@ class HrEmployeeExtension(models.Model):
         anio = fecha.strftime('%Y')
         
         return f"{dia}/{mes}/{anio}"
+
+    @api.model
+    def _cron_alerta_periodo_prueba(self):
+        """Notifica a RH cuando a un empleado le quedan 7 dias o menos de periodo de prueba."""
+        empleados = self.search([
+            ('periodo_prueba_pendiente_renovacion', '=', True),
+            ('periodo_prueba_alerta_enviada', '=', False),
+            ('active', '=', True),
+        ])
+        if not empleados:
+            return
+
+        for company in empleados.mapped('company_id'):
+            empleados.filtered(lambda e, c=company: e.company_id == c)._send_periodo_prueba_alert(company)
+
+    def _send_periodo_prueba_alert(self, company):
+        """Envia un correo a RH con los empleados proximos a cumplir su periodo de prueba."""
+        hr_group = self.env.ref('zkteco_realtime_connector.group_hr_manager_custom', raise_if_not_found=False)
+        absence_group = self.env.ref('zkteco_realtime_connector.group_rh_absence_manager', raise_if_not_found=False)
+
+        if not hr_group or not absence_group:
+            _logger.warning("No se encontraron los grupos de Recursos Humanos / RH Absence Manager.")
+            return
+
+        recipients = (hr_group.users & absence_group.users).filtered(
+            lambda user: user.active and not user.share
+            and user.company_id.id == company.id
+            and user.partner_id and user.partner_id.email
+        )
+
+        if not recipients:
+            _logger.warning(
+                "No se encontraron usuarios con permisos de RH y RH Absence Manager para la compania %s.",
+                company.name,
+            )
+            return
+
+        action = self.env.ref('employee_modifications.action_employee_periodo_prueba_pendiente', raise_if_not_found=False)
+        base_url = company.get_attendance_reports_base_url() if hasattr(company, 'get_attendance_reports_base_url') \
+            else self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        list_url = f"{base_url}/odoo/action-{action.id}" if action else base_url
+
+        rows = ''.join(
+            _("""
+                <tr>
+                    <td style="padding:6px 10px;border-bottom:1px solid #ddd;">%s</td>
+                    <td style="padding:6px 10px;border-bottom:1px solid #ddd;">%s</td>
+                    <td style="padding:6px 10px;border-bottom:1px solid #ddd;">%s</td>
+                </tr>
+            """) % (
+                employee.name,
+                employee.department_id.name or 'N/A',
+                employee.fecha_fin_periodo_prueba.strftime('%d/%m/%Y') if employee.fecha_fin_periodo_prueba else 'N/A',
+            )
+            for employee in self
+        )
+
+        subject = _("Empleados Pendientes de Renovacion de Periodo de Prueba - %s") % company.name
+        body = _("""
+            <p>Los siguientes empleados est&aacute;n por cumplir su periodo de prueba (7 d&iacute;as o menos):</p>
+            <table style="border-collapse:collapse;width:100%%;">
+                <tr>
+                    <th style="text-align:left;padding:6px 10px;border-bottom:2px solid #333;">Empleado</th>
+                    <th style="text-align:left;padding:6px 10px;border-bottom:2px solid #333;">Departamento</th>
+                    <th style="text-align:left;padding:6px 10px;border-bottom:2px solid #333;">Fin de Periodo de Prueba</th>
+                </tr>
+                %s
+            </table>
+            <p style="margin-top:20px;">
+                <a href="%s" style="padding:10px 20px;text-decoration:none;background-color:#007bff;color:white;border-radius:5px;">
+                    Ver Pendientes de Renovacion
+                </a>
+            </p>
+        """) % (rows, list_url)
+
+        self.env['mail.mail'].sudo().create({
+            'subject': subject,
+            'body_html': body,
+            'recipient_ids': [(4, user.partner_id.id) for user in recipients],
+            'email_from': self.env['ir.config_parameter'].sudo().get_param('mail.catchall.domain') or 'odooia@fruvemex.com',
+            'auto_delete': True,
+        }).send()
+
+        self.write({'periodo_prueba_alerta_enviada': True})

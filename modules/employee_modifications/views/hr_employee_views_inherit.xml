@@ -172,6 +172,21 @@
         </field>
     </record>
 
+    <!-- Vista heredada para agregar el Periodo de Prueba después de employee_status -->
+    <record id="view_employee_form_periodo_prueba_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.form.periodo.prueba.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='employee_status']" position="after">
+                <field name="periodo_prueba"/>
+                <field name="fecha_fin_periodo_prueba" readonly="1" invisible="not periodo_prueba"/>
+            </xpath>
+
+        </field>
+    </record>
+
     <record id="view_employee_list_tools_lista" model="ir.ui.view">
         <field name="name">hr.employee.list.tools.lista</field>
         <field name="model">hr.employee</field>

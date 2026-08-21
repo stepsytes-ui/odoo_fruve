@@ -14,6 +14,24 @@ class EnfermeriaAccidente(models.Model):
         default='Nuevo',
     )
 
+    tipo_registro = fields.Selection(
+        selection=[
+            ('accidente', 'Accidente'),
+            ('incidente', 'Incidente'),
+        ],
+        string='Tipo de Registro',
+        required=True,
+        default='accidente',
+    )
+
+    company_id = fields.Many2one(
+        'res.company',
+        string='Empresa',
+        required=True,
+        default=lambda self: self.env.company,
+        index=True,
+    )
+
     # NO. EMP — biometric_id del empleado (relacionado via hr.employee)
     employee_id = fields.Many2one(
         'hr.employee',
@@ -88,6 +106,11 @@ class EnfermeriaAccidente(models.Model):
     )
 
     descripcion_accidente = fields.Text(string='Descripción del Incidente')
+
+    @api.onchange('employee_id')
+    def _onchange_employee_id(self):
+        if self.employee_id.company_id:
+            self.company_id = self.employee_id.company_id
 
     @api.model_create_multi
     def create(self, vals_list):

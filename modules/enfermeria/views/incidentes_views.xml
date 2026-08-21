@@ -3,11 +3,11 @@
     <data>
 
         <!-- ==================== VISTA FORMULARIO ==================== -->
-        <record id="enfermeria_accidente_view_form" model="ir.ui.view">
-            <field name="name">enfermeria.accidente.form</field>
+        <record id="enfermeria_incidente_view_form" model="ir.ui.view">
+            <field name="name">enfermeria.incidente.form</field>
             <field name="model">enfermeria.accidente</field>
             <field name="arch" type="xml">
-                <form string="Accidente">
+                <form string="Incidente">
                     <sheet>
                         <div class="oe_title">
                             <h1>
@@ -22,11 +22,11 @@
                                 <field name="no_emp" readonly="1"/>
                                 <field name="nombre" readonly="1"/>
                             </group>
-                            <group string="Información del Accidente">
-                                <field name="area_id" string="Área del Accidente" options="{'no_create': True}"/>
+                            <group string="Información del Incidente">
+                                <field name="area_id" string="Área del Incidente" options="{'no_create': True}"/>
                                 <field name="tipo_causa"/>
-                                <field name="dia_accidente" string="Día del Accidente"/>
-                                <field name="descripcion_accidente" string="Descripción del Accidente"/>
+                                <field name="dia_accidente" string="Día del Incidente"/>
+                                <field name="descripcion_accidente" string="Descripción del Incidente"/>
                             </group>
                         </group>
 
@@ -47,17 +47,17 @@
         </record>
 
         <!-- ==================== VISTA LISTA ==================== -->
-        <record id="enfermeria_accidente_view_list" model="ir.ui.view">
-            <field name="name">enfermeria.accidente.list</field>
+        <record id="enfermeria_incidente_view_list" model="ir.ui.view">
+            <field name="name">enfermeria.incidente.list</field>
             <field name="model">enfermeria.accidente</field>
             <field name="arch" type="xml">
-                <list string="Accidentes">
+                <list string="Incidentes">
                     <field name="name" string="No. Reporte"/>
                     <field name="no_emp" string="No. EMP"/>
                     <field name="nombre" string="Nombre"/>
-                    <field name="area_id" string="Área del Accidente"/>
+                    <field name="area_id" string="Área del Incidente"/>
                     <field name="tipo_causa" string="Tipo de Causa"/>
-                    <field name="dia_accidente" string="Día del Accidente"/>
+                    <field name="dia_accidente" string="Día del Incidente"/>
                     <field name="inicia_st7" string="Inicia con S-T7"/>
                     <field name="cierre_st2" string="Cierre con ST-2"/>
                     <field name="atencion" string="Atención"/>
@@ -68,17 +68,17 @@
         </record>
 
         <!-- ==================== VISTA BÚSQUEDA ==================== -->
-        <record id="enfermeria_accidente_view_search" model="ir.ui.view">
-            <field name="name">enfermeria.accidente.search</field>
+        <record id="enfermeria_incidente_view_search" model="ir.ui.view">
+            <field name="name">enfermeria.incidente.search</field>
             <field name="model">enfermeria.accidente</field>
             <field name="arch" type="xml">
-                <search string="Buscar Accidentes">
+                <search string="Buscar Incidentes">
                     <field name="name" string="No. Reporte"/>
                     <field name="no_emp" string="No. EMP"/>
                     <field name="nombre" string="Nombre"/>
                     <field name="employee_id" string="Empleado"/>
                     <field name="area_id" string="Área"/>
-                    <field name="dia_accidente" string="Día del Accidente"/>
+                    <field name="dia_accidente" string="Día del Incidente"/>
 
                     <filter name="filter_acto_inseguro"
                             string="Acto Inseguro"
@@ -115,7 +115,7 @@
                                 string="Atención"
                                 context="{'group_by': 'atencion'}"/>
                         <filter name="group_by_dia"
-                                string="Día del Accidente"
+                                string="Día del Incidente"
                                 context="{'group_by': 'dia_accidente'}"/>
                     </group>
                 </search>
@@ -123,33 +123,33 @@
         </record>
 
         <!-- ==================== ACCIÓN ==================== -->
-        <record id="enfermeria_accidente_action" model="ir.actions.act_window">
-            <field name="name">Accidentes</field>
+        <record id="enfermeria_incidente_action" model="ir.actions.act_window">
+            <field name="name">Incidentes</field>
             <field name="res_model">enfermeria.accidente</field>
             <field name="view_mode">list,form</field>
-            <field name="domain">[('tipo_registro', '=', 'accidente')]</field>
-            <field name="context">{'default_tipo_registro': 'accidente'}</field>
-            <field name="view_id" ref="enfermeria_accidente_view_list"/>
-            <field name="search_view_id" ref="enfermeria_accidente_view_search"/>
+            <field name="domain">[('tipo_registro', '=', 'incidente')]</field>
+            <field name="context">{'default_tipo_registro': 'incidente'}</field>
+            <field name="view_id" ref="enfermeria_incidente_view_list"/>
+            <field name="search_view_id" ref="enfermeria_incidente_view_search"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
-                    Registra el primer accidente
+                    Registra el primer incidente
                 </p>
             </field>
         </record>
 
-        <record id="enfermeria_accidente_action_view_list" model="ir.actions.act_window.view">
+        <record id="enfermeria_incidente_action_view_list" model="ir.actions.act_window.view">
             <field name="sequence" eval="1"/>
             <field name="view_mode">list</field>
-            <field name="view_id" ref="enfermeria_accidente_view_list"/>
-            <field name="act_window_id" ref="enfermeria_accidente_action"/>
+            <field name="view_id" ref="enfermeria_incidente_view_list"/>
+            <field name="act_window_id" ref="enfermeria_incidente_action"/>
         </record>
 
-        <record id="enfermeria_accidente_action_view_form" model="ir.actions.act_window.view">
+        <record id="enfermeria_incidente_action_view_form" model="ir.actions.act_window.view">
             <field name="sequence" eval="2"/>
             <field name="view_mode">form</field>
-            <field name="view_id" ref="enfermeria_accidente_view_form"/>
-            <field name="act_window_id" ref="enfermeria_accidente_action"/>
+            <field name="view_id" ref="enfermeria_incidente_view_form"/>
+            <field name="act_window_id" ref="enfermeria_incidente_action"/>
         </record>
 
     </data>

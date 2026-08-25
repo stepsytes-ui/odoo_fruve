@@ -45,11 +45,11 @@ class EnfermeriaAccidente(models.Model):
         store=True,
         readonly=True,
     )
-    nombre = fields.Char(
-        string='Nombre',
-        related='employee_id.name',
-        store=True,
-        readonly=True,
+    supervisor_id = fields.Many2one(
+        'employee.supervisor',
+        string='Supervisor',
+        domain="[('company_id', '=', company_id), ('active', '=', True)]",
+        ondelete='restrict',
     )
 
     # Área del accidente — tomada del modelo hr.area del módulo overtime
@@ -105,7 +105,28 @@ class EnfermeriaAccidente(models.Model):
         default=0,
     )
 
+    # incapacidad = fields.Integer(
+    #     string='Incapacidad',
+    #     default=0,
+    #     help='0 representa N/A cuando no existe incapacidad.',
+    # )
+
     descripcion_accidente = fields.Text(string='Descripción del Incidente')
+
+    registrado_por = fields.Many2one(
+        'res.users',
+        string='Registrado por',
+        domain=lambda self: [
+            ('groups_id', 'in', [
+                self.env.ref('maintenance_fruvemex.group_maintenance_seguridad_higiene').id,
+            ])
+        ],
+        ondelete='restrict',
+    )
+
+    resultado_investigacion = fields.Text(string='Resultado de la investigación')
+
+    parte_cuerpo_afectada = fields.Text(string='Parte del cuerpo afectada')
 
     @api.onchange('employee_id')
     def _onchange_employee_id(self):

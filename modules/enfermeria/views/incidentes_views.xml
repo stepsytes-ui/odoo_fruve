@@ -20,7 +20,7 @@
                                 <field name="company_id" options="{'no_create': True}" groups="base.group_multi_company"/>
                                 <field name="employee_id" options="{'no_create': True}"/>
                                 <field name="no_emp" readonly="1"/>
-                                <field name="nombre" readonly="1"/>
+                                <field name="supervisor_id" options="{'no_create': True, 'no_create_edit': True}"/>
                             </group>
                             <group string="Información del Incidente">
                                 <field name="area_id" string="Área del Incidente" options="{'no_create': True}"/>
@@ -31,14 +31,18 @@
                         </group>
 
                         <group>
-                            <group string="Documentación IMSS">
+                            <group string="Documentación INTERNA">
                                 <field name="inicia_st7"/>
                                 <field name="cierre_st2"/>
                                 <field name="riesgo_trabajo_imss"/>
                                 <field name="dias_incapacidad"/>
+                                <!-- <field name="incapacidad"/> -->
                             </group>
                             <group string="Atención Médica">
                                 <field name="atencion"/>
+                                <field name="registrado_por" options="{'no_create': True, 'no_create_edit': True}"/>
+                                <field name="resultado_investigacion"/>
+                                <field name="parte_cuerpo_afectada"/>
                             </group>
                         </group>
                     </sheet>
@@ -54,7 +58,7 @@
                 <list string="Incidentes">
                     <field name="name" string="No. Reporte"/>
                     <field name="no_emp" string="No. EMP"/>
-                    <field name="nombre" string="Nombre"/>
+                    <field name="supervisor_id" string="Supervisor"/>
                     <field name="area_id" string="Área del Incidente"/>
                     <field name="tipo_causa" string="Tipo de Causa"/>
                     <field name="dia_accidente" string="Día del Incidente"/>
@@ -75,7 +79,7 @@
                 <search string="Buscar Incidentes">
                     <field name="name" string="No. Reporte"/>
                     <field name="no_emp" string="No. EMP"/>
-                    <field name="nombre" string="Nombre"/>
+                    <field name="supervisor_id" string="Supervisor"/>
                     <field name="employee_id" string="Empleado"/>
                     <field name="area_id" string="Área"/>
                     <field name="dia_accidente" string="Día del Incidente"/>

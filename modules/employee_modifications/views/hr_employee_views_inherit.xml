@@ -17,6 +17,7 @@
             <page name="hr_settings" position="attributes">
                 <attribute name="groups">hr.group_hr_user,!employee_modifications.group_hr_read_employees</attribute>
             </page>
+            
 
             <!-- Ocultar botón Iniciar Plan -->
             <xpath expr="//header/button[@name='%(hr.plan_wizard_action)d']" position="attributes">

@@ -17,6 +17,8 @@ Modulo de enfermeria para subir casos de accidentes y emergencias de los emplead
     'depends': [
         'base',
         'hr',
+        'employee_modifications',
+        'maintenance_fruvemex',
         'overtime',
         'zkteco_realtime_connector',
     ],

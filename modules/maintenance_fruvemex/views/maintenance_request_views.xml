@@ -6,6 +6,13 @@
         <field name="model">fruve.maintenance.request</field>
         <field name="arch" type="xml">
             <form string="Orden de Mantenimiento">
+                <header>
+                    <button name="%(action_report_maintenance_request)d"
+                            string="Imprimir solicitud"
+                            type="action"
+                            class="btn-primary"
+                            icon="fa-print"/>
+                </header>
                 <sheet>
                     <div class="oe_title">
                         <h1>

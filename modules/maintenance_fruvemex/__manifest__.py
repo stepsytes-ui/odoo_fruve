@@ -14,11 +14,12 @@ Maintenance intern module for work orders for maintenance team.
     'category': 'Human Resources',
     'version': '18.0.1.0.0',
 
-    'depends': ['base', 'hr', 'overtime', 'mail'],
+    'depends': ['base', 'web', 'hr', 'overtime', 'mail'],
     'data': [
         'security/maintenance_security.xml',
         'security/ir.model.access.csv',
         'data/maintenance_sequence.xml',
+        'report/maintenance_request_report.xml',
         'views/maintenance_request_views.xml',
         'views/maintenance_menus.xml',
     ],

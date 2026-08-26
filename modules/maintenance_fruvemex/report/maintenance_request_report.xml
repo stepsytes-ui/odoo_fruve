@@ -5,11 +5,11 @@
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">40</field>
+        <field name="margin_top">27</field>
         <field name="margin_bottom">15</field>
         <field name="margin_left">13</field>
         <field name="margin_right">13</field>
-        <field name="header_spacing">8</field>
+        <field name="header_spacing">4</field>
         <field name="header_line" eval="False"/>
         <field name="dpi">96</field>
     </record>
@@ -47,7 +47,7 @@
                             <tr>
                                 <td style="width: 50%; padding: 11px; background-color: #eef6f7; border: 1px solid #d6e5e7;">
                                     <strong style="color: #1f6f78;">SOLICITANTE</strong><br/>
-                                    <span t-field="request.solicitante_id"/>
+                                    <span t-out="request.solicitante_id.name or ''"/>
                                 </td>
                                 <td style="width: 50%; padding: 11px; background-color: #eef6f7; border: 1px solid #d6e5e7; border-left: 0;">
                                     <strong style="color: #1f6f78;">ÁREA</strong><br/>
@@ -113,9 +113,18 @@
 
                         <table style="width: 100%; margin-top: 45px; font-size: 11px; text-align: center;">
                             <tr>
-                                <td style="width: 33%; border-top: 1px solid #687385; padding-top: 8px;">Solicitante</td>
-                                <td style="width: 33%; border-top: 1px solid #687385; padding-top: 8px;">Responsable de mantenimiento</td>
-                                <td style="width: 33%; border-top: 1px solid #687385; padding-top: 8px;">Recibido por mantenimiento</td>
+                                <td style="width: 33%; border-top: 1px solid #687385; padding-top: 8px;">
+                                    <div t-out="request.solicitante_id.name or ''"/>
+                                    <div>Solicitante</div>
+                                </td>
+                                <td style="width: 33%; border-top: 1px solid #687385; padding-top: 8px;">
+                                    <div t-out="', '.join(request.technician_ids.mapped('employee_id.name')) or 'Sin técnico asignado'"/>
+                                    <div>Responsable de mantenimiento</div>
+                                </td>
+                                <td style="width: 33%; border-top: 1px solid #687385; padding-top: 8px;">
+                                    <div style="height: 16px;">&#160;</div>
+                                    <div>Recibido por mantenimiento</div>
+                                </td>
                             </tr>
                         </table>
                     </div>

@@ -114,20 +114,20 @@
 
                         <table style="width: 100%; margin-top: 30px; font-size: 11px; text-align: center; border-collapse: separate; border-spacing: 8px 0;">
                             <tr>
-                                <td style="width: 33%; height: 105px; border: 1px solid #687385; padding: 10px; vertical-align: top;">
+                                <td style="width: 33%; height: 145px; border: 1px solid #687385; padding: 10px; vertical-align: top; position: relative;">
                                     <div style="font-weight: bold; min-height: 28px;" t-out="request.solicitante_id.name or ''"/>
                                     <div style="color: #687385;">Solicitante</div>
-                                    <div style="border-top: 1px solid #687385; margin-top: 53px; padding-top: 5px;">Firma</div>
+                                    <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; border-top: 1px solid #687385; padding-top: 5px;">Firma</div>
                                 </td>
-                                <td style="width: 33%; height: 105px; border: 1px solid #687385; padding: 10px; vertical-align: top;">
+                                <td style="width: 33%; height: 145px; border: 1px solid #687385; padding: 10px; vertical-align: top; position: relative;">
                                     <div style="font-weight: bold; min-height: 28px;" t-out="', '.join(request.technician_ids.mapped('employee_id.name')) or 'Sin técnico asignado'"/>
                                     <div style="color: #687385;">Responsable de mantenimiento</div>
-                                    <div style="border-top: 1px solid #687385; margin-top: 39px; padding-top: 5px;">Firma</div>
+                                    <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; border-top: 1px solid #687385; padding-top: 5px;">Firma</div>
                                 </td>
-                                <td style="width: 33%; height: 105px; border: 1px solid #687385; padding: 10px; vertical-align: top;">
+                                <td style="width: 33%; height: 145px; border: 1px solid #687385; padding: 10px; vertical-align: top; position: relative;">
                                     <div style="height: 28px;">&#160;</div>
                                     <div style="color: #687385;">Recibido por mantenimiento</div>
-                                    <div style="border-top: 1px solid #687385; margin-top: 39px; padding-top: 5px;">Nombre y firma</div>
+                                    <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; border-top: 1px solid #687385; padding-top: 5px;">Nombre y firma</div>
                                 </td>
                             </tr>
                         </table>

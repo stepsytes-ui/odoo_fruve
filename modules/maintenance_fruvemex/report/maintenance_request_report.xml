@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="paperformat_maintenance_request" model="report.paperformat">
+        <field name="name">Solicitud de mantenimiento A4</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">40</field>
+        <field name="margin_bottom">15</field>
+        <field name="margin_left">13</field>
+        <field name="margin_right">13</field>
+        <field name="header_spacing">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="dpi">96</field>
+    </record>
+
     <record id="action_report_maintenance_request" model="ir.actions.report">
         <field name="name">Solicitud de mantenimiento</field>
         <field name="model">fruve.maintenance.request</field>
@@ -9,12 +23,14 @@
         <field name="print_report_name">'Solicitud de mantenimiento - %s' % (object.folio or '')</field>
         <field name="binding_model_id" ref="model_fruve_maintenance_request"/>
         <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="maintenance_fruvemex.paperformat_maintenance_request"/>
     </record>
 
     <template id="maintenance_request_report">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="request">
-                <t t-call="web.external_layout">
+                <t t-set="company" t-value="request.user_id.company_id or res_company"/>
+                <t t-call="web.external_layout_bold">
                     <div class="page" style="font-family: Arial, sans-serif; color: #273444;">
                         <div style="border-bottom: 4px solid #1f6f78; padding-bottom: 14px; margin-bottom: 22px;">
                             <div style="display: inline-block; width: 64%; vertical-align: top;">

@@ -31,7 +31,7 @@
             <t t-foreach="docs" t-as="request">
                 <t t-set="company" t-value="request.user_id.company_id or res_company"/>
                 <t t-call="web.external_layout_bold">
-                    <div class="page" style="font-family: Arial, sans-serif; color: #273444;">
+                    <div class="page" style="font-family: Arial, sans-serif; color: #273444; padding-top: 10mm; box-sizing: border-box;">
                         <div style="border-bottom: 4px solid #1f6f78; padding-bottom: 14px; margin-bottom: 22px;">
                             <div style="display: inline-block; width: 64%; vertical-align: top;">
                                 <h1 style="color: #1f6f78; font-size: 25px; margin: 0 0 5px 0;">Solicitud de mantenimiento</h1>

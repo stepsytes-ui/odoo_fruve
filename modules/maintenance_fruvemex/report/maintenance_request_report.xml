@@ -5,8 +5,8 @@
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">40</field>
-        <field name="margin_bottom">15</field>
+        <field name="margin_top">30</field>
+        <field name="margin_bottom">25</field>
         <field name="margin_left">13</field>
         <field name="margin_right">13</field>
         <field name="header_spacing">8</field>
@@ -40,6 +40,7 @@
                             <div style="display: inline-block; width: 34%; text-align: right; vertical-align: top;">
                                 <div style="font-size: 11px; color: #687385;">FOLIO</div>
                                 <div style="font-size: 22px; font-weight: bold; color: #273444;" t-field="request.folio"/>
+                                <div style="font-size: 10px; color: #687385; margin-top: 6px;">REVISIÓN <span t-field="request.revision"/></div>
                             </div>
                         </div>
 
@@ -111,19 +112,22 @@
                             <div style="height: 125px; border: 1px solid #d6dde1; padding: 10px; font-size: 11px; color: #687385;">Observaciones:</div>
                         </div>
 
-                        <table style="width: 100%; margin-top: 45px; font-size: 11px; text-align: center;">
+                        <table style="width: 100%; margin-top: 30px; font-size: 11px; text-align: center; border-collapse: separate; border-spacing: 8px 0;">
                             <tr>
-                                <td style="width: 33%; border-top: 1px solid #687385; padding-top: 8px;">
-                                    <div t-out="request.solicitante_id.name or ''"/>
-                                    <div>Solicitante</div>
+                                <td style="width: 33%; height: 105px; border: 1px solid #687385; padding: 10px; vertical-align: top;">
+                                    <div style="font-weight: bold; min-height: 28px;" t-out="request.solicitante_id.name or ''"/>
+                                    <div style="color: #687385;">Solicitante</div>
+                                    <div style="border-top: 1px solid #687385; margin-top: 53px; padding-top: 5px;">Firma</div>
                                 </td>
-                                <td style="width: 33%; border-top: 1px solid #687385; padding-top: 8px;">
-                                    <div t-out="', '.join(request.technician_ids.mapped('employee_id.name')) or 'Sin técnico asignado'"/>
-                                    <div>Responsable de mantenimiento</div>
+                                <td style="width: 33%; height: 105px; border: 1px solid #687385; padding: 10px; vertical-align: top;">
+                                    <div style="font-weight: bold; min-height: 28px;" t-out="', '.join(request.technician_ids.mapped('employee_id.name')) or 'Sin técnico asignado'"/>
+                                    <div style="color: #687385;">Responsable de mantenimiento</div>
+                                    <div style="border-top: 1px solid #687385; margin-top: 39px; padding-top: 5px;">Firma</div>
                                 </td>
-                                <td style="width: 33%; border-top: 1px solid #687385; padding-top: 8px;">
-                                    <div style="height: 16px;">&#160;</div>
-                                    <div>Recibido por mantenimiento</div>
+                                <td style="width: 33%; height: 105px; border: 1px solid #687385; padding: 10px; vertical-align: top;">
+                                    <div style="height: 28px;">&#160;</div>
+                                    <div style="color: #687385;">Recibido por mantenimiento</div>
+                                    <div style="border-top: 1px solid #687385; margin-top: 39px; padding-top: 5px;">Nombre y firma</div>
                                 </td>
                             </tr>
                         </table>

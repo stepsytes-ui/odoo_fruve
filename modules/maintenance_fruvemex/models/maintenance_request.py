@@ -6,6 +6,14 @@ class FruveMaintenanceRequest(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
     folio = fields.Char(string='Folio', required=True, readonly=True, default='Nuevo', copy=False)
+    revision = fields.Char(
+        string='Revisión',
+        required=True,
+        default='00',
+        copy=True,
+        tracking=True,
+        help='Versión del documento emitido.'
+    )
 
     # Fecha de Registro: Fecha y hora exacta de creación del registro
     fecha_registro = fields.Datetime(

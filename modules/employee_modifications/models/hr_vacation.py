@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api, _
@@ -299,6 +299,38 @@ class HrVacation(models.Model):
         field_name = day_map.get(current_date.weekday())
         return bool(field_name and getattr(shift, field_name, False))
 
+    def _get_public_holiday_dates(self, date_from, date_to):
+        """Días festivos (asueto de empresa) que caen dentro del rango dado.
+
+        Se toman de resource.calendar.leaves (Días Festivos globales de Odoo),
+        filtrados por la compañía y el calendario de trabajo del empleado.
+        """
+        self.ensure_one()
+        if not date_from or not date_to:
+            return set()
+
+        company = self.company_id or self.env.company
+        calendar = self.employee_id.resource_calendar_id
+
+        domain = [
+            ('resource_id', '=', False),
+            ('company_id', 'in', [company.id, False]),
+            ('date_from', '<=', datetime.combine(date_to, datetime.max.time())),
+            ('date_to', '>=', datetime.combine(date_from, datetime.min.time())),
+        ]
+        if calendar:
+            domain += ['|', ('calendar_id', '=', calendar.id), ('calendar_id', '=', False)]
+
+        holiday_dates = set()
+        for leave in self.env['resource.calendar.leaves'].search(domain):
+            current = leave.date_from.date()
+            end = leave.date_to.date()
+            while current <= end:
+                if date_from <= current <= date_to:
+                    holiday_dates.add(current)
+                current += timedelta(days=1)
+        return holiday_dates
+
     @api.depends(
         'request_mode',
         'vacation_modality',
@@ -330,8 +362,11 @@ class HrVacation(models.Model):
                     record.duration_days = 0.0
                     continue
 
+                holiday_dates = record._get_public_holiday_dates(selected_dates[0], selected_dates[-1])
                 count = 0.0
                 for requested_date in selected_dates:
+                    if requested_date in holiday_dates:
+                        continue
                     if record._is_workday_for_shift(requested_date):
                         count += 1.0
                 record.duration_days = count
@@ -344,14 +379,17 @@ class HrVacation(models.Model):
             if record.date_to < record.date_from:
                 raise ValidationError(_('La fecha de fin no puede ser anterior a la fecha de inicio.'))
 
+            holiday_dates = record._get_public_holiday_dates(record.date_from, record.date_to)
+
             if record._counts_all_days_for_shift():
-                record.duration_days = (record.date_to - record.date_from).days + 1
+                total_days = (record.date_to - record.date_from).days + 1
+                record.duration_days = max(total_days - len(holiday_dates), 0.0)
                 continue
 
             count = 0.0
             current_date = record.date_from
             while current_date <= record.date_to:
-                if record._is_workday_for_shift(current_date):
+                if current_date not in holiday_dates and record._is_workday_for_shift(current_date):
                     count += 1.0
                 current_date += timedelta(days=1)
             record.duration_days = count

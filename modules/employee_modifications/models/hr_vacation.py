@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from datetime import date, datetime, timedelta
+
+import pytz
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api, _
@@ -304,6 +306,8 @@ class HrVacation(models.Model):
 
         Se toman de resource.calendar.leaves (Días Festivos globales de Odoo),
         filtrados por la compañía y el calendario de trabajo del empleado.
+        Las fechas se guardan en UTC, así que se convierten a la zona horaria
+        del calendario/compañía antes de extraer el día calendario.
         """
         self.ensure_one()
         if not date_from or not date_to:
@@ -311,20 +315,25 @@ class HrVacation(models.Model):
 
         company = self.company_id or self.env.company
         calendar = self.employee_id.resource_calendar_id
+        tz_name = (calendar.tz if calendar else False) \
+            or company.resource_calendar_id.tz \
+            or self.env.user.tz \
+            or 'UTC'
+        tz = pytz.timezone(tz_name)
 
         domain = [
             ('resource_id', '=', False),
             ('company_id', 'in', [company.id, False]),
-            ('date_from', '<=', datetime.combine(date_to, datetime.max.time())),
-            ('date_to', '>=', datetime.combine(date_from, datetime.min.time())),
+            ('date_from', '<=', datetime.combine(date_to + timedelta(days=1), datetime.max.time())),
+            ('date_to', '>=', datetime.combine(date_from - timedelta(days=1), datetime.min.time())),
         ]
         if calendar:
             domain += ['|', ('calendar_id', '=', calendar.id), ('calendar_id', '=', False)]
 
         holiday_dates = set()
         for leave in self.env['resource.calendar.leaves'].search(domain):
-            current = leave.date_from.date()
-            end = leave.date_to.date()
+            current = pytz.utc.localize(leave.date_from).astimezone(tz).date()
+            end = pytz.utc.localize(leave.date_to).astimezone(tz).date()
             while current <= end:
                 if date_from <= current <= date_to:
                     holiday_dates.add(current)

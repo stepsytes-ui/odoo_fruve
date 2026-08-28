@@ -83,7 +83,7 @@
                                 <field name="unit_price"/>
                                 <field name="total_cost" readonly="1"/>
                                 <field name="coverage_days" readonly="1"/>
-                                <field name="min_qty"/>
+                                <field name="min_qty" readonly="1"/>
                                 <field name="reorder_point" readonly="1"/>
                                 <field name="max_qty" readonly="1"/>
                                 <field name="monthly_budget" readonly="1"/>

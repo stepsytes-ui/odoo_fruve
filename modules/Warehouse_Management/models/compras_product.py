@@ -165,7 +165,12 @@ class ComprasProduct(models.Model):
         store=True,
         digits=(16, 2),
     )
-    min_qty = fields.Float(string='MIN', digits=(16, 0))
+    min_qty = fields.Float(
+        string='MIN',
+        compute='_compute_min_qty',
+        store=True,
+        digits=(16, 0),
+    )
     reorder_point = fields.Float(
         string='Punto Reorden',
         compute='_compute_planning_metrics',
@@ -227,16 +232,6 @@ class ComprasProduct(models.Model):
         if self.subcategory_id and self.subcategory_id.category_id != self.category_id:
             self.subcategory_id = False
 
-    @api.onchange('min_qty', 'total_qty_process', 'frequency_use_days', 'lead_time_days')
-    def _onchange_planning_inputs(self):
-        for product in self:
-            product.reorder_point = product.min_qty or 0.0
-            if product.total_qty_process > 0 and product.frequency_use_days > 0:
-                daily_demand = product.total_qty_process / product.frequency_use_days
-                product.max_qty = product.reorder_point + math.ceil(daily_demand * product.lead_time_days)
-            else:
-                product.max_qty = product.reorder_point
-
     @api.onchange('inventory_warehouse_id')
     def _onchange_inventory_warehouse_id(self):
         for product in self:
@@ -286,6 +281,16 @@ class ComprasProduct(models.Model):
     def _compute_total_qty_process(self):
         for product in self:
             product.total_qty_process = product.total_equipment * product.qty_process
+
+    @api.depends('total_qty_process', 'frequency_use_days', 'lead_time_days')
+    def _compute_min_qty(self):
+        # Replica la formula de Excel: ROUNDUP((total_qty_process/frequency_use_days)*(lead_time_days+4), 0)
+        for product in self:
+            if product.total_qty_process > 0 and product.frequency_use_days > 0:
+                daily_demand = product.total_qty_process / product.frequency_use_days
+                product.min_qty = math.ceil(daily_demand * (product.lead_time_days + 4))
+            else:
+                product.min_qty = 0.0
 
     @api.depends('unit_price', 'qty_on_hand')
     def _compute_total_cost(self):

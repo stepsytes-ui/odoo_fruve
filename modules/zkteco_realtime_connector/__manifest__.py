@@ -35,6 +35,7 @@ Modulo para integración de ZKTeco en odoo
         'views/attendance_absenteeism_wizard_views.xml',
         'views/attendance_import_wizard_views.xml',
         'views/attendance_absence_generate_wizard_views.xml',
+        'views/attendance_justify_wizard_views.xml',
         'views/attendance_late_weekly_report_views.xml',
         'views/zkteco_menu_views.xml',
     ],

@@ -10,6 +10,7 @@ from . import attendance_report_wizard
 from . import attendance_absenteeism_wizard
 from . import attendance_import_wizard
 from . import attendance_absence_generate_wizard
+from . import attendance_justify_wizard
 from . import attendance_late_weekly_adjustment
 from . import attendance_late_weekly_report
 from . import hr_leave

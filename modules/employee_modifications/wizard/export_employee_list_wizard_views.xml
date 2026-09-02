@@ -7,6 +7,8 @@
             <field name="arch" type="xml">
                 <form string="Exportar lista de datos">
                     <group>
+                        <field name="employee_list_type"/>
+                        <field name="department_id" invisible="employee_list_type != 'summary'"/>
                         <field name="employee_status_filter"/>
                     </group>
                     <footer>

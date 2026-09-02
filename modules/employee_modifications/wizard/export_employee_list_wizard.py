@@ -21,6 +21,21 @@ class ExportEmployeeListWizard(models.TransientModel):
     _name = 'export.employee.list.wizard'
     _description = 'Asistente para exportar lista de empleados'
 
+    employee_list_type = fields.Selection(
+        [
+            ('summary', 'Lista por departamento'),
+            ('detailed', 'Lista detallada'),
+        ],
+        string='Tipo de lista',
+        required=True,
+        default='detailed',
+    )
+
+    department_id = fields.Many2one(
+        'hr.department',
+        string='Departamento',
+    )
+
     employee_status_filter = fields.Selection(
         [
             ('active', 'Activos'),
@@ -45,9 +60,21 @@ class ExportEmployeeListWizard(models.TransientModel):
     def _get_employees(self):
         self.ensure_one()
         domain = [('active', '=', self.employee_status_filter == 'active')]
+        if self.employee_list_type == 'summary' and self.department_id:
+            domain.append(('department_id', '=', self.department_id.id))
         employees = self.env['hr.employee'].with_context(active_test=False).search(domain)
 
         def sort_key(employee):
+            if self.employee_list_type == 'summary':
+                department_name = (employee.department_id.name or '').strip()
+                employee_name = (employee.name or '').strip()
+                return (
+                    not department_name,
+                    department_name.casefold(),
+                    employee_name.casefold(),
+                    employee.id,
+                )
+
             biometric_value = (employee.biometric_id or '').strip()
             if biometric_value.isdigit():
                 number_key = (0, int(biometric_value))
@@ -78,7 +105,10 @@ class ExportEmployeeListWizard(models.TransientModel):
             bottom=Side(style='thin'),
         )
 
-        headers = ['No. Empleado', 'Nombre', 'CURP', 'RFC', 'IMSS', 'Estado']
+        if self.employee_list_type == 'summary':
+            headers = ['No. Empleado', 'Nombre', 'Departamento']
+        else:
+            headers = ['No. Empleado', 'Nombre', 'CURP', 'RFC', 'IMSS', 'Turno', 'Estado']
         for column_index, header in enumerate(headers, start=1):
             cell = sheet.cell(row=1, column=column_index, value=header)
             cell.fill = header_fill
@@ -87,14 +117,22 @@ class ExportEmployeeListWizard(models.TransientModel):
             cell.border = border
 
         for row_index, employee in enumerate(employees, start=2):
-            row_values = [
-                employee.biometric_id or '',
-                employee.name or '',
-                employee.identification_id or '',
-                employee.rfc or '',
-                employee.ssnid or '',
-                'Activo' if employee.active else 'Inactivo',
-            ]
+            if self.employee_list_type == 'summary':
+                row_values = [
+                    employee.biometric_id or '',
+                    employee.name or '',
+                    employee.department_id.name or '',
+                ]
+            else:
+                row_values = [
+                    employee.biometric_id or '',
+                    employee.name or '',
+                    employee.identification_id or '',
+                    employee.rfc or '',
+                    employee.ssnid or '',
+                    employee.turno_id.name or '',
+                    'Activo' if employee.active else 'Inactivo',
+                ]
             for column_index, value in enumerate(row_values, start=1):
                 cell = sheet.cell(row=row_index, column=column_index, value=value)
                 cell.alignment = left_alignment
@@ -102,19 +140,20 @@ class ExportEmployeeListWizard(models.TransientModel):
 
         sheet.freeze_panes = 'A2'
         sheet.auto_filter.ref = sheet.dimensions
-        sheet.column_dimensions['A'].width = 16
-        sheet.column_dimensions['B'].width = 32
-        sheet.column_dimensions['C'].width = 24
-        sheet.column_dimensions['D'].width = 22
-        sheet.column_dimensions['E'].width = 18
-        sheet.column_dimensions['F'].width = 14
+        column_widths = [16, 32, 24] if self.employee_list_type == 'summary' else [16, 32, 24, 22, 18, 20, 14]
+        for column_index, width in enumerate(column_widths, start=1):
+            sheet.column_dimensions[chr(64 + column_index)].width = width
 
         output = BytesIO()
         workbook.save(output)
         output.seek(0)
 
         status_suffix = 'activos' if self.employee_status_filter == 'active' else 'inactivos'
-        return output.getvalue(), f'lista_datos_empleados_{status_suffix}.xlsx'
+        if self.employee_list_type == 'summary':
+            filename = f'lista_datos_empleados_por_departamento_{status_suffix}.xlsx'
+        else:
+            filename = f'lista_datos_empleados_{status_suffix}.xlsx'
+        return output.getvalue(), filename
 
     def action_export_excel(self):
         self.ensure_one()

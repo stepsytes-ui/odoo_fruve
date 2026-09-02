@@ -1,22 +1,33 @@
 # -*- coding: utf-8 -*-
-# from odoo import http
+from odoo import http
+from odoo.http import request
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
-# class ComprasFruvemex(http.Controller):
-#     @http.route('/compras_fruvemex/compras_fruvemex', auth='public')
-#     def index(self, **kw):
-#         return "Hello, world"
+class WarehouseReportController(http.Controller):
 
-#     @http.route('/compras_fruvemex/compras_fruvemex/objects', auth='public')
-#     def list(self, **kw):
-#         return http.request.render('compras_fruvemex.listing', {
-#             'root': '/compras_fruvemex/compras_fruvemex',
-#             'objects': http.request.env['compras_fruvemex.compras_fruvemex'].search([]),
-#         })
+    @http.route('/warehouse/report/preview', auth='user', type='http', methods=['GET'])
+    def preview_warehouse_report(self, wizard_id=None, **kwargs):
+        """Muestra la vista previa del reporte de almacén en HTML"""
+        if not wizard_id:
+            return request.not_found()
+        
+        try:
+            wizard = request.env['warehouse.report.wizard'].browse(int(wizard_id))
+            
+            if not wizard.exists():
+                return request.not_found()
 
-#     @http.route('/compras_fruvemex/compras_fruvemex/objects/<model("compras_fruvemex.compras_fruvemex"):obj>', auth='public')
-#     def object(self, obj, **kw):
-#         return http.request.render('compras_fruvemex.object', {
-#             'object': obj
-#         })
+            html_content = wizard._build_preview_html()
+            return request.make_response(
+                html_content,
+                headers=[('Content-Type', 'text/html; charset=utf-8')]
+            )
+        except Exception as e:
+            _logger.error(f"Error generando reporte: {str(e)}")
+            return request.not_found()
+
+
 

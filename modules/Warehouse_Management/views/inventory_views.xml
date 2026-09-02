@@ -200,15 +200,20 @@
                                 <field name="product_id"/>
                                 <field name="quantity"/>
                                 <field name="unit_id" readonly="1"/>
-                                <field name="source_warehouse_id"/>
+                                <field name="source_warehouse_id" invisible="move_type == 'entrada' and origin_company_id"/>
                                 <field name="location_id"/>
                                 <field name="area_id"/>
                             </group>
-                            <group string="Destino y Registro">
+                            <group string="Destino y Registro" invisible="move_type == 'entrada' and origin_company_id">
                                 <field name="destination_company_selector" readonly="move_type == 'inicial'"/>
                                 <field name="destination_warehouse_id" context="{'allow_cross_company_destination_warehouse': 1}" readonly="move_type == 'inicial'"/>
                                 <field name="registered_employee_id"/>
                                 <field name="destination" invisible="1"/>
+                            </group>
+                            <group string="Origen y Registro" invisible="not (move_type == 'entrada' and origin_company_id)">
+                                <field name="origin_company_id"/>
+                                <field name="origin_warehouse_id"/>
+                                <field name="registered_employee_id"/>
                             </group>
                         </group>
                         <group string="Existencias">

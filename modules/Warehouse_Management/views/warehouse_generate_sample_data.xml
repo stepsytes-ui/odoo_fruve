@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Vista formulario del wizard de generación de datos -->
+        <record id="warehouse_generate_sample_data_form" model="ir.ui.view">
+            <field name="name">warehouse.generate.sample.data.form</field>
+            <field name="model">warehouse.generate.sample.data</field>
+            <field name="arch" type="xml">
+                <form string="Generar Datos de Ejemplo">
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>Generador de Datos de Ejemplo</h1>
+                            <p class="oe_read_only">
+                                <i>Genera movimientos de almacén aleatorios para probar gráficas y reportes.</i>
+                            </p>
+                        </div>
+
+                        <group col="2">
+                            <group>
+                                <field name="company_id" readonly="1" />
+                                <field name="start_year" />
+                            </group>
+                            <group>
+                                <field name="num_months" />
+                            </group>
+                        </group>
+
+                        <separator string="Cantidad de Movimientos por Mes" />
+                        <group col="2">
+                            <group>
+                                <field name="min_movements_per_month" />
+                            </group>
+                            <group>
+                                <field name="max_movements_per_month" />
+                            </group>
+                        </group>
+
+                        <separator string="Tipos de Movimiento a Incluir" />
+                        <group col="4">
+                            <field name="include_inicial" />
+                            <field name="include_entrada" />
+                            <field name="include_salida" />
+                            <field name="include_transferencia" />
+                        </group>
+                    </sheet>
+
+                    <footer>
+                        <button 
+                            string="✅ Generar Datos" 
+                            type="object" 
+                            name="action_generate_data" 
+                            class="btn-primary" 
+                        />
+                        <button string="✕ Cancelar" class="btn-secondary" special="cancel" />
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Acción para abrir el wizard -->
+        <record id="warehouse_generate_sample_data_action" model="ir.actions.act_window">
+            <field name="name">Generar Datos de Ejemplo</field>
+            <field name="res_model">warehouse.generate.sample.data</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <!-- Menú para acceder al wizard -->
+        <menuitem
+            id="menu_almacen_generate_data"
+            name="Generar Datos Ejemplo"
+            parent="menu_almacen_tools"
+            action="warehouse_generate_sample_data_action"
+            groups="Warehouse_Management.group_compras_encargado"
+            sequence="100"
+        />
+    </data>
+</odoo>

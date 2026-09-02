@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="compras_move_type_inicial" model="compras.move.type">
+            <field name="name">Inventario Inicial</field>
+            <field name="code">inicial</field>
+            <field name="description">Inventario inicial del almacén</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="compras_move_type_entrada" model="compras.move.type">
+            <field name="name">Entrada</field>
+            <field name="code">entrada</field>
+            <field name="description">Entrada de productos (recepción)</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="compras_move_type_salida" model="compras.move.type">
+            <field name="name">Salida</field>
+            <field name="code">salida</field>
+            <field name="description">Salida de productos (despacho)</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="compras_move_type_transferencia" model="compras.move.type">
+            <field name="name">Transferencia</field>
+            <field name="code">transferencia</field>
+            <field name="description">Transferencia entre almacenes</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>

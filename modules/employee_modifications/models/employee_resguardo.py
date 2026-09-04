@@ -198,9 +198,10 @@ class EmployeeResguardoLine(models.Model):
     almacenamiento = fields.Char(string='Almacenamiento', related='asset_id.almacenamiento', readonly=True)
 
     # funcionando_al_entregar = fields.Boolean(string='Funcionando al Entregar', default=True)
+    fecha_entrega = fields.Date(string='Fecha de Entrega/Objeto')
     devuelto = fields.Boolean(string='Devuelto') 
     fecha_devolucion = fields.Date(string='Fecha de Devolucion/Objeto')
-    funcionando_al_devolver = fields.Boolean(string='Funcionando al Devolver', default=True)
+    funcionando_al_devolver = fields.Boolean(string='Funcionando al Devolver', default=False)
     observaciones = fields.Text(string='Observaciones')
 
     @api.constrains('quantity_object')

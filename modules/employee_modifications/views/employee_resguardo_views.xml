@@ -142,6 +142,7 @@
                                         <field name="tipo_resguardo" readonly="1" width="150px"/>
                                         <field name="numero_serie" readonly="1" optional="show" width="160px" invisible="0"/>
                                         <!-- <field name="funcionando_al_entregar" width="170px"/> -->
+                                        <field name="fecha_entrega" width="200px"/>
                                         <field name="devuelto" width="95px"/>
                                         <field name="fecha_devolucion" width="200px"/>
                                         <field name="funcionando_al_devolver" width="160px"/>
@@ -162,6 +163,7 @@
                                             </group>
                                             <group>
                                                 <!-- <field name="funcionando_al_entregar"/> -->
+                                                <field name="fecha_entrega"/>
                                                 <field name="devuelto"/>
                                                 <field name="fecha_devolucion"/>
                                                 <field name="funcionando_al_devolver"/>

@@ -122,16 +122,16 @@ class HrEmployeeExtension(models.Model):
         store=True,
     )
 
+    # No se almacenan: dependen de la fecha actual, no solo de periodo_prueba/fecha_ingreso_manual,
+    # por lo que un valor guardado quedaria obsoleto con el paso de los dias.
     periodo_prueba_dias_restantes = fields.Integer(
         string='Dias Restantes Periodo de Prueba',
-        compute='_compute_periodo_prueba',
-        store=True,
+        compute='_compute_periodo_prueba_estado',
     )
 
     periodo_prueba_pendiente_renovacion = fields.Boolean(
         string='Pendiente de Renovacion',
-        compute='_compute_periodo_prueba',
-        store=True,
+        compute='_compute_periodo_prueba_estado',
     )
 
     periodo_prueba_alerta_enviada = fields.Boolean(
@@ -374,11 +374,20 @@ class HrEmployeeExtension(models.Model):
 
     @api.depends('periodo_prueba', 'fecha_ingreso_manual')
     def _compute_periodo_prueba(self):
-        hoy = date.today()
         for employee in self:
             fecha_ingreso = employee.get_fecha_ingreso() if employee.id else employee.fecha_ingreso_manual
             if not employee.periodo_prueba or not fecha_ingreso:
                 employee.fecha_fin_periodo_prueba = False
+                continue
+
+            employee.fecha_fin_periodo_prueba = fecha_ingreso + timedelta(days=int(employee.periodo_prueba))
+
+    @api.depends('periodo_prueba', 'fecha_ingreso_manual')
+    def _compute_periodo_prueba_estado(self):
+        hoy = date.today()
+        for employee in self:
+            fecha_ingreso = employee.get_fecha_ingreso() if employee.id else employee.fecha_ingreso_manual
+            if not employee.periodo_prueba or not fecha_ingreso:
                 employee.periodo_prueba_dias_restantes = 0
                 employee.periodo_prueba_pendiente_renovacion = False
                 continue
@@ -386,7 +395,6 @@ class HrEmployeeExtension(models.Model):
             fecha_fin = fecha_ingreso + timedelta(days=int(employee.periodo_prueba))
             dias_restantes = (fecha_fin - hoy).days
 
-            employee.fecha_fin_periodo_prueba = fecha_fin
             employee.periodo_prueba_dias_restantes = dias_restantes
             employee.periodo_prueba_pendiente_renovacion = 0 <= dias_restantes <= PERIODO_PRUEBA_ALERTA_DIAS
 
@@ -892,21 +900,14 @@ class HrEmployeeExtension(models.Model):
     @api.model
     def _cron_alerta_periodo_prueba(self):
         """Notifica a RH cuando a un empleado le quedan 3 dias o menos de periodo de prueba."""
-        # Los campos de dias restantes son stored y solo se recalculan cuando cambian sus
-        # dependencias (periodo_prueba/fecha_ingreso_manual), no con el paso del tiempo,
-        # por lo que se fuerza su recalculo diario contra la fecha actual antes de evaluar.
-        empleados_con_periodo = self.search([('periodo_prueba', '!=', False), ('active', '=', True)])
-        if empleados_con_periodo:
-            campos_recalculo = ['fecha_fin_periodo_prueba', 'periodo_prueba_dias_restantes', 'periodo_prueba_pendiente_renovacion']
-            empleados_con_periodo.invalidate_recordset(campos_recalculo)
-            empleados_con_periodo._compute_periodo_prueba()
-            empleados_con_periodo.flush_recordset(campos_recalculo)
-
-        empleados = self.search([
-            ('periodo_prueba_pendiente_renovacion', '=', True),
+        # periodo_prueba_pendiente_renovacion no esta almacenado (depende de la fecha actual),
+        # por lo que se filtra en Python en vez de usarlo directamente en el dominio de busqueda.
+        candidatos = self.search([
+            ('periodo_prueba', '!=', False),
             ('periodo_prueba_alerta_enviada', '=', False),
             ('active', '=', True),
         ])
+        empleados = candidatos.filtered('periodo_prueba_pendiente_renovacion')
         if not empleados:
             return
 

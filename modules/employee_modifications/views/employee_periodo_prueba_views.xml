@@ -6,7 +6,7 @@
             <field name="name">hr.employee.periodo.prueba.pendiente.list</field>
             <field name="model">hr.employee</field>
             <field name="arch" type="xml">
-                <list string="Empleados en Periodo de Prueba" create="0" delete="0" default_order="periodo_prueba_dias_restantes asc">
+                <list string="Empleados en Periodo de Prueba" create="0" delete="0" default_order="fecha_fin_periodo_prueba asc">
                     <field name="biometric_id" string="No. Empleado"/>
                     <field name="name" string="Nombre"/>
                     <field name="department_id" string="Departamento"/>

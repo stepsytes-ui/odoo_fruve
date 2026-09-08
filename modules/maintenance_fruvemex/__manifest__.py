@@ -25,5 +25,6 @@ Maintenance intern module for work orders for maintenance team.
     ],
     'installable': True,
     'application': True,
+    'license': 'LGPL-3',
 }
 

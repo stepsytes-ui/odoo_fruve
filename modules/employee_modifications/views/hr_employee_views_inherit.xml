@@ -173,14 +173,16 @@
         </field>
     </record>
 
-    <!-- Vista heredada para agregar el Periodo de Prueba después de employee_status -->
+    <!-- Vista heredada para agregar el Periodo de Prueba después de Cuenta con Resguardo -->
+    <!-- priority alto para aplicarse despues de employee_resguardo_views.xml, que agrega has_resguardo -->
     <record id="view_employee_form_periodo_prueba_inherit" model="ir.ui.view">
         <field name="name">hr.employee.form.periodo.prueba.inherit</field>
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="priority">20</field>
         <field name="arch" type="xml">
 
-            <xpath expr="//field[@name='employee_status']" position="after">
+            <xpath expr="//button[@name='action_open_resguardo_assign_wizard']" position="after">
                 <field name="periodo_prueba"/>
                 <field name="fecha_fin_periodo_prueba" readonly="1" invisible="not periodo_prueba"/>
             </xpath>

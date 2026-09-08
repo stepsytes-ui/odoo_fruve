@@ -6,29 +6,30 @@
             <field name="name">hr.employee.periodo.prueba.pendiente.list</field>
             <field name="model">hr.employee</field>
             <field name="arch" type="xml">
-                <list string="Pendientes de Renovacion" create="0" delete="0">
+                <list string="Empleados en Periodo de Prueba" create="0" delete="0" default_order="periodo_prueba_dias_restantes asc">
                     <field name="biometric_id" string="No. Empleado"/>
                     <field name="name" string="Nombre"/>
                     <field name="department_id" string="Departamento"/>
                     <field name="periodo_prueba"/>
                     <field name="fecha_fin_periodo_prueba" string="Fin de Periodo de Prueba"/>
                     <field name="periodo_prueba_dias_restantes" string="Dias Restantes"/>
+                    <field name="periodo_prueba_pendiente_renovacion" string="Pendiente de Renovacion"/>
                 </list>
             </field>
         </record>
 
         <record id="action_employee_periodo_prueba_pendiente" model="ir.actions.act_window">
-            <field name="name">Pendientes de Renovacion</field>
+            <field name="name">Empleados en Periodo de Prueba</field>
             <field name="res_model">hr.employee</field>
             <field name="view_id" ref="view_employee_periodo_prueba_pendiente_list"/>
             <field name="view_mode">list,form</field>
-            <field name="domain">[('periodo_prueba_pendiente_renovacion', '=', True)]</field>
+            <field name="domain">[('periodo_prueba', '!=', False)]</field>
             <field name="context">{'list_view_ref': 'employee_modifications.view_employee_periodo_prueba_pendiente_list'}</field>
         </record>
 
         <menuitem
             id="menu_hr_employee_periodo_prueba_pendiente"
-            name="Pendientes de Renovacion"
+            name="Periodo de Prueba"
             parent="menu_hr_herramientas"
             action="action_employee_periodo_prueba_pendiente"
             sequence="14"

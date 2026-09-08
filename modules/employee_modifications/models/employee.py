@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 from dateutil.relativedelta import relativedelta
 
-PERIODO_PRUEBA_ALERTA_DIAS = 7
+PERIODO_PRUEBA_ALERTA_DIAS = 3
 
 _logger = logging.getLogger(__name__)
 
@@ -891,7 +891,17 @@ class HrEmployeeExtension(models.Model):
 
     @api.model
     def _cron_alerta_periodo_prueba(self):
-        """Notifica a RH cuando a un empleado le quedan 7 dias o menos de periodo de prueba."""
+        """Notifica a RH cuando a un empleado le quedan 3 dias o menos de periodo de prueba."""
+        # Los campos de dias restantes son stored y solo se recalculan cuando cambian sus
+        # dependencias (periodo_prueba/fecha_ingreso_manual), no con el paso del tiempo,
+        # por lo que se fuerza su recalculo diario contra la fecha actual antes de evaluar.
+        empleados_con_periodo = self.search([('periodo_prueba', '!=', False), ('active', '=', True)])
+        if empleados_con_periodo:
+            campos_recalculo = ['fecha_fin_periodo_prueba', 'periodo_prueba_dias_restantes', 'periodo_prueba_pendiente_renovacion']
+            empleados_con_periodo.invalidate_recordset(campos_recalculo)
+            empleados_con_periodo._compute_periodo_prueba()
+            empleados_con_periodo.flush_recordset(campos_recalculo)
+
         empleados = self.search([
             ('periodo_prueba_pendiente_renovacion', '=', True),
             ('periodo_prueba_alerta_enviada', '=', False),

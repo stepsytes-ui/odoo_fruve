@@ -122,6 +122,12 @@ class HrEmployeeExtension(models.Model):
         store=True,
     )
 
+    periodo_prueba_fecha_inicio = fields.Date(
+        string='Inicio del Periodo de Prueba',
+        copy=False,
+        help='Fecha desde la que se cuenta el periodo vigente, incluyendo renovaciones.',
+    )
+
     # No se almacenan: dependen de la fecha actual, no solo de periodo_prueba/fecha_ingreso_manual,
     # por lo que un valor guardado quedaria obsoleto con el paso de los dias.
     periodo_prueba_dias_restantes = fields.Integer(
@@ -372,27 +378,31 @@ class HrEmployeeExtension(models.Model):
             diff = relativedelta(fecha_corte, fecha_ingreso)
             employee.antiguedad = f"{diff.years} anos, {diff.months} meses y {diff.days} dias"
 
-    @api.depends('periodo_prueba', 'fecha_ingreso_manual')
+    @api.depends('periodo_prueba', 'fecha_ingreso_manual', 'periodo_prueba_fecha_inicio')
     def _compute_periodo_prueba(self):
         for employee in self:
-            fecha_ingreso = employee.get_fecha_ingreso() if employee.id else employee.fecha_ingreso_manual
-            if not employee.periodo_prueba or not fecha_ingreso:
+            fecha_inicio = employee.periodo_prueba_fecha_inicio or (
+                employee.get_fecha_ingreso() if employee.id else employee.fecha_ingreso_manual
+            )
+            if not employee.periodo_prueba or not fecha_inicio:
                 employee.fecha_fin_periodo_prueba = False
                 continue
 
-            employee.fecha_fin_periodo_prueba = fecha_ingreso + timedelta(days=int(employee.periodo_prueba))
+            employee.fecha_fin_periodo_prueba = fecha_inicio + timedelta(days=int(employee.periodo_prueba))
 
-    @api.depends('periodo_prueba', 'fecha_ingreso_manual')
+    @api.depends('periodo_prueba', 'fecha_ingreso_manual', 'periodo_prueba_fecha_inicio')
     def _compute_periodo_prueba_estado(self):
         hoy = date.today()
         for employee in self:
-            fecha_ingreso = employee.get_fecha_ingreso() if employee.id else employee.fecha_ingreso_manual
-            if not employee.periodo_prueba or not fecha_ingreso:
+            fecha_inicio = employee.periodo_prueba_fecha_inicio or (
+                employee.get_fecha_ingreso() if employee.id else employee.fecha_ingreso_manual
+            )
+            if not employee.periodo_prueba or not fecha_inicio:
                 employee.periodo_prueba_dias_restantes = 0
                 employee.periodo_prueba_pendiente_renovacion = False
                 continue
 
-            fecha_fin = fecha_ingreso + timedelta(days=int(employee.periodo_prueba))
+            fecha_fin = fecha_inicio + timedelta(days=int(employee.periodo_prueba))
             dias_restantes = (fecha_fin - hoy).days
 
             employee.periodo_prueba_dias_restantes = dias_restantes
@@ -619,6 +629,20 @@ class HrEmployeeExtension(models.Model):
             'res_model': 'employee.expedient.baja.wizard',
             'view_mode': 'form',
             'view_id': self.env.ref('employee_modifications.view_employee_expedient_baja_wizard_form').id,
+            'target': 'new',
+            'context': {'default_employee_id': self.id},
+        }
+
+    def action_open_periodo_prueba_wizard(self):
+        self.ensure_one()
+        return {
+            'name': _('Resolver Periodo de Prueba'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'employee.periodo.prueba.wizard',
+            'view_mode': 'form',
+            'view_id': self.env.ref(
+                'employee_modifications.view_employee_periodo_prueba_wizard_form'
+            ).id,
             'target': 'new',
             'context': {'default_employee_id': self.id},
         }

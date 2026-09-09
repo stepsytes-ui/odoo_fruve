@@ -14,6 +14,7 @@
                     <field name="fecha_fin_periodo_prueba" string="Fin de Periodo de Prueba"/>
                     <field name="periodo_prueba_dias_restantes" string="Dias Restantes"/>
                     <field name="periodo_prueba_pendiente_renovacion" string="Pendiente de Renovacion"/>
+                    <button name="action_open_periodo_prueba_wizard" string="Renovar" type="object" class="btn-primary"/>
                 </list>
             </field>
         </record>

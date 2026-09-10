@@ -10,6 +10,10 @@
                         <group>
                             <field name="employee_id" readonly="1"/>
                             <field name="decision" widget="radio"/>
+                            <field name="motivo_no_renovacion"
+                                   invisible="decision != 'no_renovacion'"
+                                   required="decision == 'no_renovacion'"
+                                   placeholder="Indique la razón de la no renovación..."/>
                         </group>
                     </sheet>
                     <footer>

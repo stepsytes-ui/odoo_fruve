@@ -21,11 +21,13 @@ class EmployeePeriodoPruebaWizard(models.TransientModel):
             ('90', 'Renovar 90 días'),
             ('180', 'Renovar 180 días'),
             ('indefinido', 'Marcar como indefinido'),
+            ('no_renovacion', 'No renovación'),
         ],
         string='Resolución',
         required=True,
         default='indefinido',
     )
+    motivo_no_renovacion = fields.Text(string='Motivo de No Renovación')
 
     def action_confirm(self):
         self.ensure_one()
@@ -33,11 +35,25 @@ class EmployeePeriodoPruebaWizard(models.TransientModel):
         if not employee:
             raise ValidationError(_('El empleado ya no existe.'))
 
-        if self.decision == 'indefinido':
+        if self.decision == 'no_renovacion':
+            if not self.motivo_no_renovacion or not self.motivo_no_renovacion.strip():
+                raise ValidationError(_('Debe capturar el motivo de la no renovación.'))
             employee.write({
                 'periodo_prueba': False,
                 'periodo_prueba_fecha_inicio': False,
                 'periodo_prueba_alerta_enviada': False,
+                'contrato_no_renovado': True,
+                'fecha_no_renovacion': fields.Date.today(),
+                'motivo_no_renovacion': self.motivo_no_renovacion.strip(),
+            })
+        elif self.decision == 'indefinido':
+            employee.write({
+                'periodo_prueba': False,
+                'periodo_prueba_fecha_inicio': False,
+                'periodo_prueba_alerta_enviada': False,
+                'contrato_no_renovado': False,
+                'fecha_no_renovacion': False,
+                'motivo_no_renovacion': False,
             })
         else:
             fecha_inicio = employee.fecha_fin_periodo_prueba or fields.Date.today()
@@ -46,6 +62,9 @@ class EmployeePeriodoPruebaWizard(models.TransientModel):
                 'periodo_prueba': self.decision,
                 'periodo_prueba_fecha_inicio': fecha_inicio,
                 'periodo_prueba_alerta_enviada': False,
+                'contrato_no_renovado': False,
+                'fecha_no_renovacion': False,
+                'motivo_no_renovacion': False,
             })
 
         return {'type': 'ir.actions.act_window_close'}

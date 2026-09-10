@@ -145,6 +145,21 @@ class HrEmployeeExtension(models.Model):
         copy=False,
     )
 
+    contrato_no_renovado = fields.Boolean(
+        string='Contrato No Renovado',
+        copy=False,
+    )
+
+    fecha_no_renovacion = fields.Date(
+        string='Fecha de No Renovacion',
+        copy=False,
+    )
+
+    motivo_no_renovacion = fields.Text(
+        string='Motivo de No Renovacion',
+        copy=False,
+    )
+
     expedient_ids = fields.One2many(
         'employee.expedient', 
         'employee_id', 

@@ -19,6 +19,20 @@
             </field>
         </record>
 
+        <record id="view_employee_contrato_no_renovado_list" model="ir.ui.view">
+            <field name="name">hr.employee.contrato.no.renovado.list</field>
+            <field name="model">hr.employee</field>
+            <field name="arch" type="xml">
+                <list string="Contratos No Renovados" create="0" delete="0" default_order="fecha_no_renovacion desc">
+                    <field name="biometric_id" string="No. Empleado"/>
+                    <field name="name" string="Nombre"/>
+                    <field name="department_id" string="Departamento"/>
+                    <field name="fecha_no_renovacion" string="Fecha de No Renovacion"/>
+                    <field name="motivo_no_renovacion" string="Motivo"/>
+                </list>
+            </field>
+        </record>
+
         <record id="action_employee_periodo_prueba_pendiente" model="ir.actions.act_window">
             <field name="name">Empleados en Periodo de Prueba</field>
             <field name="res_model">hr.employee</field>
@@ -28,12 +42,29 @@
             <field name="context">{'list_view_ref': 'employee_modifications.view_employee_periodo_prueba_pendiente_list'}</field>
         </record>
 
+        <record id="action_employee_contrato_no_renovado" model="ir.actions.act_window">
+            <field name="name">Contratos No Renovados</field>
+            <field name="res_model">hr.employee</field>
+            <field name="view_id" ref="view_employee_contrato_no_renovado_list"/>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('contrato_no_renovado', '=', True)]</field>
+            <field name="context">{'list_view_ref': 'employee_modifications.view_employee_contrato_no_renovado_list'}</field>
+        </record>
+
         <menuitem
             id="menu_hr_employee_periodo_prueba_pendiente"
             name="Periodo de Prueba"
             parent="menu_hr_herramientas"
             action="action_employee_periodo_prueba_pendiente"
             sequence="14"
+            groups="zkteco_realtime_connector.group_hr_manager_custom,zkteco_realtime_connector.group_rh_absence_manager"/>
+
+        <menuitem
+            id="menu_hr_employee_contrato_no_renovado"
+            name="Contratos No Renovados"
+            parent="menu_hr_herramientas"
+            action="action_employee_contrato_no_renovado"
+            sequence="15"
             groups="zkteco_realtime_connector.group_hr_manager_custom,zkteco_realtime_connector.group_rh_absence_manager"/>
 
     </data>

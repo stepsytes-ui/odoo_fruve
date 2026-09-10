@@ -25,6 +25,7 @@ Módulo para gestionar solicitudes de compra con flujo de aprobación:
         'web',
         'overtime',
         'product',
+        'project',
         'account',
     ],
 

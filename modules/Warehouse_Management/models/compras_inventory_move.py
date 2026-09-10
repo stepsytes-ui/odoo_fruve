@@ -78,6 +78,17 @@ class ComprasInventoryMove(models.Model):
         domain="[('company_id', '=', destination_company_id)]",
     )
     area_id = fields.Many2one('hr.area', string='Área', domain="[('department_id.company_id', '=', company_id)]")
+    requesting_employee_id = fields.Many2one(
+        'hr.employee',
+        string='Empleado solicitante',
+        domain="[('company_id', '=', company_id), ('active', '=', True)]",
+        tracking=True,
+    )
+    project_id = fields.Many2one(
+        'project.project',
+        string='Proyecto',
+        domain="[('company_id', '=', company_id)]",
+    )
     location_id = fields.Many2one(
         'compras.warehouse.location',
         string='Locación',
@@ -348,6 +359,9 @@ class ComprasInventoryMove(models.Model):
             self.status = 'completo'
         elif self.move_type == 'salida':
             self.status = 'entregado'
+            self.destination_company_id = False
+            self.destination_company_selector = False
+            self.destination_warehouse_id = False
         elif self.move_type == 'transferencia':
             self.status = 'transferido'
         if self.move_type not in ('salida', 'transferencia') and self.company_id:
@@ -384,6 +398,8 @@ class ComprasInventoryMove(models.Model):
                 rec.source_warehouse_id = False
             if rec.area_id and rec.area_id.department_id.company_id != rec.company_id:
                 rec.area_id = False
+            if rec.project_id and rec.project_id.company_id != rec.company_id:
+                rec.project_id = False
             if rec.move_type != 'transferencia' or not rec.destination_company_id:
                 rec.destination_company_id = rec.company_id
 
@@ -500,12 +516,14 @@ class ComprasInventoryMove(models.Model):
             }
         }
 
-    @api.constrains('company_id', 'destination_company_id', 'destination_warehouse_id', 'area_id', 'location_id')
+    @api.constrains('company_id', 'destination_company_id', 'destination_warehouse_id', 'area_id', 'project_id', 'location_id')
     def _check_destination_consistency(self):
         for rec in self:
             location_warehouse = rec._get_location_warehouse_for_move()
             if rec.area_id and rec.area_id.department_id.company_id != rec.company_id:
                 raise ValidationError(_('El área debe pertenecer a la empresa seleccionada.'))
+            if rec.project_id and rec.project_id.company_id != rec.company_id:
+                raise ValidationError(_('El proyecto debe pertenecer a la empresa seleccionada.'))
             if rec.location_id and not location_warehouse:
                 raise ValidationError(_('Debes seleccionar un almacén antes de elegir una locación.'))
             if rec.location_id and location_warehouse and rec.location_id.warehouse_id != location_warehouse:
@@ -516,11 +534,11 @@ class ComprasInventoryMove(models.Model):
                 and rec.destination_warehouse_id.company_id != rec.destination_company_id
             ):
                 raise ValidationError(_('El almacén destino debe pertenecer a la empresa destino seleccionada.'))
-            if rec.move_type in ('salida', 'transferencia'):
+            if rec.move_type == 'transferencia':
                 if not rec.destination_company_id or rec.destination_company_id == rec.company_id:
-                    raise ValidationError(_('La empresa destino debe ser distinta de la empresa origen para una salida o transferencia.'))
+                    raise ValidationError(_('La empresa destino debe ser distinta de la empresa origen para una transferencia.'))
                 if not rec.destination_warehouse_id:
-                    raise ValidationError(_('Debes indicar el almacén destino para una salida o transferencia.'))
+                    raise ValidationError(_('Debes indicar el almacén destino para una transferencia.'))
                 if rec.destination_warehouse_id.company_id == rec.company_id:
                     raise ValidationError(_('El almacén destino debe pertenecer a una empresa distinta de la empresa origen.'))
 
@@ -560,8 +578,8 @@ class ComprasInventoryMove(models.Model):
                     rec.destination_company_id = rec.company_id
                     rec.destination_company_selector = str(rec.company_id.id)
 
-            #Copiamos almacen origen a almacen destino
-            if rec.source_warehouse_id:
+            # Copiamos almacen origen a almacen destino.
+            if rec.move_type == 'inicial' and rec.source_warehouse_id:
                 rec.destination_warehouse_id = rec.source_warehouse_id
 
     def action_confirm(self):
@@ -581,11 +599,11 @@ class ComprasInventoryMove(models.Model):
                 raise ValidationError(_('Debes indicar el almacén destino para una entrada.'))
             if rec.move_type in ('salida', 'transferencia') and not rec.source_warehouse_id:
                 raise ValidationError(_('Debes indicar el almacén origen para este movimiento.'))
-            if rec.move_type in ('salida', 'transferencia') and not rec.destination_warehouse_id:
-                raise ValidationError(_('Debes indicar el almacén destino para una salida o transferencia.'))
-            if rec.move_type in ('salida', 'transferencia') and rec.destination_company_id == rec.company_id:
-                raise ValidationError(_('La empresa destino debe ser distinta de la empresa origen para una salida o transferencia.'))
-            if rec.move_type in ('salida', 'transferencia') and rec.destination_warehouse_id.company_id == rec.company_id:
+            if rec.move_type == 'transferencia' and not rec.destination_warehouse_id:
+                raise ValidationError(_('Debes indicar el almacén destino para una transferencia.'))
+            if rec.move_type == 'transferencia' and rec.destination_company_id == rec.company_id:
+                raise ValidationError(_('La empresa destino debe ser distinta de la empresa origen para una transferencia.'))
+            if rec.move_type == 'transferencia' and rec.destination_warehouse_id.company_id == rec.company_id:
                 raise ValidationError(_('El almacén destino debe pertenecer a una empresa distinta de la empresa origen.'))
 
             previous_qty = rec._get_product_qty_in_warehouse(rec.product_id, stock_warehouse)
@@ -597,8 +615,8 @@ class ComprasInventoryMove(models.Model):
                 raise ValidationError(_('No hay suficiente existencia para transferir este producto desde el almacén origen.'))
             if is_intercompany_transfer and moved_qty > previous_qty:
                 raise ValidationError(_('No hay suficiente existencia para transferir este producto a otra empresa.'))
-            if rec.move_type == 'salida' and not (rec.area_id or rec.location_id):
-                raise ValidationError(_('Debes indicar un área o locación para la salida del producto.'))
+            if rec.move_type == 'salida' and not rec.area_id:
+                raise ValidationError(_('Debes indicar el área a la que se asignará la salida del producto.'))
 
             if rec.location_id and not rec.destination:
                 rec.destination = rec.location_id.name

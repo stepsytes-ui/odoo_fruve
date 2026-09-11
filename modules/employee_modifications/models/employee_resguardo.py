@@ -173,8 +173,6 @@ class EmployeeResguardo(models.Model):
         for record in self:
             for line in record.line_ids.filtered(lambda l: not l.devuelto):
                 line.write({'devuelto': True})
-            if not record.fecha_devolucion:
-                record.fecha_devolucion = fields.Date.today()
 
 
 class EmployeeResguardoLine(models.Model):
@@ -221,3 +219,6 @@ class EmployeeResguardoLine(models.Model):
                 record.fecha_devolucion = fields.Date.today()
             if not record.devuelto:
                 record.fecha_devolucion = False
+
+    def action_unlink_line(self):
+        self.unlink()

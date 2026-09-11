@@ -137,6 +137,8 @@
                             <page string="Checklist de Equipo">
                                 <field name="line_ids">
                                     <list editable="bottom">
+                                        <button name="action_unlink_line" type="object" icon="fa-trash-o"
+                                                title="Eliminar" confirm="¿Eliminar este objeto del checklist?"/>
                                         <field name="asset_id" options="{'no_create': False}" width="220px"/>
                                         <field name="quantity_object" width="95px"/>
                                         <field name="tipo_resguardo" readonly="1" width="150px"/>

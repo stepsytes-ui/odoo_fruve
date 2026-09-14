@@ -1,3 +1,13 @@
+'''
+Este es el modelo de la vista de Consolidado en el modulo de Almacen, 
+porque se llama ComprasProduct es porque al inicio solo habian pedido 
+el modulo de compras y por eso es que los nombres parecen mas de 
+un modulo de compras que de almacen, pero bueno luego pidieron que el 
+almacen estuviera conectado a las compras y almacen empezo a tomar mas relevancia
+asi que termino asi
+
+'''
+
 import re
 import math
 
@@ -334,7 +344,9 @@ class ComprasProduct(models.Model):
     def _compute_stock_quantities(self):
         for product in self:
             done_moves = product.move_ids.filtered(lambda m: m.state == 'done')
-            qty_in = sum(done_moves.filtered(lambda m: m.move_type == 'entrada').mapped('quantity_done'))
+            qty_in = sum(done_moves.filtered(
+                lambda m: m.move_type in ('entrada', 'inicial')
+            ).mapped('quantity_done'))
             qty_out = sum(done_moves.filtered(
                 lambda m: m.move_type == 'salida' or product._is_intercompany_transfer_move(m)
             ).mapped('quantity_done'))
@@ -364,7 +376,8 @@ class ComprasProduct(models.Model):
             done_moves = product.move_ids.filtered(lambda move: move.state == 'done')
             qty_in = sum(done_moves.filtered(
                 lambda move: (
-                    move.move_type == 'entrada' and move.destination_warehouse_id == warehouse
+                    move.move_type in ('entrada', 'inicial')
+                    and move.destination_warehouse_id == warehouse
                 )
                 or (
                     move.move_type == 'transferencia'

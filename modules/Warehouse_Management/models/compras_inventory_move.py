@@ -94,6 +94,7 @@ class ComprasInventoryMove(models.Model):
         string='Locación',
         domain="[('warehouse_id', '=', source_warehouse_id)]",
     )
+    
     request_id = fields.Many2one('purchase.request', string='Solicitud de Compra', readonly=True)
     request_line_id = fields.Many2one('purchase.request.line', string='Línea de Solicitud', readonly=True)
     quantity = fields.Float(string='Cantidad', required=True, default=1.0, tracking=True)
@@ -189,9 +190,9 @@ class ComprasInventoryMove(models.Model):
 
     def _get_location_warehouse_for_move(self):
         self.ensure_one()
-        return self.source_warehouse_id or (
-            self.destination_warehouse_id if self.move_type == 'entrada' else False
-        )
+        if self.move_type in ('entrada', 'inicial'):
+            return self.destination_warehouse_id or self.source_warehouse_id
+        return self.source_warehouse_id
 
     def _get_product_qty_in_warehouse(self, product, warehouse):
         if not product or not warehouse:
@@ -455,17 +456,18 @@ class ComprasInventoryMove(models.Model):
             if rec.destination_company_id:
                 destination_warehouse_domain = [('company_id', '=', rec.destination_company_id.id)]
 
-            if rec.source_warehouse_id and rec.product_id:
+            location_warehouse = rec._get_location_warehouse_for_move()
+            if location_warehouse and rec.product_id and rec.move_type in ('salida', 'transferencia'):
                 available_location_ids = rec._get_available_location_ids_for_product_source_warehouse()
                 if available_location_ids:
                     location_domain = [
-                        ('warehouse_id', '=', rec.source_warehouse_id.id),
+                        ('warehouse_id', '=', location_warehouse.id),
                         ('id', 'in', available_location_ids),
                     ]
                 else:
                     location_domain = [('id', '=', False)]
-            elif rec.source_warehouse_id:
-                location_domain = [('id', '=', False)]
+            elif location_warehouse:
+                location_domain = [('warehouse_id', '=', location_warehouse.id)]
 
             company_for_products = rec.company_id or rec.destination_company_id
             if company_for_products:
@@ -490,11 +492,11 @@ class ComprasInventoryMove(models.Model):
                 rec.destination_company_id = rec.destination_warehouse_id.company_id
             if rec.area_id and rec.area_id.department_id.company_id != area_company:
                 rec.area_id = False
-            if rec.location_id and rec.source_warehouse_id and rec.location_id.warehouse_id != rec.source_warehouse_id:
+            if rec.location_id and location_warehouse and rec.location_id.warehouse_id != location_warehouse:
                 rec.location_id = False
             if rec.destination_warehouse_id and rec.destination_warehouse_id.company_id != rec.destination_company_id:
                 rec.destination_warehouse_id = False
-            if rec.location_id and rec.product_id:
+            if rec.location_id and rec.product_id and rec.move_type in ('salida', 'transferencia'):
                 available_location_ids = rec._get_available_location_ids_for_product_source_warehouse()
                 if rec.location_id.id not in available_location_ids:
                     rec.location_id = False
@@ -553,6 +555,15 @@ class ComprasInventoryMove(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            if vals.get('move_type') == 'inicial':
+                warehouse_id = vals.get('destination_warehouse_id') or vals.get('source_warehouse_id')
+                if warehouse_id:
+                    if not vals.get('source_warehouse_id'):
+                        vals['source_warehouse_id'] = warehouse_id
+                    if not vals.get('destination_warehouse_id'):
+                        vals['destination_warehouse_id'] = warehouse_id
+                if vals.get('company_id') and not vals.get('destination_company_id'):
+                    vals['destination_company_id'] = vals['company_id']
             if vals.get('name', _('Nuevo')) == _('Nuevo'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('compras.inventory.move') or _('Nuevo')
             if not vals.get('request_line_id') and vals.get('quantity') and not vals.get('quantity_done'):

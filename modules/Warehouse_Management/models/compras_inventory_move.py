@@ -488,14 +488,16 @@ class ComprasInventoryMove(models.Model):
             destination_warehouse_domain_by_record = destination_warehouse_domain
             product_domain_by_record = product_domain
 
-            if rec.destination_warehouse_id and not rec.destination_company_id:
+            # La empresa destino debe seguir al almacén destino elegido (el
+            # widget permite escoger almacenes de cualquier empresa), en vez de
+            # descartar la selección del usuario por no coincidir con el valor
+            # previo de la empresa destino.
+            if rec.destination_warehouse_id and rec.destination_warehouse_id.company_id != rec.destination_company_id:
                 rec.destination_company_id = rec.destination_warehouse_id.company_id
             if rec.area_id and rec.area_id.department_id.company_id != area_company:
                 rec.area_id = False
             if rec.location_id and location_warehouse and rec.location_id.warehouse_id != location_warehouse:
                 rec.location_id = False
-            if rec.destination_warehouse_id and rec.destination_warehouse_id.company_id != rec.destination_company_id:
-                rec.destination_warehouse_id = False
             if rec.location_id and rec.product_id and rec.move_type in ('salida', 'transferencia'):
                 available_location_ids = rec._get_available_location_ids_for_product_source_warehouse()
                 if rec.location_id.id not in available_location_ids:
@@ -552,6 +554,17 @@ class ComprasInventoryMove(models.Model):
             if rec.request_line_id and rec.quantity_done > rec.quantity:
                 raise ValidationError(_('La cantidad real no puede ser mayor a la cantidad esperada.'))
  
+    def _sync_destination_company_vals(self, vals):
+        # El onchange solo corre en el cliente; se normaliza aquí también para
+        # que altas/ediciones desde la lista, scripts o importaciones no dejen
+        # la empresa destino desalineada con el almacén destino elegido.
+        warehouse_id = vals.get('destination_warehouse_id')
+        if warehouse_id:
+            warehouse = self.env['compras.warehouse'].browse(warehouse_id)
+            if warehouse.exists():
+                vals['destination_company_id'] = warehouse.company_id.id
+        return vals
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -564,6 +577,7 @@ class ComprasInventoryMove(models.Model):
                         vals['destination_warehouse_id'] = warehouse_id
                 if vals.get('company_id') and not vals.get('destination_company_id'):
                     vals['destination_company_id'] = vals['company_id']
+            self._sync_destination_company_vals(vals)
             if vals.get('name', _('Nuevo')) == _('Nuevo'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('compras.inventory.move') or _('Nuevo')
             if not vals.get('request_line_id') and vals.get('quantity') and not vals.get('quantity_done'):
@@ -575,6 +589,8 @@ class ComprasInventoryMove(models.Model):
             manual_moves = self.filtered(lambda rec: not rec.request_line_id)
             if manual_moves:
                 vals = dict(vals, quantity_done=vals['quantity'])
+        if 'destination_warehouse_id' in vals:
+            vals = self._sync_destination_company_vals(dict(vals))
         return super().write(vals)
     
     @api.onchange('move_type', 'company_id', 'source_warehouse_id')

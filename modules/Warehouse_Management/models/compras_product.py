@@ -85,6 +85,11 @@ class ComprasProduct(models.Model):
     ]
 
     name = fields.Char(string='Descripcion', required=True, tracking=True)
+    image_1920 = fields.Image(
+        string='Fotografía',
+        max_width=1920,
+        max_height=1920,
+    )
     code = fields.Char(
         string='Código',
         required=True,

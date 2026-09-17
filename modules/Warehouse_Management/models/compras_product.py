@@ -124,6 +124,8 @@ class ComprasProduct(models.Model):
         compute='_compute_barcode_preview_html',
         sanitize=False,
     )
+    pdf_document = fields.Binary(string='Documento PDF')
+    pdf_document_filename = fields.Char(string='Nombre del Archivo PDF')
     active = fields.Boolean(string='Activo', default=True)
     company_id = fields.Many2one(
         'res.company',

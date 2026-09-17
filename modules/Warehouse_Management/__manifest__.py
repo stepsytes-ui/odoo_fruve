@@ -27,6 +27,7 @@ Módulo para gestionar solicitudes de compra con flujo de aprobación:
         'product',
         'project',
         'account',
+        'employee_modifications',
     ],
 
     'data': [

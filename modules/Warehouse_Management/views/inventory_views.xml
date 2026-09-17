@@ -9,7 +9,8 @@
                     <field name="code" optional="show"/>
                     <field name="name" optional="show"/>
                     <field name="packaging_material_id" optional="show"/>
-                    <field name="location" optional="show"/>
+                    <field name="inventory_warehouse_id" string="Almacén" optional="show"/>
+                    <field name="inventory_location_id" string="Locación" optional="show"/>
                     <field name="warehouse_qty_on_hand" string="Inventario" optional="show"/>
                     <field name="model_name" optional="show"/>
                     <field name="serial" optional="show"/>
@@ -166,7 +167,7 @@
             <field name="name">compras.inventory.move.list</field>
             <field name="model">compras.inventory.move</field>
             <field name="arch" type="xml">
-                <list string="Bitácora de Movimientos">
+                <list string="Movimientos">
                     <field name="movement_date"/>
                     <field name="name"/>
                     <field name="company_id"/>
@@ -416,7 +417,7 @@
         </record>
 
         <record id="compras_inventory_move_action" model="ir.actions.act_window">
-            <field name="name">Bitácora de Movimientos</field>
+            <field name="name">Movimientos</field>
             <field name="res_model">compras.inventory.move</field>
             <field name="view_mode">list,form</field>
         </record>

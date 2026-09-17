@@ -42,7 +42,7 @@ class PurchaseRequest(models.Model):
             ('active', '=', True),
         ]
     supervisor_id = fields.Many2one(
-        'res.users',
+        'hr.employee',
         string='Supervisor de Área',
         domain=lambda self: self._get_supervisor_domain(),
     )
@@ -53,10 +53,12 @@ class PurchaseRequest(models.Model):
     )
 
     def _get_supervisor_domain(self):
-        group = self.env.ref('overtime.group_overtime_supervisor', raise_if_not_found=False)
-        if group:
-            return [('groups_id', 'in', [group.id])]
-        return []
+        supervisors = self.env['employee.supervisor'].search([
+            ('company_id', '=', self.env.company.id),
+            ('active', '=', True),
+            ('employee_id.active', '=', True),
+        ])
+        return [('id', 'in', supervisors.mapped('employee_id').ids)]
 
     def _get_authorizer_domain(self):
         return [
@@ -166,6 +168,12 @@ class PurchaseRequest(models.Model):
         return product
 
     def _auto_init(self):
+        if column_exists(self.env.cr, self._table, 'supervisor_id'):
+            self.env.cr.execute("SELECT 1 FROM pg_constraint constraint_record JOIN pg_class referenced_table ON referenced_table.oid = constraint_record.confrelid WHERE constraint_record.conrelid = 'purchase_request'::regclass AND constraint_record.conname = 'purchase_request_supervisor_id_fkey' AND referenced_table.relname = 'res_users'")
+            if self.env.cr.fetchone():
+                self.env.cr.execute('ALTER TABLE purchase_request DROP CONSTRAINT IF EXISTS purchase_request_supervisor_id_fkey')
+                self.env.cr.execute("UPDATE purchase_request pr SET supervisor_id = (SELECT he.id FROM hr_employee he WHERE he.user_id = pr.supervisor_id AND he.company_id = pr.company_id LIMIT 1) WHERE pr.supervisor_id IS NOT NULL")
+
         # Migrate old values of authorizer_id from res.users ids to hr.employee ids.
         if column_exists(self.env.cr, self._table, 'authorizer_id'):
             self.env.cr.execute("""
@@ -277,6 +285,12 @@ class PurchaseRequest(models.Model):
             received_qty = line.received_qty or 0
             if received_qty > line.quantity:
                 raise ValidationError(_('La cantidad recibida no puede ser mayor a la solicitada.'))
+
+            product.write({
+                'inventory_warehouse_id': warehouse.id if warehouse else False,
+                'inventory_location_id': location.id if location else False,
+                'location': location.name if location else False,
+            })
 
             move_status = line.receipt_status or 'completo'
             previous_qty = product.qty_on_hand

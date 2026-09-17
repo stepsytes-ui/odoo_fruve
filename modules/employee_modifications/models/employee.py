@@ -393,7 +393,14 @@ class HrEmployeeExtension(models.Model):
             diff = relativedelta(fecha_corte, fecha_ingreso)
             employee.antiguedad = f"{diff.years} anos, {diff.months} meses y {diff.days} dias"
 
-    @api.depends('periodo_prueba', 'fecha_ingreso_manual', 'periodo_prueba_fecha_inicio')
+    @api.depends(
+        'periodo_prueba',
+        'fecha_ingreso_manual',
+        'periodo_prueba_fecha_inicio',
+        'expedient_ids',
+        'expedient_ids.tipo_registro',
+        'expedient_ids.fecha_movimiento',
+    )
     def _compute_periodo_prueba(self):
         for employee in self:
             fecha_inicio = employee.periodo_prueba_fecha_inicio or (
@@ -405,7 +412,14 @@ class HrEmployeeExtension(models.Model):
 
             employee.fecha_fin_periodo_prueba = fecha_inicio + timedelta(days=int(employee.periodo_prueba))
 
-    @api.depends('periodo_prueba', 'fecha_ingreso_manual', 'periodo_prueba_fecha_inicio')
+    @api.depends(
+        'periodo_prueba',
+        'fecha_ingreso_manual',
+        'periodo_prueba_fecha_inicio',
+        'expedient_ids',
+        'expedient_ids.tipo_registro',
+        'expedient_ids.fecha_movimiento',
+    )
     def _compute_periodo_prueba_estado(self):
         hoy = date.today()
         for employee in self:

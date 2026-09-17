@@ -393,6 +393,19 @@ class HrEmployeeExtension(models.Model):
             diff = relativedelta(fecha_corte, fecha_ingreso)
             employee.antiguedad = f"{diff.years} anos, {diff.months} meses y {diff.days} dias"
 
+    def _get_periodo_prueba_fecha_inicio(self):
+        self.ensure_one()
+        fecha_ingreso = self.get_fecha_ingreso() if self.id else self.fecha_ingreso_manual
+        fecha_inicio = self.periodo_prueba_fecha_inicio or fecha_ingreso
+
+        if not fecha_inicio:
+            return False
+
+        if fecha_ingreso and fecha_inicio < fecha_ingreso:
+            return fecha_ingreso
+
+        return fecha_inicio
+
     @api.depends(
         'periodo_prueba',
         'fecha_ingreso_manual',
@@ -403,9 +416,7 @@ class HrEmployeeExtension(models.Model):
     )
     def _compute_periodo_prueba(self):
         for employee in self:
-            fecha_inicio = employee.periodo_prueba_fecha_inicio or (
-                employee.get_fecha_ingreso() if employee.id else employee.fecha_ingreso_manual
-            )
+            fecha_inicio = employee._get_periodo_prueba_fecha_inicio()
             if not employee.periodo_prueba or not fecha_inicio:
                 employee.fecha_fin_periodo_prueba = False
                 continue
@@ -423,9 +434,7 @@ class HrEmployeeExtension(models.Model):
     def _compute_periodo_prueba_estado(self):
         hoy = date.today()
         for employee in self:
-            fecha_inicio = employee.periodo_prueba_fecha_inicio or (
-                employee.get_fecha_ingreso() if employee.id else employee.fecha_ingreso_manual
-            )
+            fecha_inicio = employee._get_periodo_prueba_fecha_inicio()
             if not employee.periodo_prueba or not fecha_inicio:
                 employee.periodo_prueba_dias_restantes = 0
                 employee.periodo_prueba_pendiente_renovacion = False
@@ -437,10 +446,21 @@ class HrEmployeeExtension(models.Model):
             employee.periodo_prueba_dias_restantes = dias_restantes
             employee.periodo_prueba_pendiente_renovacion = 0 <= dias_restantes <= PERIODO_PRUEBA_ALERTA_DIAS
 
-    def write(self, vals):
-        if ('periodo_prueba' in vals or 'fecha_ingreso_manual' in vals) and 'periodo_prueba_alerta_enviada' not in vals:
-            vals = dict(vals, periodo_prueba_alerta_enviada=False)
-        return super().write(vals)
+    @api.onchange('periodo_prueba')
+    def _onchange_periodo_prueba(self):
+        for employee in self:
+            if not employee.periodo_prueba:
+                employee.periodo_prueba_fecha_inicio = False
+                employee.periodo_prueba_alerta_enviada = False
+                continue
+
+            fecha_ingreso = employee.fecha_ingreso_manual
+            if employee._origin and employee._origin.id:
+                fecha_ingreso = fecha_ingreso or employee._origin.get_fecha_ingreso()
+
+            if fecha_ingreso:
+                employee.periodo_prueba_fecha_inicio = fecha_ingreso
+            employee.periodo_prueba_alerta_enviada = False
 
     @api.depends('biometric_id')
     def _compute_biometric_id_numeric(self):
@@ -533,6 +553,17 @@ class HrEmployeeExtension(models.Model):
             return super().write(vals)
 
         _logger.info(f"🔵 write() llamado con vals: {vals}")
+
+        should_reset_alerta = (
+            ('periodo_prueba' in vals or 'fecha_ingreso_manual' in vals)
+            and 'periodo_prueba_alerta_enviada' not in vals
+        )
+        should_sync_periodo_inicio = (
+            'periodo_prueba' in vals
+            and 'periodo_prueba_fecha_inicio' not in vals
+        )
+        if should_reset_alerta:
+            vals = dict(vals, periodo_prueba_alerta_enviada=False)
         
         # Verificar si el usuario es supervisor o guardia
         is_supervisor = self.env.user.has_group('employee_modifications.group_supervisor')
@@ -559,6 +590,15 @@ class HrEmployeeExtension(models.Model):
             old_dates[employee.id] = employee.fecha_ingreso_manual
 
         result = super().write(vals)
+
+        if should_sync_periodo_inicio:
+            for employee in self.filtered('periodo_prueba'):
+                fecha_ingreso = employee.get_fecha_ingreso()
+                if employee.periodo_prueba_fecha_inicio == fecha_ingreso:
+                    continue
+                super(HrEmployeeExtension, employee.with_context(skip_fecha_ingreso_sync=True)).write({
+                    'periodo_prueba_fecha_inicio': fecha_ingreso,
+                })
 
         if 'fecha_ingreso_manual' in vals:
             for employee in self:

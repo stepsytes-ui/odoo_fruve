@@ -7,6 +7,10 @@ const attendanceListView = registry.category("views").get("attendance_list_view"
 
 export class AttendanceDashboardWrapper extends Component {
     static template = "zkteco_realtime_connector.AttendanceDashboardWrapper";
+
+    // Acepta cualquier prop: delega las props del list view original al DynamicView
+    static props = { "*": true };
+
     static components = { 
         AttendanceKanbanDashboard,
         DynamicView: attendanceListView.Controller,

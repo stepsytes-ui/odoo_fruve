@@ -8,7 +8,10 @@ let originalListController = null;
 
 export class OvertimeDashboardWrapper extends Component{
     static template = "overtime.OvertimeDashboardWrapper";
-    
+
+    // Acepta cualquier prop: delega las props del list view original al DynamicView
+    static props = { "*": true };
+
     static components = {};
 
     setup() {

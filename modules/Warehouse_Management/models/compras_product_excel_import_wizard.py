@@ -8,6 +8,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 from odoo import _, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools.float_utils import float_is_zero
 
 
 class ComprasProductExcelImportWizard(models.TransientModel):
@@ -70,68 +71,69 @@ class ComprasProductExcelImportWizard(models.TransientModel):
         skipped_rows_location = []
         rows_without_location = []
         rows_without_inventory_adjustment = []
+        rows_with_default_name = []
         row_errors = []
 
         for line_number, row in enumerate(rows[1:], start=2):
             if self._is_empty_row(row):
                 continue
             try:
-                code = self._as_text(self._cell_value(row, 0))
-                if not code:
-                    raise ValidationError(_('El Código es obligatorio.'))
+                with self.env.cr.savepoint():
+                    code = self._as_text(self._cell_value(row, 0))
+                    if not code:
+                        raise ValidationError(_('El Código es obligatorio.'))
 
-                location_name = self._as_text(self._cell_value(row, 2))
-                warehouse = False
-                location_record = False
-                if location_name:
-                    warehouse, location_record = self._find_or_create_location_by_code(location_name, company)
-                    if not (warehouse and location_record):
-                        skipped_rows_location.append(line_number)
-                        continue
-                else:
-                    rows_without_location.append(line_number)
+                    location_name = self._as_text(self._cell_value(row, 2))
+                    warehouse = False
+                    location_record = False
+                    if location_name:
+                        warehouse, location_record = self._find_or_create_location_by_code(location_name, company)
+                        if not (warehouse and location_record):
+                            skipped_rows_location.append(line_number)
+                            continue
+                    else:
+                        warehouse, location_record = self._get_main_warehouse_location(company)
+                        rows_without_location.append(line_number)
 
-                qty_on_hand = self._to_float(self._cell_value(row, 20), _('Inventario'))
+                    qty_on_hand = self._to_float(self._cell_value(row, 20), _('Inventario'))
 
-                vals = self._build_product_vals_from_row(
-                    row,
-                    company,
-                    warehouse=warehouse,
-                    location_record=location_record,
-                )
-                product = product_model.search([
-                    ('company_id', '=', company.id),
-                    ('code', '=', code),
-                ], limit=1)
+                    vals = self._build_product_vals_from_row(
+                        row,
+                        company,
+                        warehouse=warehouse,
+                        location_record=location_record,
+                    )
+                    product = product_model.search([
+                        ('company_id', '=', company.id),
+                        ('code', '=', code),
+                    ], limit=1)
 
-                if product:
-                    product.write(vals)
-                    if qty_on_hand is not None:
-                        if warehouse and location_record:
-                            product.write({'qty_on_hand': qty_on_hand})
-                        else:
-                            rows_without_inventory_adjustment.append(line_number)
-                    updated_count += 1
-                else:
-                    vals.setdefault('code', code)
-                    vals.setdefault('company_id', company.id)
-                    if not vals.get('name'):
-                        raise ValidationError(_('La Descripción es obligatoria para crear un nuevo registro.'))
-                    created_product = product_model.create(vals)
-                    if qty_on_hand is not None:
-                        if warehouse and location_record:
-                            created_product.write({'qty_on_hand': qty_on_hand})
-                        else:
-                            rows_without_inventory_adjustment.append(line_number)
-                    created_count += 1
+                    if product:
+                        product.write(vals)
+                        if qty_on_hand is not None:
+                            if warehouse and location_record:
+                                product.write({'qty_on_hand': qty_on_hand})
+                            else:
+                                rows_without_inventory_adjustment.append(line_number)
+                        updated_count += 1
+                    else:
+                        vals.setdefault('code', code)
+                        vals.setdefault('company_id', company.id)
+                        if not vals.get('name'):
+                            vals['name'] = self._default_product_name(code)
+                            rows_with_default_name.append(line_number)
+                        created_product = product_model.create(vals)
+                        if qty_on_hand is not None:
+                            if warehouse and location_record:
+                                created_product.write({'qty_on_hand': qty_on_hand})
+                            else:
+                                rows_without_inventory_adjustment.append(line_number)
+                        created_count += 1
             except ValidationError as validation_error:
                 row_errors.append(_('Fila %(line)s: %(message)s') % {
                     'line': line_number,
                     'message': validation_error.args[0],
                 })
-
-        if row_errors:
-            raise ValidationError('\n'.join(row_errors))
 
         summary = _('%(created)s creados, %(updated)s actualizados.') % {
             'created': created_count,
@@ -146,7 +148,7 @@ class ComprasProductExcelImportWizard(models.TransientModel):
             }
         if rows_without_location:
             summary += ' ' + _(
-                'Se detectaron %(count)s fila(s) sin locación; se importaron sin asignar almacén/locación y sin ajustar inventario: %(rows)s.'
+                'Se detectaron %(count)s fila(s) sin locación; se asignaron al almacén principal y su primera locación: %(rows)s.'
             ) % {
                 'count': len(rows_without_location),
                 'rows': ', '.join(str(line) for line in rows_without_location),
@@ -158,17 +160,188 @@ class ComprasProductExcelImportWizard(models.TransientModel):
                 'count': len(rows_without_inventory_adjustment),
                 'rows': ', '.join(str(line) for line in rows_without_inventory_adjustment),
             }
+        if rows_with_default_name:
+            summary += ' ' + _(
+                'Se asignó una descripción por defecto a %(count)s fila(s) que no traían Descripción: %(rows)s.'
+            ) % {
+                'count': len(rows_with_default_name),
+                'rows': ', '.join(str(line) for line in rows_with_default_name),
+            }
+        if row_errors:
+            summary += ' ' + _('Se omitieron %(count)s fila(s) con errores:\n%(errors)s') % {
+                'count': len(row_errors),
+                'errors': '\n'.join(row_errors),
+            }
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'title': _('Importación finalizada'),
                 'message': summary,
-                'type': 'success',
-                'sticky': False,
+                'type': 'warning' if row_errors else 'success',
+                'sticky': bool(row_errors),
                 'next': {'type': 'ir.actions.act_window_close'},
             },
         }
+
+    def action_update_inventory_excel(self):
+        self.ensure_one()
+        if not self.file_data:
+            raise ValidationError(_('Debes seleccionar un archivo Excel.'))
+
+        rows = self._read_excel_rows()
+        if not rows:
+            raise ValidationError(_('El archivo no contiene datos para importar.'))
+
+        header_row = rows[0]
+        self._validate_header_order(header_row)
+
+        product_model = self.env['compras.product']
+        company = self.env.company
+        entries_created = 0
+        exits_created = 0
+        unchanged_count = 0
+        created_products_count = 0
+        rows_without_warehouse = []
+        rows_with_default_name = []
+        row_errors = []
+
+        for line_number, row in enumerate(rows[1:], start=2):
+            if self._is_empty_row(row):
+                continue
+            try:
+                with self.env.cr.savepoint():
+                    code = self._as_text(self._cell_value(row, 0))
+                    if not code:
+                        raise ValidationError(_('El Código es obligatorio.'))
+
+                    target_qty = self._to_float(self._cell_value(row, 20), _('Inventario'))
+                    if target_qty is None:
+                        continue
+
+                    product = product_model.search([
+                        ('company_id', '=', company.id),
+                        ('code', '=', code),
+                    ], limit=1)
+
+                    if not product:
+                        location_name = self._as_text(self._cell_value(row, 2))
+                        warehouse, location_record = (False, False)
+                        if location_name:
+                            warehouse, location_record = self._find_or_create_location_by_code(location_name, company)
+                        if not (warehouse and location_record):
+                            warehouse, location_record = self._get_main_warehouse_location(company)
+                        vals = self._build_product_vals_from_row(
+                            row,
+                            company,
+                            warehouse=warehouse,
+                            location_record=location_record,
+                        )
+                        vals.setdefault('code', code)
+                        vals.setdefault('company_id', company.id)
+                        if not vals.get('name'):
+                            vals['name'] = self._default_product_name(code)
+                            rows_with_default_name.append(line_number)
+                        product = product_model.create(vals)
+                        created_products_count += 1
+
+                    if not product.inventory_warehouse_id:
+                        rows_without_warehouse.append(line_number)
+                        continue
+
+                    delta = target_qty - product.qty_on_hand
+                    if float_is_zero(delta, precision_rounding=product.unit_id.rounding if product.unit_id else 0.01):
+                        unchanged_count += 1
+                        continue
+
+                    if delta > 0:
+                        product.write({'qty_on_hand': target_qty})
+                        entries_created += 1
+                    else:
+                        move = self.env['compras.inventory.move'].create({
+                            'company_id': company.id,
+                            'move_type': 'salida',
+                            'product_id': product.id,
+                            'source_warehouse_id': product.inventory_warehouse_id.id,
+                            'location_id': product.inventory_location_id.id if product.inventory_location_id else False,
+                            'area_id': self._find_or_create_adjustment_area(company).id,
+                            'quantity': abs(delta),
+                            'quantity_done': abs(delta),
+                            'status': 'completo',
+                            'receiver_name': _('Ajuste desde Excel'),
+                            'destination': _('Ajuste de inventario desde Excel'),
+                            'notes': _('Salida creada automáticamente por actualización de Inventario desde Excel.'),
+                        })
+                        move.action_confirm()
+                        exits_created += 1
+            except ValidationError as validation_error:
+                row_errors.append(_('Fila %(line)s: %(message)s') % {
+                    'line': line_number,
+                    'message': validation_error.args[0],
+                })
+
+        summary = _(
+            '%(entries)s entrada(s), %(exits)s salida(s), %(unchanged)s sin cambios, %(created)s producto(s) nuevo(s).'
+        ) % {
+            'entries': entries_created,
+            'exits': exits_created,
+            'unchanged': unchanged_count,
+            'created': created_products_count,
+        }
+        if rows_without_warehouse:
+            summary += ' ' + _(
+                'No se ajustó inventario en %(count)s fila(s) por falta de almacén de inventario asignado al producto: %(rows)s.'
+            ) % {
+                'count': len(rows_without_warehouse),
+                'rows': ', '.join(str(line) for line in rows_without_warehouse),
+            }
+        if rows_with_default_name:
+            summary += ' ' + _(
+                'Se asignó una descripción por defecto a %(count)s fila(s) que no traían Descripción: %(rows)s.'
+            ) % {
+                'count': len(rows_with_default_name),
+                'rows': ', '.join(str(line) for line in rows_with_default_name),
+            }
+        if row_errors:
+            summary += ' ' + _('Se omitieron %(count)s fila(s) con errores:\n%(errors)s') % {
+                'count': len(row_errors),
+                'errors': '\n'.join(row_errors),
+            }
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Actualización de inventario finalizada'),
+                'message': summary,
+                'type': 'warning' if row_errors else 'success',
+                'sticky': bool(row_errors),
+                'next': {'type': 'ir.actions.act_window_close'},
+            },
+        }
+
+    def _find_or_create_adjustment_area(self, company):
+        department_model = self.env['hr.department']
+        department = department_model.search([
+            ('company_id', '=', company.id),
+            ('name', '=', 'Ajustes de Almacén'),
+        ], limit=1)
+        if not department:
+            department = department_model.create({
+                'name': 'Ajustes de Almacén',
+                'company_id': company.id,
+            })
+
+        area_model = self.env['hr.area']
+        area = area_model.search([
+            ('department_id', '=', department.id),
+            ('name', '=', 'Ajuste de Inventario'),
+        ], limit=1)
+        if not area:
+            area = area_model.create({
+                'name': 'Ajuste de Inventario',
+                'department_id': department.id,
+            })
+        return area
 
     def action_download_template(self):
         self.ensure_one()
@@ -523,6 +696,35 @@ class ComprasProductExcelImportWizard(models.TransientModel):
             vendor.supplier_rank = 1
         return vendor
 
+    def _default_product_name(self, code):
+        return _('Producto sin descripción (%s)') % code
+
+    def _get_main_warehouse_location(self, company):
+        warehouse_model = self.env['compras.warehouse']
+        warehouse = warehouse_model.search([
+            ('company_id', '=', company.id),
+            ('is_main', '=', True),
+        ], limit=1)
+        if not warehouse:
+            warehouse = warehouse_model.create({
+                'name': 'Almacén Principal',
+                'code': 'MAIN',
+                'company_id': company.id,
+                'is_main': True,
+            })
+
+        location_model = self.env['compras.warehouse.location']
+        location = location_model.search([
+            ('warehouse_id', '=', warehouse.id),
+        ], order='id asc', limit=1)
+        if not location:
+            location = location_model.create({
+                'name': 'Principal',
+                'warehouse_id': warehouse.id,
+            })
+
+        return (warehouse, location)
+
     def _find_or_create_location_by_code(self, location_name, company):
         if not location_name:
             return (False, False)
@@ -530,7 +732,6 @@ class ComprasProductExcelImportWizard(models.TransientModel):
         normalized_location = self._as_text(location_name)
         if not normalized_location:
             return (False, False)
-
         warehouse_code = normalized_location.split('-', 1)[0].strip()
         if not warehouse_code:
             return (False, False)
@@ -570,7 +771,7 @@ class ComprasProductExcelImportWizard(models.TransientModel):
         purchase_type = self._normalize_header_name(value)
         if not purchase_type:
             return False
-        if purchase_type in ('local',):
+        if purchase_type in ('local', 'nacional', 'national'):
             return 'local'
         if purchase_type in ('internacional', 'international'):
             return 'internacional'
@@ -582,17 +783,17 @@ class ComprasProductExcelImportWizard(models.TransientModel):
         if isinstance(value, (int, float)):
             return float(value)
 
+        if self._is_invalid_value_token(value):
+            return None
+
         text_value = str(value).strip().replace(',', '')
         if not text_value:
             return None
 
         try:
             return float(text_value)
-        except ValueError as exc:
-            raise ValidationError(_('%(field)s no es un número válido: %(value)s') % {
-                'field': field_label,
-                'value': value,
-            }) from exc
+        except ValueError:
+            return None
 
     def _to_date(self, value):
         if value in (None, ''):
@@ -602,14 +803,30 @@ class ComprasProductExcelImportWizard(models.TransientModel):
         if isinstance(value, date):
             return fields.Date.to_string(value)
 
+        if self._is_invalid_value_token(value):
+            return False
+
         text_value = str(value).strip()
         if not text_value:
             return False
 
-        parsed_date = fields.Date.to_date(text_value)
+        try:
+            parsed_date = fields.Date.to_date(text_value)
+        except ValueError:
+            return False
         if not parsed_date:
-            raise ValidationError(_('Formato de fecha inválido: %s') % value)
+            return False
         return fields.Date.to_string(parsed_date)
+
+    _INVALID_VALUE_TOKENS = {
+        '#value!', '#value', '#n/a', '#na', '#ref!', '#div/0!', '#div0!',
+        '#name?', '#null!', '#num!',
+        'na', 'n/a', 'n / a', '#-', '-',
+    }
+
+    def _is_invalid_value_token(self, value):
+        normalized = str(value).strip().lower()
+        return normalized in self._INVALID_VALUE_TOKENS
 
     def _normalize_header_name(self, value):
         normalized = self._as_text(value).lower()

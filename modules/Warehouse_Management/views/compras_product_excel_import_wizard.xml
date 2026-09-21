@@ -27,6 +27,13 @@
                             name="action_import_excel"
                             class="btn-primary"
                         />
+                        <button
+                            string="Actualizar Consolidado"
+                            type="object"
+                            name="action_update_inventory_excel"
+                            class="btn-primary"
+                            confirm="Se compararán las cantidades del Excel contra el inventario actual y se generarán movimientos de entrada/salida por las diferencias. ¿Deseas continuar?"
+                        />
                         <button string="Cancelar" class="btn-secondary" special="cancel"/>
                     </footer>
                 </form>

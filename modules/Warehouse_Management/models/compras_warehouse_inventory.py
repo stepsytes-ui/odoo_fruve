@@ -21,7 +21,7 @@ class ComprasWarehouseInventory(models.Model):
         move_model = self.env['compras.inventory.move']
         removed_count = 0
 
-        for line in self:
+        for line in self:    
             if line.quantity <= 0:
                 raise ValidationError(_(
                     'El producto %(product)s no tiene cantidad positiva para eliminar en el almacén %(warehouse)s.'

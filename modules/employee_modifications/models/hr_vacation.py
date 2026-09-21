@@ -340,6 +340,39 @@ class HrVacation(models.Model):
                 current += timedelta(days=1)
         return holiday_dates
 
+    def _get_approved_leave_dates(self, date_from, date_to):
+        """Approved non-vacation leave dates that overlap this vacation period."""
+        self.ensure_one()
+        if not self.employee_id or not date_from or not date_to:
+            return set()
+
+        company = self.company_id or self.env.company
+        calendar = self.employee_id.resource_calendar_id
+        tz_name = (calendar.tz if calendar else False) \
+            or company.resource_calendar_id.tz \
+            or self.env.user.tz \
+            or 'UTC'
+        tz = pytz.timezone(tz_name)
+
+        domain = [
+            ('employee_id', '=', self.employee_id.id),
+            ('state', 'in', ['validate', 'validate1']),
+            ('date_from', '<=', datetime.combine(date_to + timedelta(days=2), datetime.max.time())),
+            ('date_to', '>=', datetime.combine(date_from - timedelta(days=2), datetime.min.time())),
+        ]
+        if self.leave_id:
+            domain.append(('id', '!=', self.leave_id.id))
+
+        leave_dates = set()
+        for leave in self.env['hr.leave'].search(domain):
+            current = pytz.utc.localize(leave.date_from).astimezone(tz).date()
+            end = pytz.utc.localize(leave.date_to).astimezone(tz).date()
+            while current <= end:
+                if date_from <= current <= date_to:
+                    leave_dates.add(current)
+                current += timedelta(days=1)
+        return leave_dates
+
     @api.depends(
         'request_mode',
         'vacation_modality',
@@ -372,9 +405,10 @@ class HrVacation(models.Model):
                     continue
 
                 holiday_dates = record._get_public_holiday_dates(selected_dates[0], selected_dates[-1])
+                leave_dates = record._get_approved_leave_dates(selected_dates[0], selected_dates[-1])
                 count = 0.0
                 for requested_date in selected_dates:
-                    if requested_date in holiday_dates:
+                    if requested_date in holiday_dates or requested_date in leave_dates:
                         continue
                     if record._is_workday_for_shift(requested_date):
                         count += 1.0
@@ -389,16 +423,17 @@ class HrVacation(models.Model):
                 raise ValidationError(_('La fecha de fin no puede ser anterior a la fecha de inicio.'))
 
             holiday_dates = record._get_public_holiday_dates(record.date_from, record.date_to)
+            leave_dates = record._get_approved_leave_dates(record.date_from, record.date_to)
 
             if record._counts_all_days_for_shift():
                 total_days = (record.date_to - record.date_from).days + 1
-                record.duration_days = max(total_days - len(holiday_dates), 0.0)
+                record.duration_days = max(total_days - len(holiday_dates | leave_dates), 0.0)
                 continue
 
             count = 0.0
             current_date = record.date_from
             while current_date <= record.date_to:
-                if current_date not in holiday_dates and record._is_workday_for_shift(current_date):
+                if current_date not in holiday_dates and current_date not in leave_dates and record._is_workday_for_shift(current_date):
                     count += 1.0
                 current_date += timedelta(days=1)
             record.duration_days = count

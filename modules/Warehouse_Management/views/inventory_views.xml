@@ -210,7 +210,9 @@
                                 <field name="product_id"/>
                                 <field name="quantity"/>
                                 <field name="unit_id" readonly="1"/>
+                                <field name="available_source_warehouse_ids" invisible="1"/>
                                 <field name="source_warehouse_id" invisible="move_type == 'entrada' and origin_company_id"/>
+                                <field name="available_location_ids" invisible="1"/>
                                 <field name="location_id"/>
                             </group>
                             <group string="Destino y Registro" invisible="move_type == 'salida' or (move_type == 'entrada' and origin_company_id)">

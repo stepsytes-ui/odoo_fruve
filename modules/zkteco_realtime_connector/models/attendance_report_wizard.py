@@ -1151,7 +1151,30 @@ class AttendanceReportWizard(models.TransientModel):
             return f"{leave_title}\n{punches_text}"
         return leave_title
 
+    def _is_workday_for_vacation(self, employee, target_date):
+        """Whether a date is chargeable as vacation for the employee's shift."""
+        shift = employee.sudo().turno_id
+        if not shift:
+            return False
+
+        if (shift.turno_name or '').strip().upper() in {'ESPECIAL', 'SEGURIDAD'}:
+            return True
+
+        day_map = {
+            0: 'work_monday',
+            1: 'work_tuesday',
+            2: 'work_wednesday',
+            3: 'work_thursday',
+            4: 'work_friday',
+            5: 'work_saturday',
+            6: 'work_sunday',
+        }
+        return bool(getattr(shift, day_map[target_date.weekday()], False))
+
     def _get_manual_vacation_cell_data(self, employee, target_date):
+        if not self._is_workday_for_vacation(employee, target_date):
+            return False
+
         Vacation = self.env['hr.vacation'].sudo()
         target_date_str = fields.Date.to_string(target_date)
 

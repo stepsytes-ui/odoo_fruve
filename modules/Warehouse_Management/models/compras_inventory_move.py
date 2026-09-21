@@ -69,8 +69,12 @@ class ComprasInventoryMove(models.Model):
     source_warehouse_id = fields.Many2one(
         'compras.warehouse',
         string='Almacén Origen',
-        default=lambda self: self._default_source_warehouse_id(),
-        domain="[('company_id', '=', company_id)]",
+        domain="[('id', 'in', available_source_warehouse_ids)]",
+    )
+    available_source_warehouse_ids = fields.Many2many(
+        'compras.warehouse',
+        compute='_compute_available_source_warehouse_ids',
+        string='Almacenes disponibles para el producto',
     )
     destination_warehouse_id = fields.Many2one(
         'compras.warehouse',
@@ -92,7 +96,12 @@ class ComprasInventoryMove(models.Model):
     location_id = fields.Many2one(
         'compras.warehouse.location',
         string='Locación',
-        domain="[('warehouse_id', '=', source_warehouse_id)]",
+        domain="[('id', 'in', available_location_ids)]",
+    )
+    available_location_ids = fields.Many2many(
+        'compras.warehouse.location',
+        compute='_compute_available_location_ids',
+        string='Locaciones disponibles para el almacén y producto',
     )
     
     request_id = fields.Many2one('purchase.request', string='Solicitud de Compra', readonly=True)
@@ -155,13 +164,6 @@ class ComprasInventoryMove(models.Model):
             })
         return result
 
-    def _default_source_warehouse_id(self):
-        warehouse = self.env['compras.warehouse'].sudo().search([
-            ('company_id', '=', self.env.company.id),
-            ('is_main', '=', True),
-        ], limit=1)
-        return warehouse.id if warehouse else False
-
     @api.model
     def _selection_destination_companies(self):
         companies = self.env['res.company'].sudo().search([], order='name')
@@ -218,6 +220,41 @@ class ComprasInventoryMove(models.Model):
             ('quantity', '>', 0),
         ])
         return inventory_lines.mapped('product_id').ids
+
+    def _get_warehouse_ids_with_product_stock(self, product):
+        if not product:
+            return []
+        inventory_lines = self.env['compras.warehouse.inventory'].sudo().search([
+            ('product_id', '=', product.id),
+            ('quantity', '>', 0),
+        ])
+        return inventory_lines.mapped('warehouse_id').ids
+
+    @api.depends('product_id', 'move_type', 'company_id')
+    def _compute_available_source_warehouse_ids(self):
+        warehouse_model = self.env['compras.warehouse'].sudo()
+        for rec in self:
+            company_domain = [('company_id', '=', rec.company_id.id)] if rec.company_id else []
+            if rec.product_id and rec.move_type != 'inicial':
+                warehouse_ids = rec._get_warehouse_ids_with_product_stock(rec.product_id)
+                domain = company_domain + [('id', 'in', warehouse_ids)]
+                rec.available_source_warehouse_ids = warehouse_model.search(domain)
+            else:
+                rec.available_source_warehouse_ids = warehouse_model.search(company_domain) if company_domain else warehouse_model.search([])
+
+    @api.depends('move_type', 'product_id', 'source_warehouse_id', 'destination_warehouse_id')
+    def _compute_available_location_ids(self):
+        location_model = self.env['compras.warehouse.location'].sudo()
+        for rec in self:
+            location_warehouse = rec._get_location_warehouse_for_move()
+            if not location_warehouse:
+                rec.available_location_ids = location_model
+                continue
+            domain = [('warehouse_id', '=', location_warehouse.id)]
+            if rec.product_id and rec.move_type in ('salida', 'transferencia'):
+                available_location_ids = rec._get_available_location_ids_for_product_source_warehouse()
+                domain.append(('id', 'in', available_location_ids))
+            rec.available_location_ids = location_model.search(domain)
 
     def _get_available_location_ids_for_product_source_warehouse(self):
         self.ensure_one()
@@ -441,13 +478,11 @@ class ComprasInventoryMove(models.Model):
     @api.onchange('move_type', 'company_id', 'source_warehouse_id', 'destination_company_id', 'destination_warehouse_id', 'product_id')
     def _onchange_destination_warehouse_id(self):
         area_domain_by_record = [('id', '=', False)]
-        location_domain_by_record = [('id', '=', False)]
         destination_warehouse_domain_by_record = [('id', '=', False)]
         product_domain_by_record = [('id', '=', False)]
         for rec in self:
             area_company = rec.company_id
             area_domain = [('id', '=', False)]
-            location_domain = [('id', '=', False)]
             destination_warehouse_domain = [('id', '=', False)]
             product_domain = [('id', '=', False)]
             if area_company:
@@ -455,19 +490,6 @@ class ComprasInventoryMove(models.Model):
 
             if rec.destination_company_id:
                 destination_warehouse_domain = [('company_id', '=', rec.destination_company_id.id)]
-
-            location_warehouse = rec._get_location_warehouse_for_move()
-            if location_warehouse and rec.product_id and rec.move_type in ('salida', 'transferencia'):
-                available_location_ids = rec._get_available_location_ids_for_product_source_warehouse()
-                if available_location_ids:
-                    location_domain = [
-                        ('warehouse_id', '=', location_warehouse.id),
-                        ('id', 'in', available_location_ids),
-                    ]
-                else:
-                    location_domain = [('id', '=', False)]
-            elif location_warehouse:
-                location_domain = [('warehouse_id', '=', location_warehouse.id)]
 
             company_for_products = rec.company_id or rec.destination_company_id
             if company_for_products:
@@ -484,7 +506,6 @@ class ComprasInventoryMove(models.Model):
                     product_domain = [('id', 'in', available_product_ids)]
 
             area_domain_by_record = area_domain
-            location_domain_by_record = location_domain
             destination_warehouse_domain_by_record = destination_warehouse_domain
             product_domain_by_record = product_domain
 
@@ -496,12 +517,8 @@ class ComprasInventoryMove(models.Model):
                 rec.destination_company_id = rec.destination_warehouse_id.company_id
             if rec.area_id and rec.area_id.department_id.company_id != area_company:
                 rec.area_id = False
-            if rec.location_id and location_warehouse and rec.location_id.warehouse_id != location_warehouse:
+            if rec.location_id and rec.location_id not in rec.available_location_ids:
                 rec.location_id = False
-            if rec.location_id and rec.product_id and rec.move_type in ('salida', 'transferencia'):
-                available_location_ids = rec._get_available_location_ids_for_product_source_warehouse()
-                if rec.location_id.id not in available_location_ids:
-                    rec.location_id = False
             if (
                 rec.product_id
                 and rec.move_type != 'inicial'
@@ -514,7 +531,6 @@ class ComprasInventoryMove(models.Model):
         return {
             'domain': {
                 'area_id': area_domain_by_record,
-                'location_id': location_domain_by_record,
                 'destination_warehouse_id': destination_warehouse_domain_by_record,
                 'product_id': product_domain_by_record,
             }

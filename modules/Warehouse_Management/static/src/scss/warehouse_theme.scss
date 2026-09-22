@@ -1,0 +1,74 @@
+:root {
+    --o-brand-primary: #168A3A;
+    --o-brand-odoo: #168A3A;
+    --o-brand-primary-rgb: 22, 138, 58;
+    --warehouse-green: #168A3A;
+    --warehouse-green-hover: #126F2F;
+    --warehouse-green-active: #0F5F29;
+}
+
+.o_main_navbar {
+    background-color: var(--warehouse-green) !important;
+    border-color: var(--warehouse-green) !important;
+    color: #FFFFFF !important;
+}
+
+.o_main_navbar .o_menu_sections .o_nav_entry,
+.o_main_navbar .o_menu_sections .dropdown-toggle,
+.o_main_navbar .o_menu_sections .o_nav_entry:hover,
+.o_main_navbar .o_menu_sections .dropdown-toggle:hover,
+.o_main_navbar .o_menu_sections .o_nav_entry:focus,
+.o_main_navbar .o_menu_sections .dropdown-toggle:focus,
+.o_main_navbar .o_menu_sections .o_nav_entry:active,
+.o_main_navbar .o_menu_sections .dropdown-toggle:active,
+.o_main_navbar .o_menu_sections .dropdown.show.dropdown-toggle {
+    background-color: var(--warehouse-green) !important;
+    border-color: transparent !important;
+    color: #FFFFFF !important;
+}
+
+.o_main_navbar .o_menu_sections .o_nav_entry:hover,
+.o_main_navbar .o_menu_sections .dropdown-toggle:hover,
+.o_main_navbar .o_menu_sections .o_nav_entry:focus,
+.o_main_navbar .o_menu_sections .dropdown-toggle:focus {
+    background-color: var(--warehouse-green-hover) !important;
+}
+
+.o_main_navbar .o_menu_sections .o_nav_entry:active,
+.o_main_navbar .o_menu_sections .dropdown-toggle:active,
+.o_main_navbar .o_menu_sections .dropdown.show.dropdown-toggle {
+    background-color: var(--warehouse-green-active) !important;
+}
+
+.btn-primary,
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active,
+.btn-primary.active,
+.show > .btn-primary.dropdown-toggle {
+    background-color: var(--warehouse-green);
+    border-color: var(--warehouse-green);
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active,
+.btn-primary.active,
+.show > .btn-primary.dropdown-toggle {
+    background-color: var(--warehouse-green-hover);
+    border-color: var(--warehouse-green-hover);
+}
+
+.text-primary {
+    color: var(--warehouse-green) !important;
+}
+
+.bg-primary {
+    background-color: var(--warehouse-green) !important;
+}
+
+.o_form_view .o_form_statusbar .o_arrow_button.btn-primary,
+.o_form_view .o_form_statusbar .o_arrow_button.btn-primary.disabled {
+    background-color: var(--warehouse-green);
+    border-color: var(--warehouse-green);
+}

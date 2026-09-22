@@ -48,6 +48,7 @@ Módulo para gestionar solicitudes de compra con flujo de aprobación:
     ],
     'assets': {
         'web.assets_backend': [
+            'Warehouse_Management/static/src/scss/warehouse_theme.scss',
             'Warehouse_Management/static/src/services/compras_purchase_alert_service.js',
         ],
     },

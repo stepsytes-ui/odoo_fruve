@@ -51,14 +51,16 @@
                         <button name="action_create_inventory_move" string="Crear movimiento" type="object" class="btn-primary"/>
                     </header>
                     <sheet>
-                        <field name="image_1920" widget="image" class="oe_avatar" options="{'size': [240, 240]}"/>
-                        <div class="oe_title">
-                            <h1>
-                                <field name="name"/>
-                            </h1>
-                            <h2>
-                                <field name="code" readonly="1"/>
-                            </h2>
+                        <div class="d-flex align-items-start">
+                            <div class="oe_title flex-grow-1" style="min-width: 0;">
+                                <h1>
+                                    <field name="name"/>
+                                </h1>
+                                <h2>
+                                    <field name="code" readonly="1"/>
+                                </h2>
+                            </div>
+                            <field name="image_1920" widget="image" options="{'size': [300, 240]}" class="ms-2 flex-shrink-0" style="width: 300px; height: 150px; object-fit: contain;"/>
                         </div>
                         <group>
                             <group string="Informacion General">

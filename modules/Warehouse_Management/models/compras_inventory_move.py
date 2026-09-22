@@ -436,7 +436,7 @@ class ComprasInventoryMove(models.Model):
                 rec.source_warehouse_id = False
             if rec.area_id and rec.area_id.department_id.company_id != rec.company_id:
                 rec.area_id = False
-            if rec.project_id and rec.project_id.company_id != rec.company_id:
+            if rec.project_id and rec.project_id.company_id and rec.project_id.company_id != rec.company_id:
                 rec.project_id = False
             if rec.move_type != 'transferencia' or not rec.destination_company_id:
                 rec.destination_company_id = rec.company_id

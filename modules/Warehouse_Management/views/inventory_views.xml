@@ -226,7 +226,7 @@
                             <group string="Asignación de Salida" invisible="move_type != 'salida'">
                                 <field name="area_id" required="move_type == 'salida'"/>
                                 <field name="requesting_employee_id"/>
-                                <field name="project_id"/>
+                                <field name="project_id" context="{'default_company_id': company_id}"/>
                             </group>
                             <group string="Origen y Registro" invisible="not (move_type == 'entrada' and origin_company_id)">
                                 <field name="origin_company_id"/>

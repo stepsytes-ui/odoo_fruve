@@ -109,12 +109,28 @@
             <field name="view_mode">list,form</field>
         </record>
 
+        <record id="compras_product_catalog_action" model="ir.actions.act_window">
+            <field name="name">Catálogo</field>
+            <field name="res_model">compras.product</field>
+            <field name="view_mode">kanban,form</field>
+            <field name="view_id" ref="Warehouse_Management.compras_product_catalog_view_list"/>
+        </record>
+
         <menuitem
             id="menu_almacen_import_excel"
             name="Importar registros desde Excel"
             parent="menu_almacen_tools"
             action="Warehouse_Management.compras_product_excel_import_wizard_action"
             sequence="10"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
+        />
+
+        <menuitem
+            id="menu_almacen_tools_catalog"
+            name="Catálogo"
+            parent="menu_almacen_tools"
+            action="Warehouse_Management.compras_product_catalog_action"
+            sequence="15"
             groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
 

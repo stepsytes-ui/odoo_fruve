@@ -104,8 +104,32 @@ class ComprasInventoryMove(models.Model):
         string='Locaciones disponibles para el almacén y producto',
     )
     
-    request_id = fields.Many2one('purchase.request', string='Solicitud de Compra', readonly=True)
-    request_line_id = fields.Many2one('purchase.request.line', string='Línea de Solicitud', readonly=True)
+    request_id = fields.Many2one('purchase.request', string='Orden de Compra', readonly=True)
+    request_line_id = fields.Many2one('purchase.request.line', string='Línea de Orden', readonly=True)
+    purchase_unit_price = fields.Float(
+        string='Costo Unitario',
+        related='request_line_id.unit_price',
+        readonly=True,
+        digits=(16, 2),
+    )
+    purchase_received_cost = fields.Float(
+        string='Costo sin Impuestos',
+        compute='_compute_purchase_received_cost',
+        readonly=True,
+        digits=(16, 2),
+    )
+    purchase_tax_cost = fields.Float(
+        string='Impuestos',
+        compute='_compute_purchase_received_cost',
+        readonly=True,
+        digits=(16, 2),
+    )
+    purchase_total_cost = fields.Float(
+        string='Total con Impuestos',
+        compute='_compute_purchase_received_cost',
+        readonly=True,
+        digits=(16, 2),
+    )
     quantity = fields.Float(string='Cantidad', required=True, default=1.0, tracking=True)
     quantity_done = fields.Float(string='Cantidad Real', required=True, default=1.0, tracking=True)
     previous_qty = fields.Float(string='Existencia Antes', readonly=True)
@@ -151,6 +175,35 @@ class ComprasInventoryMove(models.Model):
         default='draft',
         tracking=True,
     )
+
+    @api.depends(
+        'request_line_id.unit_price',
+        'request_line_id.tax_ids',
+        'request_line_id.request_id.company_id',
+        'request_line_id.vendor_id',
+        'quantity_done',
+    )
+    def _compute_purchase_received_cost(self):
+        for rec in self:
+            base_cost = rec.purchase_unit_price * rec.quantity_done
+            tax_cost = 0.0
+            total_cost = base_cost
+            line = rec.request_line_id
+            if line:
+                company = line.request_id.company_id or rec.company_id or self.env.company
+                tax_result = line.tax_ids.with_company(company).compute_all(
+                    rec.purchase_unit_price,
+                    currency=company.currency_id,
+                    quantity=rec.quantity_done,
+                    partner=line.vendor_id,
+                )
+                base_cost = tax_result.get('total_excluded', base_cost)
+                total_cost = tax_result.get('total_included', base_cost)
+                tax_cost = total_cost - base_cost
+
+            rec.purchase_received_cost = base_cost
+            rec.purchase_tax_cost = tax_cost
+            rec.purchase_total_cost = total_cost
 
     @api.model
     def _register_hook(self):

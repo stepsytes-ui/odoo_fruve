@@ -11,11 +11,36 @@ class ComprasWarehouseInventory(models.Model):
     warehouse_id = fields.Many2one('compras.warehouse', string='Almacén', readonly=True)
     company_id = fields.Many2one('res.company', string='Empresa', readonly=True)
     product_id = fields.Many2one('compras.product', string='Producto', readonly=True)
-    product_db_id = fields.Integer(string='ID Producto', readonly=True)
+    product_code = fields.Char(string='Código del producto', readonly=True)
     product_name = fields.Char(string='Nombre del producto', readonly=True)
     product_description = fields.Text(string='Descripción de producto', readonly=True)
     quantity = fields.Float(string='Cantidad', readonly=True)
     location = fields.Char(string='Locación', readonly=True)
+
+    def action_open_product_location_moves(self):
+        self.ensure_one()
+        action = self.env.ref('Warehouse_Management.compras_inventory_move_action').read()[0]
+        domain = [
+            ('product_id', '=', self.product_id.id),
+            '|',
+            ('source_warehouse_id', '=', self.warehouse_id.id),
+            ('destination_warehouse_id', '=', self.warehouse_id.id),
+        ]
+        location = self.env['compras.warehouse.location'].search([
+            ('warehouse_id', '=', self.warehouse_id.id),
+            ('name', '=', self.location),
+        ], limit=1)
+        if location:
+            domain = [
+                ('product_id', '=', self.product_id.id),
+                ('location_id', '=', location.id),
+            ]
+        action['domain'] = domain
+        action['name'] = _('Movimientos de %s en %s') % (
+            self.product_id.display_name,
+            self.location or self.warehouse_id.display_name,
+        )
+        return action
 
     def action_remove_selected_inventory(self):
         move_model = self.env['compras.inventory.move']
@@ -72,7 +97,7 @@ class ComprasWarehouseInventory(models.Model):
                         NULL::integer AS warehouse_id,
                         NULL::integer AS company_id,
                         NULL::integer AS product_id,
-                        NULL::integer AS product_db_id,
+                        NULL::varchar AS product_code,
                         NULL::varchar AS product_name,
                         NULL::text AS product_description,
                         0::double precision AS quantity,
@@ -144,7 +169,7 @@ class ComprasWarehouseInventory(models.Model):
                     stock_lines.warehouse_id AS warehouse_id,
                     warehouse.company_id AS company_id,
                     stock_lines.product_id AS product_id,
-                    product.id AS product_db_id,
+                    product.code AS product_code,
                     product.name AS product_name,
                     product.description AS product_description,
                     stock_lines.quantity AS quantity,

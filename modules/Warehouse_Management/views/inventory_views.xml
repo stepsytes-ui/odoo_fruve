@@ -42,6 +42,27 @@
             </field>
         </record>
 
+        <record id="compras_product_catalog_view_list" model="ir.ui.view">
+            <field name="name">compras.product.catalog.kanban</field>
+            <field name="model">compras.product</field>
+            <field name="arch" type="xml">
+                <kanban string="Catálogo" class="o_kanban_mobile">
+                    <field name="image_1920"/>
+                    <field name="name"/>
+                    <templates>
+                        <t t-name="card">
+                            <main class="p-2">
+                                <field name="image_1920" widget="image" class="w-100" options="{'img_class': 'object-fit-contain'}"/>
+                                <div class="mt-2 text-center">
+                                    <strong><field name="name"/></strong>
+                                </div>
+                            </main>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
         <record id="compras_product_view_form" model="ir.ui.view">
             <field name="name">compras.product.form</field>
             <field name="model">compras.product</field>
@@ -170,22 +191,39 @@
             <field name="model">compras.inventory.move</field>
             <field name="arch" type="xml">
                 <list string="Movimientos">
-                    <field name="movement_date"/>
-                    <field name="name"/>
-                    <field name="company_id"/>
-                    <field name="product_id"/>
-                    <field name="move_type"/>
-                    <field name="source_warehouse_id"/>
-                    <field name="destination_company_id"/>
-                    <field name="destination_warehouse_id"/>
-                    <field name="area_id"/>
-                    <field name="location_id"/>
-                    <field name="quantity_done"/>
-                    <field name="previous_qty"/>
-                    <field name="new_qty"/>
-                    <field name="status"/>
-                    <field name="registered_employee_id"/>
-                    <field name="state" widget="badge"/>
+                    <field name="movement_date" optional="show"/>
+                    <field name="name" optional="show"/>
+                    <field name="company_id" optional="show"/>
+                    <field name="product_id" optional="show"/>
+                    <field name="request_id" string="Orden de Compra" optional="show"/>
+                    <field
+                        name="move_type"
+                        optional="show"
+                        decoration-success="move_type == 'entrada' or move_type == 'inicial'"
+                        decoration-danger="move_type == 'salida'"
+                        decoration-warning="move_type == 'transferencia'"
+                    />
+                    <field name="source_warehouse_id" optional="show"/>
+                    <field name="destination_company_id" optional="show"/>
+                    <field name="destination_warehouse_id" optional="show"/>
+                    <field name="area_id" optional="show"/>
+                    <field name="location_id" optional="show"/>
+                    <field
+                        name="quantity_done"
+                        optional="show"
+                        decoration-success="move_type == 'entrada' or move_type == 'inicial'"
+                        decoration-danger="move_type == 'salida'"
+                        decoration-warning="move_type == 'transferencia'"
+                    />
+                    <field name="purchase_unit_price" optional="show"/>
+                    <field name="purchase_received_cost" optional="show"/>
+                    <field name="purchase_tax_cost" optional="show"/>
+                    <field name="purchase_total_cost" optional="show"/>
+                    <field name="previous_qty" optional="show"/>
+                    <field name="new_qty" optional="show"/>
+                    <field name="status" optional="show"/>
+                    <field name="registered_employee_id" optional="show"/>
+                    <field name="state" widget="badge" optional="show"/>
                 </list>
             </field>
         </record>
@@ -237,7 +275,12 @@
                         <group string="Existencias">
                             <field name="previous_qty" readonly="1"/>
                             <field name="new_qty" readonly="1"/>
-                            <field name="request_id" readonly="1"/>
+                            <field name="request_id" string="Orden de Compra" readonly="1"/>
+                            <!-- <field name="request_line_id" readonly="1"/> -->
+                            <field name="purchase_unit_price"/>
+                            <field name="purchase_received_cost"/>
+                            <field name="purchase_tax_cost"/>
+                            <field name="purchase_total_cost"/>
                         </group>
                         <group string="Observaciones">
                             <field name="notes" nolabel="1"/>
@@ -390,11 +433,17 @@
             <field name="model">compras.warehouse.inventory</field>
             <field name="arch" type="xml">
                 <list string="Inventario por Almacén" create="0" edit="0" delete="0">
-                    <field name="product_db_id"/>
-                    <field name="product_name"/>
+                    <field name="product_code" string="Código"/>
+                    <field name="product_id" string="Producto"/>
                     <field name="product_description"/>
                     <field name="quantity"/>
                     <field name="location"/>
+                    <button
+                        name="action_open_product_location_moves"
+                        type="object"
+                        string="Movimientos"
+                        class="btn-link"
+                    />
                 </list>
             </field>
         </record>

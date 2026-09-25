@@ -108,7 +108,7 @@ class ComprasInventoryMove(models.Model):
     request_line_id = fields.Many2one('purchase.request.line', string='Línea de Orden', readonly=True)
     purchase_unit_price = fields.Float(
         string='Costo Unitario',
-        related='request_line_id.unit_price',
+        compute='_compute_purchase_unit_price',
         readonly=True,
         digits=(16, 2),
     )
@@ -175,6 +175,15 @@ class ComprasInventoryMove(models.Model):
         default='draft',
         tracking=True,
     )
+
+    @api.depends('request_line_id.unit_price', 'product_id.unit_price')
+    def _compute_purchase_unit_price(self):
+        for rec in self:
+            rec.purchase_unit_price = (
+                rec.request_line_id.unit_price
+                if rec.request_line_id
+                else rec.product_id.unit_price
+            )
 
     @api.depends(
         'request_line_id.unit_price',

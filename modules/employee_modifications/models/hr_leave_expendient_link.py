@@ -341,6 +341,8 @@ class HrLeave(models.Model):
 
     @api.constrains('number_of_days', 'holiday_status_id', 'employee_id', 'state', 'advance_vacation_days')
     def _check_vacation_availibility_and_update(self):
+        if self.env.context.get('skip_vacation_balance_sync'):
+            return
         for leave in self:
             if leave.holiday_status_id and leave.holiday_status_id.name == 'Vacaciones':
                 expedient = leave._get_employee_expedient()
@@ -456,7 +458,7 @@ class HrLeave(models.Model):
                 self._create_permission_record(leave)
             
             # Si es una vacación, crear el registro en hr.vacation
-            if leave.is_vacation and leave.state not in ['cancel', 'refuse']:
+            if leave.is_vacation and leave.state not in ['cancel', 'refuse'] and not self.env.context.get('skip_vacation_creation'):
                 self._create_vacation_record(leave)
         
         return leaves
@@ -489,7 +491,7 @@ class HrLeave(models.Model):
                     self._update_permission_record(leave)
             
             # Si es una vacación y está aprobada, crear o actualizar el registro
-            if leave.is_vacation:
+            if leave.is_vacation and not self.env.context.get('skip_vacation_creation'):
                 if leave.state in ['validate', 'validate1'] and not leave.vacation_id:
                     self._create_vacation_record(leave)
                 elif leave.vacation_id:
@@ -693,4 +695,4 @@ class HrLeave(models.Model):
             elif leave.state == 'cancel':
                 update_vals['state'] = 'cancel'
             
-            leave.vacation_id.write(update_vals)
+            leave.vacation_id.with_context(skip_vacation_leave_sync=True).write(update_vals)

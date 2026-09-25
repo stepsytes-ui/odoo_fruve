@@ -449,6 +449,21 @@ class HrAttendance(models.Model):
             )
 
     @api.model
+    def _get_approved_leave_type_name(self, employee, process_date, start_utc_str, end_utc_str):
+        """Nombre del tipo de ausencia aprobada que cubre el rango dado, o False.
+
+        Punto de extensión para módulos que registran ausencias fuera de
+        hr.leave (p.ej. vacaciones dadas de alta directamente en hr.vacation).
+        """
+        approved_leave = self.env['hr.leave'].sudo().search([
+            ('employee_id', '=', employee.id),
+            ('state', '=', 'validate'),
+            ('date_from', '<=', end_utc_str),
+            ('date_to', '>=', start_utc_str),
+        ], limit=1)
+        return approved_leave.holiday_status_id.name if approved_leave else False
+
+    @api.model
     def _cron_generate_absences(self, target_date=False):
         """
         Se ejecuta a las 10pm de cada día.
@@ -537,7 +552,6 @@ class HrAttendance(models.Model):
         check_out_str = fields.Datetime.to_string(check_out_time_utc)
 
         Attendance = self.env['hr.attendance']
-        Leave = self.env['hr.leave'].sudo()
 
         def _normalize_leave_name(name):
             normalized = (name or '').strip().lower()
@@ -580,17 +594,11 @@ class HrAttendance(models.Model):
             ], limit=1)
 
             if not attendance_exists:
-                # Verificar si tiene un permiso aprobado
-                approved_leave = Leave.search([
-                    ('employee_id', '=', employee.id),
-                    ('state', '=', 'validate'),
-                    ('date_from', '<=', end_utc_str), 
-                    ('date_to', '>=', start_utc_str)   
-                ], limit=1)
-                
-                if approved_leave:
+                # Verificar si tiene un permiso aprobado (hr.leave u otro origen registrado por otros módulos)
+                leave_name = self._get_approved_leave_type_name(employee, process_date, start_utc_str, end_utc_str)
+
+                if leave_name:
                     # Crear registro con el tipo de permiso
-                    leave_name = approved_leave.holiday_status_id.name
                     leave_name_key = _normalize_leave_name(leave_name)
                     new_status = leave_status_map.get(leave_name_key, 'leave_other')
 

@@ -156,6 +156,14 @@ class HrVacation(models.Model):
         help='Indica si esta vacación ya descontó días en el expediente.',
     )
 
+    leave_auto_created = fields.Boolean(
+        string='Ausencia Creada Automáticamente',
+        default=False,
+        copy=False,
+        help='Indica si el hr.leave asociado fue creado automáticamente desde esta vacación '
+             '(registrada directamente aquí, sin pasar por Time Off).',
+    )
+
     duration_days = fields.Float(
         string='Duración (Días)',
         compute='_compute_duration',
@@ -500,6 +508,7 @@ class HrVacation(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('hr.vacation') or _('Nueva')
         vacations = super(HrVacation, self).create(vals_list)
         vacations.filtered(lambda v: v.state == 'validate' and not v.vacation_days_subtracted)._apply_vacation_discount()
+        vacations.filtered(lambda v: v.state == 'validate')._sync_time_off_and_attendance()
         return vacations
 
     @api.constrains('date_from', 'date_to')
@@ -509,6 +518,104 @@ class HrVacation(models.Model):
                 continue
             if record.date_from and record.date_to and record.date_to < record.date_from:
                 raise ValidationError(_('La fecha de fin debe ser posterior a la fecha de inicio.'))
+
+    def _get_vacation_leave_type(self):
+        return self.env['hr.leave.type'].sudo().search([('name', '=', 'Vacaciones')], limit=1)
+
+    def _fix_absences_for_vacation(self):
+        """Convierte a 'leave_vacation' las faltas ya generadas para el rango de esta vacación.
+
+        Evita falsos positivos de faltas cuando la vacación se aprobó/registró
+        después de que el cron de faltas ya corrió para esos días.
+        """
+        self.ensure_one()
+        if not self.employee_id or not self.date_from or not self.date_to:
+            return
+
+        company = self.company_id or self.env.company
+        calendar = self.employee_id.resource_calendar_id
+        tz_name = (calendar.tz if calendar else False) \
+            or company.resource_calendar_id.tz \
+            or 'UTC'
+        try:
+            tz = pytz.timezone(tz_name)
+        except pytz.UnknownTimeZoneError:
+            tz = pytz.utc
+
+        day_start_local = tz.localize(datetime.combine(self.date_from, datetime.min.time()))
+        day_end_local = tz.localize(datetime.combine(self.date_to, datetime.max.time()))
+        day_start_utc = day_start_local.astimezone(pytz.utc)
+        day_end_utc = day_end_local.astimezone(pytz.utc)
+
+        absence_records = self.env['hr.attendance'].search([
+            ('employee_id', '=', self.employee_id.id),
+            ('punctuality_status', '=', 'absence'),
+            ('check_in', '>=', fields.Datetime.to_string(day_start_utc)),
+            ('check_in', '<=', fields.Datetime.to_string(day_end_utc)),
+        ])
+        if absence_records:
+            absence_records.with_context(skip_attendance_sync=True).write({
+                'punctuality_status': 'leave_vacation',
+            })
+
+    def _create_backing_leave(self):
+        """Crea el hr.leave que respalda esta vacación cuando fue registrada
+        directamente aquí (sin pasar por Time Off), para que el empleado se
+        marque como 'en vacaciones' en las vistas estándar de Odoo.
+        """
+        self.ensure_one()
+        leave_type = self._get_vacation_leave_type()
+        if not leave_type:
+            raise ValidationError(_(
+                'No se encontró el tipo de ausencia "Vacaciones" para sincronizar con Time Off.'
+            ))
+
+        leave = self.env['hr.leave'].with_context(
+            skip_vacation_creation=True,
+            skip_vacation_balance_sync=True,
+        ).create({
+            'employee_id': self.employee_id.id,
+            'holiday_status_id': leave_type.id,
+            'request_date_from': self.date_from,
+            'request_date_to': self.date_to,
+            'vacation_modality': self.vacation_modality,
+            'name': self.description or self.name,
+        })
+        leave.with_context(
+            skip_vacation_creation=True,
+            skip_vacation_balance_sync=True,
+        ).write({'state': 'validate'})
+        self.with_context(
+            skip_vacation_balance_sync=True,
+            skip_vacation_leave_sync=True,
+        ).write({
+            'leave_id': leave.id,
+            'leave_auto_created': True,
+        })
+
+    def _sync_time_off_and_attendance(self):
+        """Mantiene sincronizado el hr.leave de respaldo y corrige asistencias
+        marcadas como falta cuando la vacación se aprueba directamente aquí.
+        """
+        for record in self:
+            if record.vacation_modality == 'pagadas' or not record.date_from or not record.date_to:
+                continue
+
+            if record.state == 'validate':
+                if not record.leave_id:
+                    record._create_backing_leave()
+                elif record.leave_auto_created and record.leave_id.state != 'validate':
+                    record.leave_id.with_context(
+                        skip_vacation_creation=True,
+                        skip_vacation_balance_sync=True,
+                    ).write({'state': 'validate'})
+                record._fix_absences_for_vacation()
+            elif record.state in ('draft', 'refuse', 'cancel') and record.leave_auto_created and record.leave_id:
+                if record.leave_id.state != 'refuse':
+                    record.leave_id.with_context(
+                        skip_vacation_creation=True,
+                        skip_vacation_balance_sync=True,
+                    ).write({'state': 'refuse'})
 
     def _apply_vacation_discount(self):
         for record in self:
@@ -547,6 +654,9 @@ class HrVacation(models.Model):
                 record._apply_vacation_discount()
             elif record.state in ['draft', 'refuse', 'cancel'] and record.vacation_days_subtracted:
                 record._revert_vacation_discount()
+
+        if not self.env.context.get('skip_vacation_leave_sync'):
+            self._sync_time_off_and_attendance()
         return res
 
     def action_draft(self):

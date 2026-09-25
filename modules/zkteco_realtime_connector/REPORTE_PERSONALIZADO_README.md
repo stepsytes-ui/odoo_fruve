@@ -95,4 +95,3 @@ Este grupo debe estar asignado en Configuración > Usuarios.
 
 - La hora se convierte automáticamente a la zona horaria local (Tijuana: America/Tijuana)
 - El archivo se genera en memoria para mayor rendimiento
-- Se descarga automáticamente sin necesidad de guardar manualmente

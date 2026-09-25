@@ -13,6 +13,7 @@ from . import hr_suspension
 from . import hr_incapacity
 from . import hr_permission
 from . import hr_vacation
+from . import hr_attendance_vacation_link
 from . import employee_resguardo
 from . import res_company
 from . import employee_supervisor

@@ -70,6 +70,7 @@
                 <form string="Consolidado">
                     <header>
                         <button name="action_create_inventory_move" string="Crear movimiento" type="object" class="btn-primary"/>
+                        <button name="action_open_delete_wizard" string="Eliminar producto" type="object" class="btn-secondary" groups="Warehouse_Management.group_compras_encargado"/>
                     </header>
                     <sheet>
                         <div class="d-flex align-items-start">
@@ -200,7 +201,7 @@
                         name="move_type"
                         optional="show"
                         decoration-success="move_type == 'entrada' or move_type == 'inicial'"
-                        decoration-danger="move_type == 'salida'"
+                        decoration-danger="move_type == 'salida' or move_type == 'eliminacion'"
                         decoration-warning="move_type == 'transferencia'"
                     />
                     <field name="source_warehouse_id" optional="show"/>
@@ -212,7 +213,7 @@
                         name="quantity_done"
                         optional="show"
                         decoration-success="move_type == 'entrada' or move_type == 'inicial'"
-                        decoration-danger="move_type == 'salida'"
+                        decoration-danger="move_type == 'salida' or move_type == 'eliminacion'"
                         decoration-warning="move_type == 'transferencia'"
                     />
                     <field name="purchase_unit_price" optional="show"/>
@@ -255,7 +256,7 @@
                                 <field name="available_location_ids" invisible="1"/>
                                 <field name="location_id"/>
                             </group>
-                            <group string="Destino y Registro" invisible="move_type == 'salida' or (move_type == 'entrada' and origin_company_id)">
+                            <group string="Destino y Registro" invisible="move_type in ['salida', 'eliminacion'] or (move_type == 'entrada' and origin_company_id)">
                                 <field name="destination_company_selector" readonly="move_type == 'inicial'"/>
                                 <field name="destination_warehouse_id" context="{'allow_cross_company_destination_warehouse': 1}" readonly="move_type == 'inicial'"/>
                                 <field name="registered_employee_id"/>
@@ -283,7 +284,7 @@
                             <field name="purchase_total_cost"/>
                         </group>
                         <group string="Observaciones">
-                            <field name="notes" nolabel="1"/>
+                            <field name="notes" nolabel="1" readonly="move_type == 'eliminacion'"/>
                         </group>
                     </sheet>
                     <chatter/>
@@ -304,7 +305,8 @@
                     <field name="destination_warehouse_id"/>
                     <field name="location_id"/>
                     <filter name="entries" string="Entradas" domain="[('move_type', '=', 'entrada')]"/>
-                    <filter name="exits" string="Salidas" domain="[('move_type', '=', 'salida')]"/>
+                    <filter name="exits" string="Salidas" domain="[('move_type', 'in', ['salida', 'eliminacion'])]"/>
+                    <filter name="deletions" string="Eliminaciones" domain="[('move_type', '=', 'eliminacion')]"/>
                     <filter name="transfers" string="Transferencias" domain="[('move_type', '=', 'transferencia')]"/>
                     <filter name="shortages" string="Faltantes" domain="[('move_type', '=', 'entrada'), ('status', 'in', ['faltante', 'incompleto', 'defectuoso'])]"/>
                     <filter name="done" string="Confirmados" domain="[('state', '=', 'done')]"/>
@@ -479,7 +481,7 @@
             <field name="name">Salidas de Almacén</field>
             <field name="res_model">compras.inventory.move</field>
             <field name="view_mode">list,form</field>
-            <field name="domain">[('move_type', 'in', ['salida', 'transferencia'])]</field>
+            <field name="domain">[('move_type', 'in', ['salida', 'eliminacion', 'transferencia'])]</field>
             <field name="context">{'default_move_type': 'salida'}</field>
         </record>
 

@@ -218,7 +218,7 @@ class WarehouseReportWizard(models.TransientModel):
             if move.move_type == 'entrada':
                 if include_warehouse(move.destination_warehouse_id):
                     warehouse_names.add(move.destination_warehouse_id.name)
-            elif move.move_type == 'salida':
+            elif move.move_type in ('salida', 'eliminacion'):
                 if include_warehouse(move.source_warehouse_id):
                     warehouse_names.add(move.source_warehouse_id.name)
             elif move.move_type == 'transferencia':
@@ -249,7 +249,8 @@ class WarehouseReportWizard(models.TransientModel):
 
                 # Usar quantity_done si existe, sino quantity
                 qty = move.quantity_done if move.quantity_done else move.quantity
-                data_structure[warehouse_name][period_key][move.move_type] += qty
+                movement_type = 'salida' if move.move_type == 'eliminacion' else move.move_type
+                data_structure[warehouse_name][period_key][movement_type] += qty
 
         return data_structure
 

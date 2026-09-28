@@ -12,7 +12,7 @@ import re
 import math
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.osv import expression
 from odoo.tools import float_is_zero
 
@@ -355,7 +355,7 @@ class ComprasProduct(models.Model):
                 lambda m: m.move_type in ('entrada', 'inicial')
             ).mapped('quantity_done'))
             qty_out = sum(done_moves.filtered(
-                lambda m: m.move_type == 'salida' or product._is_intercompany_transfer_move(m)
+                lambda m: m.move_type in ('salida', 'eliminacion') or product._is_intercompany_transfer_move(m)
             ).mapped('quantity_done'))
             product.qty_in = qty_in
             product.qty_out = qty_out
@@ -394,7 +394,7 @@ class ComprasProduct(models.Model):
             ).mapped('quantity_done'))
             qty_out = sum(done_moves.filtered(
                 lambda move: (
-                    move.move_type == 'salida' and move.source_warehouse_id == warehouse
+                    move.move_type in ('salida', 'eliminacion') and move.source_warehouse_id == warehouse
                 )
                 or (
                     move.move_type == 'transferencia' and move.source_warehouse_id == warehouse
@@ -411,7 +411,7 @@ class ComprasProduct(models.Model):
             current_qty = (
                 sum(done_moves.filtered(lambda move: move.move_type == 'entrada').mapped('quantity_done'))
                 - sum(done_moves.filtered(
-                    lambda move: move.move_type == 'salida' or product._is_intercompany_transfer_move(move)
+                    lambda move: move.move_type in ('salida', 'eliminacion') or product._is_intercompany_transfer_move(move)
                 ).mapped('quantity_done'))
             )
             target_qty = product.qty_on_hand
@@ -458,7 +458,7 @@ class ComprasProduct(models.Model):
         for product in self:
             done_entries = product.move_ids.filtered(lambda m: m.state == 'done' and m.move_type == 'entrada')
             done_exits = product.move_ids.filtered(
-                lambda m: m.state == 'done' and (m.move_type == 'salida' or product._is_intercompany_transfer_move(m))
+                lambda m: m.state == 'done' and (m.move_type in ('salida', 'eliminacion') or product._is_intercompany_transfer_move(m))
             )
             product.last_entry_date = max(done_entries.mapped('movement_date')) if done_entries else False
             product.last_exit_date = max(done_exits.mapped('movement_date')) if done_exits else False
@@ -515,6 +515,19 @@ class ComprasProduct(models.Model):
             'view_id': self.env.ref('Warehouse_Management.compras_inventory_move_view_form').id,
         })
         return action
+
+    def action_open_delete_wizard(self):
+        self.ensure_one()
+        if not self.env.user.has_group('Warehouse_Management.group_compras_encargado'):
+            raise UserError(_('Solo un encargado de compras puede eliminar productos del consolidado.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Eliminar producto del consolidado'),
+            'res_model': 'compras.product.archive.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_product_id': self.id},
+        }
 
     def name_get(self):
         result = []

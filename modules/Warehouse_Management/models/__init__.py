@@ -13,6 +13,7 @@ from . import purchase_rejection_wizard
 from . import purchase_receipt_wizard
 from . import compras_product_excel_import_wizard
 from . import compras_product_alert_wizard
+from . import compras_product_archive_wizard
 from . import warehouse_report_wizard
 from . import warehouse_generate_sample_data
 from . import res_partner_extension

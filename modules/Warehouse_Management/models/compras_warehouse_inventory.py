@@ -127,7 +127,7 @@ class ComprasWarehouseInventory(models.Model):
                         -move.quantity_done AS qty_delta
                     FROM compras_inventory_move move
                     WHERE move.state = 'done'
-                      AND move.move_type = 'salida'
+                      AND move.move_type IN ('salida', 'eliminacion')
                       AND move.source_warehouse_id IS NOT NULL
 
                     UNION ALL
@@ -190,7 +190,7 @@ class ComprasWarehouseInventory(models.Model):
                       AND move.location_id IS NOT NULL
                       AND (
                             (move.move_type IN ('entrada', 'inicial') AND move.destination_warehouse_id = stock_lines.warehouse_id)
-                         OR (move.move_type = 'salida' AND move.source_warehouse_id = stock_lines.warehouse_id)
+                         OR (move.move_type IN ('salida', 'eliminacion') AND move.source_warehouse_id = stock_lines.warehouse_id)
                          OR (move.move_type = 'transferencia' AND move.source_warehouse_id = stock_lines.warehouse_id)
                          OR (
                                 move.move_type = 'transferencia'

@@ -1,5 +1,5 @@
 from odoo import SUPERUSER_ID, api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class ComprasInventoryMove(models.Model):
@@ -57,6 +57,7 @@ class ComprasInventoryMove(models.Model):
             ('inicial', 'Inventario inicial'),
             ('entrada', 'Entrada'),
             ('salida', 'Salida'),
+            ('eliminacion', 'Eliminación'),
             ('transferencia', 'Transferencia'),
         ],
         string='Tipo de Movimiento',
@@ -248,7 +249,7 @@ class ComprasInventoryMove(models.Model):
         self.ensure_one()
         if self.move_type in ('entrada', 'inicial'):
             return self.destination_warehouse_id
-        if self.move_type in ('salida', 'transferencia'):
+        if self.move_type in ('salida', 'eliminacion', 'transferencia'):
             return self.source_warehouse_id
         return False
 
@@ -313,7 +314,7 @@ class ComprasInventoryMove(models.Model):
                 rec.available_location_ids = location_model
                 continue
             domain = [('warehouse_id', '=', location_warehouse.id)]
-            if rec.product_id and rec.move_type in ('salida', 'transferencia'):
+            if rec.product_id and rec.move_type in ('salida', 'eliminacion', 'transferencia'):
                 available_location_ids = rec._get_available_location_ids_for_product_source_warehouse()
                 domain.append(('id', 'in', available_location_ids))
             rec.available_location_ids = location_model.search(domain)
@@ -341,7 +342,7 @@ class ComprasInventoryMove(models.Model):
         outgoing_moves = self.env['compras.inventory.move'].sudo().read_group(
             domain=[
                 ('state', '=', 'done'),
-                ('move_type', 'in', ['salida', 'transferencia']),
+                ('move_type', 'in', ['salida', 'eliminacion', 'transferencia']),
                 ('source_warehouse_id', '=', warehouse_id),
                 ('product_id', '=', product_id),
                 ('location_id', '!=', False),
@@ -457,7 +458,7 @@ class ComprasInventoryMove(models.Model):
     def _onchange_move_type(self):
         if self.move_type == 'entrada':
             self.status = 'completo'
-        elif self.move_type == 'salida':
+        elif self.move_type in ('salida', 'eliminacion'):
             self.status = 'entregado'
             self.destination_company_id = False
             self.destination_company_selector = False
@@ -484,7 +485,7 @@ class ComprasInventoryMove(models.Model):
             if rec.move_type in ('entrada', 'inicial'):
                 rec.previous_qty = previous_qty
                 rec.new_qty = previous_qty + moved_qty
-            elif rec.move_type in ('salida', 'transferencia'):
+            elif rec.move_type in ('salida', 'eliminacion', 'transferencia'):
                 rec.previous_qty = previous_qty
                 rec.new_qty = previous_qty - moved_qty
             else:
@@ -531,7 +532,7 @@ class ComprasInventoryMove(models.Model):
             previous_qty = rec._get_product_qty_in_warehouse(rec.product_id, warehouse)
             if rec.move_type in ('entrada', 'inicial'):
                 rec.new_qty = previous_qty + moved_qty
-            elif rec.move_type in ('salida', 'transferencia'):
+            elif rec.move_type in ('salida', 'eliminacion', 'transferencia'):
                 rec.new_qty = previous_qty - moved_qty
             else:
                 rec.new_qty = previous_qty
@@ -627,6 +628,8 @@ class ComprasInventoryMove(models.Model):
     @api.constrains('quantity', 'quantity_done')
     def _check_quantities(self):
         for rec in self:
+            if rec.move_type == 'eliminacion' and not rec.quantity and not rec.quantity_done:
+                continue
             if rec.quantity <= 0 or rec.quantity_done <= 0:
                 raise ValidationError(_('Las cantidades deben ser mayores a cero.'))
             if rec.request_line_id and rec.quantity_done > rec.quantity:
@@ -646,6 +649,16 @@ class ComprasInventoryMove(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            if vals.get('move_type') == 'eliminacion':
+                employee_name = self.env.user.name
+                vals['registered_by_id'] = self.env.user.id
+                vals['registered_employee_id'] = self.env.user.employee_id.id
+                vals['receiver_name'] = employee_name
+                vals['delivered_by_id'] = self.env.user.id
+                deletion_notes = _('Baja del inventario al eliminar el producto del consolidado. Responsable: %s.') % employee_name
+                if vals.get('notes'):
+                    deletion_notes = '%s\n%s' % (deletion_notes, vals['notes'].strip())
+                vals['notes'] = deletion_notes
             if vals.get('move_type') == 'inicial':
                 warehouse_id = vals.get('destination_warehouse_id') or vals.get('source_warehouse_id')
                 if warehouse_id:
@@ -663,6 +676,14 @@ class ComprasInventoryMove(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
+        protected_deletion_fields = {
+            'move_type', 'registered_by_id', 'registered_employee_id', 'receiver_name',
+            'delivered_by_id', 'signed_by_id', 'notes',
+        }
+        if protected_deletion_fields.intersection(vals) and any(
+            move.move_type == 'eliminacion' for move in self
+        ):
+            raise UserError(_('No se puede modificar el responsable ni la descripción de un movimiento de eliminación.'))
         if 'quantity' in vals and 'quantity_done' not in vals:
             manual_moves = self.filtered(lambda rec: not rec.request_line_id)
             if manual_moves:
@@ -670,6 +691,11 @@ class ComprasInventoryMove(models.Model):
         if 'destination_warehouse_id' in vals:
             vals = self._sync_destination_company_vals(dict(vals))
         return super().write(vals)
+
+    def unlink(self):
+        if any(move.move_type == 'eliminacion' for move in self):
+            raise UserError(_('No se pueden eliminar movimientos de eliminación porque forman parte de la bitácora de auditoría.'))
+        return super().unlink()
     
     @api.onchange('move_type', 'company_id', 'source_warehouse_id')
     def _onchange_initial_inventory_sync(self):
@@ -702,7 +728,10 @@ class ComprasInventoryMove(models.Model):
             stock_warehouse = rec._get_stock_warehouse_for_move()
             if rec.move_type in ('entrada', 'inicial') and not rec.destination_warehouse_id:
                 raise ValidationError(_('Debes indicar el almacén destino para una entrada.'))
-            if rec.move_type in ('salida', 'transferencia') and not rec.source_warehouse_id:
+            if (
+                rec.move_type in ('salida', 'transferencia')
+                or (rec.move_type == 'eliminacion' and (rec.quantity_done or rec.quantity))
+            ) and not rec.source_warehouse_id:
                 raise ValidationError(_('Debes indicar el almacén origen para este movimiento.'))
             if rec.move_type == 'transferencia' and not rec.destination_warehouse_id:
                 raise ValidationError(_('Debes indicar el almacén destino para una transferencia.'))
@@ -714,7 +743,7 @@ class ComprasInventoryMove(models.Model):
             previous_qty = rec._get_product_qty_in_warehouse(rec.product_id, stock_warehouse)
             moved_qty = rec.quantity_done or rec.quantity
             is_intercompany_transfer = rec._is_intercompany_transfer()
-            if rec.move_type == 'salida' and moved_qty > previous_qty:
+            if rec.move_type in ('salida', 'eliminacion') and moved_qty > previous_qty:
                 raise ValidationError(_('No hay suficiente existencia para dar salida a este producto.'))
             if rec.move_type == 'transferencia' and moved_qty > previous_qty:
                 raise ValidationError(_('No hay suficiente existencia para transferir este producto desde el almacén origen.'))
@@ -728,7 +757,7 @@ class ComprasInventoryMove(models.Model):
 
             if rec.move_type in ('entrada', 'inicial'):
                 new_qty = previous_qty + moved_qty
-            elif rec.move_type == 'salida':
+            elif rec.move_type in ('salida', 'eliminacion'):
                 new_qty = previous_qty - moved_qty
             elif is_intercompany_transfer:
                 new_qty = previous_qty - moved_qty

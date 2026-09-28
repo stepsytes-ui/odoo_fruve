@@ -82,7 +82,7 @@
                                     <field name="code" readonly="1"/>
                                 </h2>
                             </div>
-                            <field name="image_1920" widget="image" options="{'size': [300, 240]}" class="ms-2 flex-shrink-0" style="width: 300px; height: 150px; object-fit: contain;"/>
+                            <field name="image_1920" widget="image" options="{'size': [300, 150]}" class="ms-2 flex-shrink-0" style="width: 300px; height: 150px; object-fit: contain;"/>
                         </div>
                         <group>
                             <group string="Informacion General">

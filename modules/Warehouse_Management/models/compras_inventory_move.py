@@ -94,6 +94,11 @@ class ComprasInventoryMove(models.Model):
         string='Proyecto',
         domain="[('company_id', '=', company_id)]",
     )
+    work_order_id = fields.Many2one(
+        'project.task',
+        string='# Orden de trabajo',
+        domain="[('project_id', '=', project_id), ('company_id', '=', company_id)]",
+    )
     location_id = fields.Many2one(
         'compras.warehouse.location',
         string='Locación',

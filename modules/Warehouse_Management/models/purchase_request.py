@@ -100,6 +100,12 @@ class PurchaseRequest(models.Model):
         'request_id',
         string='Bitácora de Movimientos',
     )
+    origin_request_id = fields.Many2one(
+        'purchase.request',
+        string='Solicitud de origen',
+        readonly=True,
+        copy=False,
+    )
     total_amount = fields.Float(
         string='Total',
         compute='_compute_total_amount',
@@ -112,6 +118,7 @@ class PurchaseRequest(models.Model):
             ('inactiva', 'Inactiva'),
             ('autorizada', 'Autorizada'),
             ('recibida', 'Recibida'),
+            ('devuelta', 'Devuelta'),
         ],
         string='Estado',
         default='activa',
@@ -119,6 +126,8 @@ class PurchaseRequest(models.Model):
         tracking=True,
     )
     rejection_reason = fields.Text(string='Motivo de Rechazo', readonly=True)
+    return_reason = fields.Text(string='Motivo de Devolución', readonly=True)
+    returned_by_id = fields.Many2one('res.users', string='Devuelta por', readonly=True)
     rejected_by_id = fields.Many2one('res.users', string='Rechazado por', readonly=True)
     approved_by_id = fields.Many2one('res.users', string='Aprobado por', readonly=True)
     received_by_id = fields.Many2one('res.users', string='Recibido por', readonly=True)
@@ -286,14 +295,17 @@ class PurchaseRequest(models.Model):
             if received_qty > line.quantity:
                 raise ValidationError(_('La cantidad recibida no puede ser mayor a la solicitada.'))
 
+            move_status = line.receipt_status or 'completo'
+            previous_qty = product.qty_on_hand
+            inventory_received_qty = 0 if move_status in ('defectuoso', 'faltante') else received_qty
+            if inventory_received_qty <= 0:
+                continue
+
             product.write({
                 'inventory_warehouse_id': warehouse.id if warehouse else False,
                 'inventory_location_id': location.id if location else False,
                 'location': location.name if location else False,
             })
-
-            move_status = line.receipt_status or 'completo'
-            previous_qty = product.qty_on_hand
             self.env['compras.inventory.move'].create({
                 'company_id': self.company_id.id,
                 'destination_company_id': warehouse.company_id.id if warehouse else self.company_id.id,
@@ -305,9 +317,9 @@ class PurchaseRequest(models.Model):
                 'request_id': self.id,
                 'request_line_id': line.id,
                 'quantity': line.quantity,
-                'quantity_done': received_qty,
+                'quantity_done': inventory_received_qty,
                 'previous_qty': previous_qty,
-                'new_qty': previous_qty + received_qty,
+                'new_qty': previous_qty + inventory_received_qty,
                 'receiver_user_id': receiver.id,
                 'receiver_name': receiver.name,
                 'delivered_by_id': self.env.user.id,
@@ -325,6 +337,63 @@ class PurchaseRequest(models.Model):
             'received_by_id': receiver.id,
             'warehouse_id': warehouse.id if warehouse else self.warehouse_id.id,
         })
+
+    def _create_missing_purchase_request(self):
+        self.ensure_one()
+        missing_lines = []
+        for line in self.line_ids:
+            received_qty = 0 if line.receipt_status in ('defectuoso', 'faltante') else (line.received_qty or 0)
+            missing_qty = line.quantity - received_qty
+            if missing_qty <= 0:
+                continue
+            missing_lines.append((0, 0, {
+                'product_id': line.product_id.id,
+                'warehouse_product_id': line.warehouse_product_id.id,
+                'quantity': missing_qty,
+                'unit_id': line.unit_id.id,
+                'description': line.description,
+                'brand_id': line.brand_id.id,
+                'model_name': line.model_name,
+                'vendor_id': line.vendor_id.id,
+                'unit_price': line.unit_price,
+                'tax_ids': [(6, 0, line.tax_ids.ids)],
+            }))
+
+        if not missing_lines:
+            return self.env['purchase.request']
+
+        return self.env['purchase.request'].sudo().create({
+            'company_id': self.company_id.id,
+            'department_id': self.department_id.id,
+            'solicitante_id': self.solicitante_id.id,
+            'supervisor_id': self.supervisor_id.id,
+            'authorizer_id': self.authorizer_id.id,
+            'payment_type': self.payment_type,
+            'currency_type': self.currency_type,
+            'warehouse_id': self.warehouse_id.id,
+                'comments': _('Reposición de faltantes de la solicitud %s') % self.name,
+            'origin_request_id': self.id,
+            'line_ids': missing_lines,
+        })
+
+    def action_return_from_receipt(self, reason):
+        self.ensure_one()
+        if self.state != 'autorizada':
+            raise ValidationError(_('Solo se pueden devolver solicitudes Autorizadas.'))
+        if not (
+            self.env.user.has_group('Warehouse_Management.group_compras_almacenista')
+            or self.env.user.has_group('Warehouse_Management.group_compras_encargado')
+        ):
+            raise AccessError(_('No tienes permisos para devolver esta solicitud.'))
+        if not reason or not reason.strip():
+            raise ValidationError(_('Debes indicar el motivo de la devolución.'))
+
+        self.write({
+            'state': 'devuelta',
+            'return_reason': reason.strip(),
+            'returned_by_id': self.env.user.id,
+        })
+        self.message_post(body=_('Orden devuelta desde almacén. Motivo: %s') % reason.strip())
 
     def _is_warehouse_only_user(self):
         user = self.env.user

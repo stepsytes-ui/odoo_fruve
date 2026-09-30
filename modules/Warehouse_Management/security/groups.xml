@@ -4,6 +4,7 @@
         <record id="group_compras_usuario" model="res.groups">
             <field name="name">Usuario Compras</field>
             <field name="comment">Puede visualizar el módulo y crear solicitudes de compra propias</field>
+            <field name="implied_ids" eval="[(4, ref('base.group_user')), (4, ref('project.group_project_user'))]"/>
         </record>
 
         <!-- Grupo Encargado Compras: aprueba o rechaza solicitudes, puede crear en nombre de cualquier usuario -->
@@ -16,6 +17,7 @@
         <record id="group_compras_almacenista" model="res.groups">
             <field name="name">Almacenista Compras</field>
             <field name="comment">Puede marcar las órdenes de compra autorizadas como recibidas</field>
+            <field name="implied_ids" eval="[(4, ref('base.group_user')), (4, ref('project.group_project_user'))]"/>
         </record>
 
         <!-- Grupo Gerente Fruvemex: aparece como autorizador en solicitudes de compra -->

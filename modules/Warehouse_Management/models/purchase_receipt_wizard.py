@@ -14,6 +14,8 @@ class PurchaseReceiptWizard(models.TransientModel):
         domain="[('warehouse_id', '=', warehouse_id)]",
     )
     receiver_user_id = fields.Many2one('res.users', string='Recibe', default=lambda self: self.env.user, required=True)
+    request_missing = fields.Boolean(string='Solicitar una nueva orden por cantidades faltantes')
+    cancellation_reason = fields.Text(string='Motivo de devolución')
     line_ids = fields.One2many('purchase.receipt.wizard.line', 'wizard_id', string='Checklist')
 
     @api.model
@@ -55,15 +57,50 @@ class PurchaseReceiptWizard(models.TransientModel):
                 raise ValidationError(_('La cantidad recibida no puede ser negativa.'))
             if wizard_line.quantity_received > wizard_line.quantity_expected:
                 raise ValidationError(_('La cantidad recibida no puede ser mayor a la esperada.'))
+            if wizard_line.receipt_check == 'completo' and wizard_line.quantity_received < wizard_line.quantity_expected:
+                raise ValidationError(_('Si el material llegó completo, la cantidad recibida debe ser igual a la esperada.'))
+            if wizard_line.receipt_check == 'faltante' and wizard_line.quantity_received:
+                raise ValidationError(_('Si el material no llegó, la cantidad recibida debe ser cero.'))
             if wizard_line.receipt_check != 'completo' and not wizard_line.notes:
                 raise ValidationError(_('Debes escribir observaciones cuando existan faltantes o no llegue el material.'))
 
-            request_line = wizard_line.request_line_id
-            request_line.received_qty = wizard_line.quantity_received
-            request_line.receipt_status = wizard_line.receipt_check
-            request_line.receipt_notes = wizard_line.notes
+            wizard_line.request_line_id.write({
+                'received_qty': wizard_line.quantity_received,
+                'receipt_status': wizard_line.receipt_check,
+                'receipt_notes': wizard_line.notes,
+            })
 
         self.request_id.action_process_receipt_from_checklist(self.receiver_user_id, self.warehouse_id, self.location_id)
+        followup_request = self.request_id._create_missing_purchase_request() if self.request_missing else False
+        if followup_request:
+            self.request_id.message_post(body=_(
+                'Se creó la solicitud de reposición %s por las cantidades faltantes.'
+            ) % followup_request.name)
+        return {'type': 'ir.actions.act_window_close'}
+
+    def action_cancel_order(self):
+        self.ensure_one()
+        if not self.line_ids:
+            raise ValidationError(_('No hay líneas para devolver.'))
+        if not self.cancellation_reason or not self.cancellation_reason.strip():
+            raise ValidationError(_('Debes indicar el motivo de la devolución.'))
+
+        for wizard_line in self.line_ids:
+            if wizard_line.quantity_received < 0:
+                raise ValidationError(_('La cantidad recibida no puede ser negativa.'))
+            if wizard_line.quantity_received > wizard_line.quantity_expected:
+                raise ValidationError(_('La cantidad recibida no puede ser mayor a la esperada.'))
+            if wizard_line.receipt_check == 'completo' and wizard_line.quantity_received < wizard_line.quantity_expected:
+                raise ValidationError(_('Si el material llegó completo, la cantidad recibida debe ser igual a la esperada.'))
+            if wizard_line.receipt_check == 'faltante' and wizard_line.quantity_received:
+                raise ValidationError(_('Si el material no llegó, la cantidad recibida debe ser cero.'))
+            wizard_line.request_line_id.write({
+                'received_qty': wizard_line.quantity_received,
+                'receipt_status': wizard_line.receipt_check,
+                'receipt_notes': wizard_line.notes,
+            })
+
+        self.request_id.action_return_from_receipt(self.cancellation_reason)
         return {'type': 'ir.actions.act_window_close'}
 
 

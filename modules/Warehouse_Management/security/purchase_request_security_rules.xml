@@ -52,5 +52,16 @@
             <field name="domain_force">[('solicitante_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('Warehouse_Management.group_compras_usuario'))]"/>
         </record>
+
+        <record id="purchase_request_returned_read_rule" model="ir.rule">
+            <field name="name">Purchase Request Returned Read Rule</field>
+            <field name="model_id" ref="model_purchase_request"/>
+            <field name="domain_force">[('state', '=', 'devuelta')]</field>
+            <field name="groups" eval="[(4, ref('Warehouse_Management.group_compras_usuario'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
     </data>
 </odoo>

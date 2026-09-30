@@ -27,6 +27,15 @@
         />
 
         <menuitem
+            id="menu_compras_devueltas"
+            name="Órdenes Devueltas"
+            parent="menu_compras_root"
+            action="purchase_request_returned_action"
+            sequence="30"
+            groups="Warehouse_Management.group_compras_usuario,Warehouse_Management.group_compras_encargado"
+        />
+
+        <menuitem
             id="menu_almacen_root"
             name="Almacén"
             sequence="30"

@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 
 import pytz
 
@@ -92,39 +92,45 @@ class AttendanceJustifyWizard(models.TransientModel):
             ], order='check_in asc')
 
             count = len(records)
-            if count not in (2, 3, 4, 5):
+            # Con el nuevo modelo (sin registro duplicado para 'Fin de Turno'), cada dia
+            # desplazado tiene un registro menos que antes: 1 (entrada+fin fusionados),
+            # 2 (+ checada de continuidad abierta), 3 (+ 1 ciclo de comida) o 4 (+ ambos).
+            if count not in (1, 2, 3, 4):
                 skipped_invalid_count += 1
                 continue
 
-            if count in (4, 5):
-                records[-2:].with_context(skip_attendance_sync=True).unlink()
-                records = records[:-2]
-                count = len(records)
+            # Localizar el registro que ya trae el cierre de turno fusionado ('end').
+            end_index = next(
+                (idx for idx, rec in enumerate(records) if rec.punctuality_status_out == 'end'),
+                len(records) - 1,
+            )
+
+            entrada_record = records[0]
+            spillover_record = records[end_index + 1] if end_index + 1 < count else False
+
+            # Descartar checadas intermedias (comida) que no se necesitan conservar.
+            if end_index > 0:
+                records[1:end_index + 1].with_context(skip_attendance_sync=True).unlink()
 
             shift_in_target_utc, shift_out_target_utc = self._get_shift_times_for_date(employee, self.date_to_justify)
             if not shift_in_target_utc or not shift_out_target_utc:
                 skipped_no_shift += 1
                 continue
 
-            rec1, rec2 = records[0], records[1]
-            rec1.with_context(skip_attendance_sync=True).write({
+            entrada_record.with_context(skip_attendance_sync=True).write({
                 'check_in': fields.Datetime.to_string(shift_in_target_utc),
                 'check_out': fields.Datetime.to_string(shift_out_target_utc),
                 'punctuality_status': 'on_time',
-            })
-            rec2.with_context(skip_attendance_sync=True).write({
-                'check_in': fields.Datetime.to_string(shift_out_target_utc),
-                'check_out': fields.Datetime.to_string(shift_out_target_utc + timedelta(seconds=1)),
-                'punctuality_status': 'end',
+                'punctuality_status_out': 'end',
             })
 
-            if count == 3:
+            if spillover_record:
                 shift_in_source_utc, _unused = self._get_shift_times_for_date(employee, self.date_displaced_checks)
-                rec3 = records[2]
-                rec3.with_context(skip_attendance_sync=True).write({
-                    'check_in': fields.Datetime.to_string(shift_in_source_utc) if shift_in_source_utc else rec3.check_in,
+                spillover_record.with_context(skip_attendance_sync=True).write({
+                    'check_in': fields.Datetime.to_string(shift_in_source_utc) if shift_in_source_utc else spillover_record.check_in,
                     'check_out': False,
                     'punctuality_status': 'on_time',
+                    'punctuality_status_out': False,
                 })
 
             justified_count += 1

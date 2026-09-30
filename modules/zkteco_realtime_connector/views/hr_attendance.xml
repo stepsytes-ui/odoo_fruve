@@ -14,18 +14,15 @@
                 </field>
 
                 <field name="check_out" position="replace">
-                    <field name="check_out_time_only"/>
+                    <field name="check_out_time_only" string="Hora de Salida"/>
+                </field>
+
+                <field name="check_out_time_only" position="after">
+                    <field name="punctuality_status_out"/>
                 </field>
 
                 <field name="employee_id" position="before">
                     <field name="biometric_id_display"/>
-                </field>
-                <field name="check_out_time_only" position="attributes">
-                    <attribute name="invisible">1</attribute>
-                </field>
-                
-                <field name="worked_hours" position="attributes">
-                    <attribute name="invisible">1</attribute>
                 </field>
             </field>
         </record>
@@ -42,6 +39,7 @@
                 </field>
                 <field name="check_out" position="after">
                     <field name="check_out_time_only" string="Hora Salida (TZ Empresa)" readonly="1" invisible="show_company_tz_display == False"/>
+                    <field name="punctuality_status_out" widget="selection"/>
                 </field>
             </field>
         </record>

@@ -190,10 +190,10 @@ class ZkTecoAttendanceLog(models.Model):
         })
 
     def _close_attendance(self, attendance_record, check_out_utc, status_out=None):
-        """Función auxiliar para cerrar un registro de hr.attendance y opcionalmente actualizar el status."""
+        """Función auxiliar para cerrar un registro de hr.attendance y opcionalmente asignar su estatus de salida."""
         vals = {'check_out': check_out_utc}
         if status_out:
-            vals['punctuality_status'] = status_out
+            vals['punctuality_status_out'] = status_out
         attendance_record.with_context(skip_attendance_sync=True).write(vals)
 
     def _is_duplicate_end_punch(self, employee, check_datetime_utc_dt, attendance_model, device_timezone):
@@ -211,12 +211,12 @@ class ZkTecoAttendanceLog(models.Model):
 
         recent_end = attendance_model.search([
             ('employee_id', '=', employee.id),
-            ('punctuality_status', '=', 'end'),
-            ('check_in', '>=', fields.Datetime.to_string(window_start)),
-            ('check_in', '<=', fields.Datetime.to_string(check_datetime_utc_dt)),
-            ('check_in', '>=', fields.Datetime.to_string(day_start_local.astimezone(pytz.utc))),
-            ('check_in', '<=', fields.Datetime.to_string(day_end_local.astimezone(pytz.utc))),
-        ], order='check_in desc, id desc', limit=1)
+            ('punctuality_status_out', '=', 'end'),
+            ('check_out', '>=', fields.Datetime.to_string(window_start)),
+            ('check_out', '<=', fields.Datetime.to_string(check_datetime_utc_dt)),
+            ('check_out', '>=', fields.Datetime.to_string(day_start_local.astimezone(pytz.utc))),
+            ('check_out', '<=', fields.Datetime.to_string(day_end_local.astimezone(pytz.utc))),
+        ], order='check_out desc, id desc', limit=1)
 
         if not recent_end:
             return False
@@ -243,20 +243,20 @@ class ZkTecoAttendanceLog(models.Model):
 
         latest_end = attendance_model.search([
             ('employee_id', '=', employee.id),
-            ('punctuality_status', '=', 'end'),
-            ('check_in', '>=', fields.Datetime.to_string(day_start_local.astimezone(pytz.utc))),
-            ('check_in', '<=', fields.Datetime.to_string(day_end_local.astimezone(pytz.utc))),
-            ('check_in', '<=', fields.Datetime.to_string(check_datetime_utc_dt)),
-        ], order='check_in desc, id desc', limit=1)
+            ('punctuality_status_out', '=', 'end'),
+            ('check_out', '>=', fields.Datetime.to_string(day_start_local.astimezone(pytz.utc))),
+            ('check_out', '<=', fields.Datetime.to_string(day_end_local.astimezone(pytz.utc))),
+            ('check_out', '<=', fields.Datetime.to_string(check_datetime_utc_dt)),
+        ], order='check_out desc, id desc', limit=1)
 
         if not latest_end:
             return False
 
-        end_check_in = latest_end.check_in
-        if end_check_in.tzinfo is None:
-            end_check_in = pytz.utc.localize(end_check_in)
+        end_check_out = latest_end.check_out
+        if end_check_out.tzinfo is None:
+            end_check_out = pytz.utc.localize(end_check_out)
 
-        elapsed_seconds = (check_datetime_utc_dt - end_check_in).total_seconds()
+        elapsed_seconds = (check_datetime_utc_dt - end_check_out).total_seconds()
         return elapsed_seconds > DUPLICATE_END_PUNCH_WINDOW_SECONDS
 
     def process_logs(self):
@@ -516,13 +516,14 @@ class ZkTecoAttendanceLog(models.Model):
                     _logger.info("CHECK-OUT y Nuevo CHECK-IN Intermedio processed for %s at %s. Status: %s", employee.name, log.timestamp, new_status)
 
                 else:
-                    check_in_end = check_datetime_utc_dt
-                    check_out_end = check_datetime_utc_dt + timedelta(seconds=SECOND_DIFFERENCE)
+                    # Ya no se crea un registro nuevo para el cierre de turno: el estatus de
+                    # salida se guarda en el mismo registro que se acaba de cerrar.
+                    last_attendance.with_context(skip_attendance_sync=True).write({
+                        'punctuality_status_out': 'end',
+                    })
+                    attendance_record = last_attendance
 
-                    attendance_record = self._create_attendance(employee, fields.Datetime.to_string(check_in_end), 'end')
-                    self._close_attendance(attendance_record, fields.Datetime.to_string(check_out_end))
-
-                    _logger.info("CHECK-OUT y CHECK-IN/OUT (Fin de Turno) processed for %s at %s.", employee.name, log.timestamp)
+                    _logger.info("CHECK-OUT (Fin de Turno) registrado en el mismo registro para %s at %s.", employee.name, log.timestamp)
             
             if attendance_record:
                 log.write({

@@ -529,14 +529,22 @@ class Overtime(models.Model):
                     ('check_in', '<', date_end),
                 ], order='check_in asc')
 
-                log_lines=[]
-                if attendances:
-                    for att in attendances:
-                        if att.check_in:
-                            check_in_time = fields.Datetime.context_timestamp(att, timestamp=att.check_in)
-                            formatted_time = check_in_time.strftime('%d-%m-%Y %H:%M:%S')
-                            log_lines.append(formatted_time)
-                    
+                # Cada checada real puede quedar como check_in de un registro o como
+                # check_out del registro anterior (p.ej. la checada de Fin de Turno ya no
+                # genera un registro nuevo), así que se toman ambos y se deduplican.
+                punch_datetimes = set()
+                for att in attendances:
+                    if att.check_in:
+                        punch_datetimes.add(att.check_in)
+                    if att.check_out:
+                        punch_datetimes.add(att.check_out)
+
+                if punch_datetimes:
+                    log_lines = []
+                    for punch_dt in sorted(punch_datetimes):
+                        local_time = fields.Datetime.context_timestamp(record, timestamp=punch_dt)
+                        log_lines.append(local_time.strftime('%d-%m-%Y %H:%M:%S'))
+
                     record.attendance_log = '\n'.join(log_lines)
                 else:
                     record.attendance_log = "No se han registrado checadas del empleado"

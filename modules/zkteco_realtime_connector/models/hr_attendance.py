@@ -52,6 +52,18 @@ class HrAttendance(models.Model):
         ('forgot_checkout', 'Olvido Checar Salida'),
     ] + NEW_LEAVE_STATUSES, string='Estatus de Puntualidad', default='n/a')
 
+    punctuality_status_out = fields.Selection([
+        ('late','Retardo'),
+        ('absence', 'Falta'),
+        ('on_time','A Tiempo'),
+        ('end','Fin de turno'),
+        ('overtime', 'Tiempo Extra'),
+        ('LunchS','Salida de Planta'),
+        ('LunchE','Regreso a Planta'),
+        ('n/a','Checada desde Quiosco'),
+        ('forgot_checkout', 'Olvido Checar Salida'),
+    ] + NEW_LEAVE_STATUSES, string='Estatus de Puntualidad de Salida')
+
     check_in_time_only = fields.Char(
             string='Hora de Checada',
             compute='_compute_check_in_time_only',
@@ -395,53 +407,51 @@ class HrAttendance(models.Model):
 
     def _process_manual_checkout_sync(self, record):
         """
-        Procesa la creación/actualización de una asistencia completa (con check_out).
-        Cierra asistencia abierta anterior y crea nueva asistencia abierta con check_out como check_in.
-        Si el check_out supera la hora de fin de turno, marca como 'end' (a menos que sea overtime o permiso).
-        
+        Procesa la creación/actualización de una asistencia manual completa (con check_out).
+        Ya no crea un registro de continuidad: guarda el estatus de salida en el mismo
+        registro (punctuality_status_out). Si el check_out supera la hora de fin de turno,
+        el estatus de salida se marca como 'end' (a menos que sea overtime o permiso).
+
         Args:
             record: hr.attendance record con check_in y check_out seteos.
         """
         if not record.employee_id or not record.check_in or not record.check_out:
             return
-        
+
         try:
-            # Determinar el status para la nueva asistencia
-            new_status = record.punctuality_status or 'n/a'
-            
+            # Respetar el estatus de salida asignado manualmente por RH, si existe.
+            out_status = record.punctuality_status_out or record.punctuality_status or 'n/a'
+
             # Verificar si check_out supera hora de fin de turno
             if record.employee_id.turno_id:
                 # Asegurar que check_out es timezone-aware para comparación
                 check_out_utc = self._ensure_utc_aware(record.check_out)
-                
+
                 shift_out_utc = self._get_shift_out_for_check_in(record.employee_id, check_out_utc)
-                
+
                 if shift_out_utc:
                     # Si check_out >= shift_out_time y no es overtime ni permiso, marcar como 'end'
                     if check_out_utc >= shift_out_utc:
                         # Verificar que no sea overtime ni permiso
-                        is_overtime = new_status == 'overtime'
-                        is_leave = new_status in LEAVE_STATUS_KEYS
-                        
+                        is_overtime = out_status == 'overtime'
+                        is_leave = out_status in LEAVE_STATUS_KEYS
+
                         if not is_overtime and not is_leave:
-                            new_status = 'end'
+                            out_status = 'end'
                             _logger.info(
-                                "[MANUAL CHECKOUT SYNC] Check-out supera fin de turno para %s. Status cambiado a 'end'.",
+                                "[MANUAL CHECKOUT SYNC] Check-out supera fin de turno para %s. Estatus de salida: 'end'.",
                                 record.employee_id.name
                             )
-            
-            # Crear nueva asistencia abierta con check_in = check_out del registro actual
-            new_attendance = self.with_context(skip_attendance_sync=True).create({
-                'employee_id': record.employee_id.id,
-                'check_in': record.check_out,
-                'punctuality_status': new_status,
+
+            record.with_context(skip_attendance_sync=True).write({
+                'punctuality_status_out': out_status,
             })
-            
+
             _logger.info(
-                "[MANUAL CHECKOUT SYNC] Nueva asistencia abierta creada para %s. Check-in (anterior check_out): %s. Status: %s",
-                record.employee_id.name, record.check_out, new_status
+                "[MANUAL CHECKOUT SYNC] Estatus de salida '%s' guardado en el mismo registro para %s.",
+                out_status, record.employee_id.name
             )
-            
+
         except Exception as e:
             _logger.error(
                 "[MANUAL CHECKOUT SYNC] Error procesando sincronización de checkout manual para %s: %s",

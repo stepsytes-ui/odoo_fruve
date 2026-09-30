@@ -223,7 +223,7 @@ class AttendanceReportWizard(models.TransientModel):
                 )
                 continue
 
-            wizard = self.sudo().create({
+            wizard = self.sudo().with_context(mark_late_in_weekly_report=True).create({
                 'company_id': company.id,
                 'date_from': week_start,
                 'date_to': week_end,
@@ -1222,6 +1222,20 @@ class AttendanceReportWizard(models.TransientModel):
             }
         return False
 
+    def _get_late_first_punch_cell(self, check_in_times, valid_attendances):
+        """Solo para el correo semanal automático: si la primera checada del día
+        fue 'Retardo', resalta la celda en vez del verde normal de asistencia."""
+        if not self.env.context.get('mark_late_in_weekly_report') or not valid_attendances:
+            return None
+        if valid_attendances[0].punctuality_status != 'late':
+            return None
+        return {
+            'text': 'Retardo\n' + ' - '.join(check_in_times),
+            'color': 'FFFF00',  # Amarillo (retardo)
+            'font_color': '000000',  # Negro
+            'bold': True,
+        }
+
     def _get_cell_data_for_employee_date(self, employee, target_date, company_tz, Attendance):
         """
         Retorna información completa para una celda: texto, color de fondo y color de fuente.
@@ -1326,6 +1340,10 @@ class AttendanceReportWizard(models.TransientModel):
                     
                     check_in_times.append(time_str)
                 
+                late_cell = self._get_late_first_punch_cell(check_in_times, valid_attendances)
+                if late_cell:
+                    return late_cell
+
                 return {
                     'text': ' - '.join(check_in_times),
                     'color': '00B050',  # Verde
@@ -1460,6 +1478,10 @@ class AttendanceReportWizard(models.TransientModel):
                     
                     check_in_times.append(time_str)
                 
+                late_cell = self._get_late_first_punch_cell(check_in_times, valid_attendances)
+                if late_cell:
+                    return late_cell
+
                 return {
                     'text': ' - '.join(check_in_times),
                     'color': '00B050',  # Verde
@@ -1617,6 +1639,10 @@ class AttendanceReportWizard(models.TransientModel):
                 
                 check_in_times.append(time_str)
             
+            late_cell = self._get_late_first_punch_cell(check_in_times, valid_attendances)
+            if late_cell:
+                return late_cell
+
             return {
                 'text': ' - '.join(check_in_times),
                 'color': '00B050',  # Verde

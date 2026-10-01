@@ -1332,7 +1332,9 @@ class AttendanceReportWizard(models.TransientModel):
                     local_datetime = utc_datetime.astimezone(COMPANY_TZ)
                     time_str = local_datetime.strftime("%H:%M:%S")
                     
-                    if att.punctuality_status == 'n/a' and att.check_out:
+                    # Solo mostrar checkout si es cierre real de turno/manual, no un corte intermedio
+                    # (el corte intermedio ya aparece como check_in del siguiente registro LunchS/LunchE)
+                    if att.check_out and (att.punctuality_status_out == 'end' or att.punctuality_status == 'n/a'):
                         utc_checkout = pytz.utc.localize(att.check_out)
                         local_checkout = utc_checkout.astimezone(COMPANY_TZ)
                         checkout_str = local_checkout.strftime("%H:%M:%S")
@@ -1469,8 +1471,9 @@ class AttendanceReportWizard(models.TransientModel):
                     local_datetime = utc_datetime.astimezone(COMPANY_TZ)
                     time_str = local_datetime.strftime("%H:%M:%S")
                     
-                    # Si es 'n/a', incluir también check_out si existe
-                    if att.punctuality_status == 'n/a' and att.check_out:
+                    # Solo mostrar checkout si es cierre real de turno/manual, no un corte intermedio
+                    # (el corte intermedio ya aparece como check_in del siguiente registro LunchS/LunchE)
+                    if att.check_out and (att.punctuality_status_out == 'end' or att.punctuality_status == 'n/a'):
                         utc_checkout = pytz.utc.localize(att.check_out)
                         local_checkout = utc_checkout.astimezone(COMPANY_TZ)
                         checkout_str = local_checkout.strftime("%H:%M:%S")
@@ -1630,8 +1633,9 @@ class AttendanceReportWizard(models.TransientModel):
                 local_datetime = utc_datetime.astimezone(COMPANY_TZ)
                 time_str = local_datetime.strftime("%H:%M:%S")
                 
-                # Si es 'n/a', incluir también check_out si existe
-                if att.punctuality_status == 'n/a' and att.check_out:
+                # Solo mostrar checkout si es cierre real de turno/manual, no un corte intermedio
+                # (el corte intermedio ya aparece como check_in del siguiente registro LunchS/LunchE)
+                if att.check_out and (att.punctuality_status_out == 'end' or att.punctuality_status == 'n/a'):
                     utc_checkout = pytz.utc.localize(att.check_out)
                     local_checkout = utc_checkout.astimezone(COMPANY_TZ)
                     checkout_str = local_checkout.strftime("%H:%M:%S")

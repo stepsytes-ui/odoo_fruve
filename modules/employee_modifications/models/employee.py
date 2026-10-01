@@ -923,6 +923,47 @@ class HrEmployeeExtension(models.Model):
         
         return fields.Date.today()
 
+    def get_fecha_baja(self):
+        """Obtiene la fecha de baja del empleado (None si sigue activo)"""
+        self.ensure_one()
+        if self.active and self.employee_status != 'inactive':
+            return False
+
+        bajas_historial = self.expedient_ids.mapped('history_ids').filtered(
+            lambda line: line.tipo_movimiento == 'baja' and line.fecha
+        )
+        if bajas_historial:
+            return max(bajas_historial.mapped('fecha'))
+        if self.departure_date:
+            return self.departure_date
+        if self.write_date:
+            return fields.Datetime.to_datetime(self.write_date).date()
+        return False
+
+    def get_fecha_baja_formatted(self):
+        """Obtiene la fecha de baja formateada en español"""
+        self.ensure_one()
+        fecha = self.get_fecha_baja()
+        if not fecha:
+            return 'N/A'
+
+        meses = {
+            1: 'ENERO', 2: 'FEBRERO', 3: 'MARZO', 4: 'ABRIL',
+            5: 'MAYO', 6: 'JUNIO', 7: 'JULIO', 8: 'AGOSTO',
+            9: 'SEPTIEMBRE', 10: 'OCTUBRE', 11: 'NOVIEMBRE', 12: 'DICIEMBRE'
+        }
+
+        dia = fecha.strftime('%d')
+        mes = meses[fecha.month]
+        anio = fecha.strftime('%Y')
+
+        return f"{dia}/{mes}/{anio}"
+
+    def is_carta_laboral_ex_empleado(self):
+        """Indica si la carta laboral debe redactarse en pasado (empleado ya no activo)"""
+        self.ensure_one()
+        return not self.active or self.employee_status == 'inactive'
+
     def get_salario_mensual(self):
         """Calcula el salario mensual (daily_rate * 30.1 = promedio días por mes)"""
         self.ensure_one()

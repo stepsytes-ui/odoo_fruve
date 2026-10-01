@@ -33,6 +33,7 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="employee">
                 <t t-set="company" t-value="employee.company_id"/>
+                <t t-set="es_ex_empleado" t-value="employee.is_carta_laboral_ex_empleado()"/>
                 <t t-call="web.external_layout_bold">
                         <style>
                             .carta-laboral {
@@ -74,17 +75,27 @@
                         <!-- Cuerpo del documento -->
                         <div style="text-align: justify; line-height: 1.45; margin-bottom: 36px;">
                             <p style="text-align: justify; line-height: 1.45; word-spacing: normal; text-align-last: left;">
+                                <t t-if="not es_ex_empleado">
                                 Por medio de la presente hacemos constar que el/la C. <strong><t t-esc="employee.name.upper()"/></strong> labora en esta empresa denominada <strong><t t-esc="company.get_carta_laboral_name()"/></strong> con domicilio en 
+                                </t>
+                                <t t-else="">
+                                Por medio de la presente hacemos constar que el/la C. <strong><t t-esc="employee.name.upper()"/></strong> laboró en esta empresa denominada <strong><t t-esc="company.get_carta_laboral_name()"/></strong> con domicilio en 
+                                </t>
                                 <span t-if="employee.company_id.partner_id.street">
                                     <t t-esc="employee.company_id.partner_id.street"/><t t-if="employee.company_id.partner_id.street2">, <t t-esc="employee.company_id.partner_id.street2"/></t><t t-if="employee.company_id.partner_id.city">, <t t-esc="employee.company_id.partner_id.city"/></t><t t-if="employee.company_id.partner_id.state_id">, <t t-esc="employee.company_id.partner_id.state_id.name"/></t><t t-if="employee.company_id.partner_id.zip">, C.P. <t t-esc="employee.company_id.partner_id.zip"/></t>
-                                </span> desde el día <strong><t t-esc="employee.get_fecha_ingreso_formatted()"/></strong>. Desempeñando el puesto de 
+                                </span> desde el día <strong><t t-esc="employee.get_fecha_ingreso_formatted()"/></strong>
+                                <t t-if="es_ex_empleado"> hasta el día <strong><t t-esc="employee.get_fecha_baja_formatted()"/></strong></t>.
+                                <t t-if="not es_ex_empleado">Desempeñando el puesto de </t>
+                                <t t-else="">Habiendo desempeñado el puesto de </t>
                                 <t t-if="employee.job_id">
                                     <strong><t t-esc="employee.job_id.name.upper()"/></strong>
                                 </t>
                                 <t t-else="">
                                     <strong>SIN PUESTO ASIGNADO</strong>
                                 </t> 
-                                con un horario hasta el día de hoy de <strong><t t-esc="employee.get_horario_trabajo().upper()"/></strong>, percibiendo ingresos mensuales de $ <strong><t t-esc="employee.get_salario_mensual_formatted()"/></strong> (<strong><t t-esc="employee.get_salario_mensual_letras()"/></strong>)
+                                <t t-if="not es_ex_empleado">con un horario hasta el día de hoy de <strong><t t-esc="employee.get_horario_trabajo().upper()"/></strong>, percibiendo ingresos mensuales de $ </t>
+                                <t t-else="">con un horario de <strong><t t-esc="employee.get_horario_trabajo().upper()"/></strong>, habiendo percibido ingresos mensuales de $ </t>
+                                <strong><t t-esc="employee.get_salario_mensual_formatted()"/></strong> (<strong><t t-esc="employee.get_salario_mensual_letras()"/></strong>)
                                 <t t-if="employee.rfc">, Registro Federal de Contribuyentes es: <strong><t t-esc="employee.rfc.upper()"/></strong></t>
                                 <t t-if="employee.ssnid"> con número de IMSS <strong><t t-esc="employee.ssnid"/></strong></t>
                                 <t t-if="employee.company_id.partner_id.company_registry"> el Registro Patronal de la empresa es <strong><t t-esc="employee.company_id.partner_id.company_registry"/></strong></t>

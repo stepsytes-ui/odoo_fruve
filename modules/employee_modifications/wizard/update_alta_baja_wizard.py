@@ -43,7 +43,10 @@ class UpdateAltaBajaWizard(models.TransientModel):
     def _find_employees(self, Employee, numero):
         target = self._canonical_number(numero)
         suffix = numero.lstrip('0') if numero.isdigit() else numero
-        candidates = Employee.search([('biometric_id', '=ilike', f'%{suffix}')])
+        candidates = Employee.search([
+            ('biometric_id', '=ilike', f'%{suffix}'),
+            ('company_id', '=', self.env.company.id),
+        ])
         return candidates.filtered(
             lambda e: self._canonical_number(e.biometric_id) == target
         )

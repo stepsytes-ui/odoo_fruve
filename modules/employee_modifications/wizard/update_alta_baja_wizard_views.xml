@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_update_alta_baja_wizard_form" model="ir.ui.view">
+        <field name="name">update.alta.baja.wizard.form</field>
+        <field name="model">update.alta.baja.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Actualizar fechas de altas y bajas">
+                <sheet>
+                    <field name="state" invisible="1"/>
+                    <group invisible="state != 'seleccionar'">
+                        <div class="alert alert-info" role="alert" colspan="2">
+                            <strong>Instrucciones:</strong>
+                            <ul>
+                                <li>El Excel debe tener 3 columnas: <strong>Número de empleado</strong>, <strong>Fecha de alta</strong>, <strong>Fecha de baja</strong>.</li>
+                                <li>La primera fila (encabezados) se omite.</li>
+                                <li>Solo se actualizan empleados <strong>inactivos</strong> cuyo número coincida con el Número de Empleado (biometric_id).</li>
+                                <li>La fecha de alta se guarda en "Fecha de ingreso manual" y la de baja en "Fecha de baja".</li>
+                            </ul>
+                        </div>
+                        <field name="archivo_excel" filename="nombre_archivo"/>
+                        <field name="nombre_archivo" invisible="1"/>
+                    </group>
+                    <group invisible="state != 'resultado'">
+                        <group>
+                            <field name="actualizados"/>
+                            <field name="omitidos"/>
+                        </group>
+                        <field name="resultado" nolabel="1" colspan="2"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Actualizar" name="action_actualizar" type="object"
+                            class="btn-primary" invisible="state != 'seleccionar'"/>
+                    <button string="Nueva actualización" name="action_volver" type="object"
+                            class="btn-primary" invisible="state != 'resultado'"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_update_alta_baja_wizard" model="ir.actions.act_window">
+        <field name="name">Actualizar fechas de altas y bajas</field>
+        <field name="res_model">update.alta.baja.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_hr_administrador"
+              name="Administrador"
+              parent="hr.menu_hr_root"
+              sequence="110"
+              groups="base.group_system"/>
+
+    <menuitem id="menu_update_alta_baja"
+              name="Actualizar fechas de altas y bajas"
+              parent="menu_hr_administrador"
+              action="action_update_alta_baja_wizard"
+              sequence="10"
+              groups="base.group_system"/>
+</odoo>

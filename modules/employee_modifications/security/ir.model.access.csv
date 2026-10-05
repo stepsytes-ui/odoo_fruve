@@ -69,3 +69,4 @@ access_employee_resguardo_assign_wizard_hr,employee.resguardo.assign.wizard.hr,m
 access_employee_resguardo_assign_wizard_line_hr,employee.resguardo.assign.wizard.line.hr,model_employee_resguardo_assign_wizard_line,hr.group_hr_user,1,1,1,1
 access_employee_supervisor_user,employee.supervisor.user,model_employee_supervisor,base.group_user,1,0,0,0
 access_employee_supervisor_hr,employee.supervisor.hr,model_employee_supervisor,hr.group_hr_user,1,1,1,1
+access_update_alta_baja_wizard,update_alta_baja_wizard,model_update_alta_baja_wizard,base.group_system,1,1,1,1

@@ -45,6 +45,7 @@ Fruvemex requests for employee's module
             'wizard/employee_resguardo_wizard_views.xml',
             'wizard/import_curp_rfc_wizard_views.xml',
             'wizard/export_employee_list_wizard_views.xml',
+            'wizard/update_alta_baja_wizard_views.xml',
             'wizard/employee_warning_reject_wizard_views.xml',
             'wizard/employee_vacation_advance_wizard_views.xml',
             'wizard/employee_periodo_prueba_wizard_views.xml',

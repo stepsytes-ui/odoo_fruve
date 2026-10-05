@@ -163,14 +163,15 @@ class EmployeeExpedient(models.Model):
             write_vals['tipo_registro'] = tipo_movimiento
         self.with_context(skip_fecha_ingreso_sync=True).write(write_vals)
 
-        if self.employee_id and fecha:
+        if self.employee_id and fecha and tipo_movimiento != 'baja':
             self.employee_id.with_context(skip_fecha_ingreso_sync=True).write({'fecha_ingreso_manual': fecha})
         return True
 
     def write(self, vals):
         result = super().write(vals)
-        if 'fecha_movimiento' in vals and self.employee_id and vals.get('fecha_movimiento'):
-            self.employee_id.with_context(skip_fecha_ingreso_sync=True).write({'fecha_ingreso_manual': vals.get('fecha_movimiento')})
+        if 'fecha_movimiento' in vals and vals.get('fecha_movimiento'):
+            for expedient in self.filtered(lambda e: e.employee_id and e.tipo_registro != 'baja'):
+                expedient.employee_id.with_context(skip_fecha_ingreso_sync=True).write({'fecha_ingreso_manual': vals['fecha_movimiento']})
         return result
     
     @api.depends('dias_vacaciones_saldo_inicial', 'dias_vacaciones_utilizados')

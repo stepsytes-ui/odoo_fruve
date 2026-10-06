@@ -176,7 +176,11 @@
                     <field name="category_id"/>
                     <field name="subcategory_id"/>
                     <field name="vendor_id"/>
+                    <field name="inventory_warehouse_id" string="Almacén"/>
+                    <field name="inventory_location_id" string="Locación"/>
                     <group string="Agrupar por" expand="0">
+                        <filter name="group_warehouse" string="Almacén" context="{'group_by': 'inventory_warehouse_id'}"/>
+                        <filter name="group_location" string="Locación" context="{'group_by': 'inventory_location_id'}"/>
                         <filter name="group_priority" string="Prioridad" context="{'group_by': 'priority'}"/>
                         <filter name="group_packaging_material" string="Material de empaque" context="{'group_by': 'packaging_material_id'}"/>
                         <filter name="group_category" string="Categoria" context="{'group_by': 'category_id'}"/>

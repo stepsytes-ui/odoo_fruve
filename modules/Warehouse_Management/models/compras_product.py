@@ -97,6 +97,7 @@ class ComprasProduct(models.Model):
         tracking=True,
         default=lambda self: _('Nuevo'),
     )
+    is_production = fields.Boolean(string='Producto de Producción', default=False, copy=False)
     serial = fields.Char(string='Serial')
     manufacturer = fields.Char(string='Fabricante')
     classification = fields.Char(string='Clasificacion')

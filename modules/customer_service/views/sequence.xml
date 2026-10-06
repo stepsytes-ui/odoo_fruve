@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="1">
+    <!-- Cambiar "Próximo número" en Ajustes > Técnico > Secuencias para iniciar en otro número -->
+    <record id="seq_pedidos_won" model="ir.sequence">
+      <field name="name">Work Order Number (WON)</field>
+      <field name="code">pedidos.pedidos.won</field>
+      <field name="prefix"></field>
+      <field name="padding">0</field>
+      <field name="number_next">0</field>
+      <field name="number_increment">1</field>
+    </record>
+  </data>
+</odoo>

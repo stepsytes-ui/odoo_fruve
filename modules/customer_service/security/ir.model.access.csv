@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_pedidos_pedidos,pedidos.pedidos,model_pedidos_pedidos,group_customer_service,1,1,1,1
+access_pedidos_line,pedidos.line,model_pedidos_line,group_customer_service,1,1,1,1
+access_customer_service_cliente,customer_service.cliente,model_customer_service_cliente,group_customer_service,1,1,1,1
+access_cs_compras_product,compras.product.customer_service,Warehouse_Management.model_compras_product,group_customer_service,1,1,1,0
+access_cs_compras_warehouse,compras.warehouse.customer_service,Warehouse_Management.model_compras_warehouse,group_customer_service,1,0,0,0

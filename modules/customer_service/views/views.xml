@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_pedidos_list" model="ir.ui.view">
+    <field name="name">pedidos.pedidos.list</field>
+    <field name="model">pedidos.pedidos</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="won"/>
+        <field name="cliente_id"/>
+        <field name="planta_asignada"/>
+        <field name="po"/>
+        <field name="sample"/>
+        <field name="master"/>
+        <field name="maquila"/>
+        <field name="fecha_entrega"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_pedidos_form" model="ir.ui.view">
+    <field name="name">pedidos.pedidos.form</field>
+    <field name="model">pedidos.pedidos</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <h1><field name="won"/></h1>
+          <group>
+            <group>
+              <field name="cliente_id"/>
+              <field name="planta_asignada"/>
+              <field name="po"/>
+              <field name="fecha_entrega"/>
+            </group>
+            <group>
+              <field name="sample"/>
+              <field name="master"/>
+              <field name="maquila" widget="radio"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Request Line">
+              <field name="line_ids">
+                <list editable="bottom">
+                  <field name="cantidad_tarimas"/>
+                  <field name="tipo_empaque"/>
+                  <field name="cantidad_libras"/>
+                  <field name="unidad"/>
+                  <field name="clave"/>
+                  <field name="product_id" options="{'no_open': True}"/>
+                  <field name="precio"/>
+                  <field name="divisa"/>
+                  <field name="flete_inc"/>
+                </list>
+              </field>
+            </page>
+          </notebook>
+          <group string="Notas">
+            <field name="notas" nolabel="1" placeholder="Contexto sobre la producción..."/>
+          </group>        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_pedidos_search" model="ir.ui.view">
+    <field name="name">pedidos.pedidos.search</field>
+    <field name="model">pedidos.pedidos</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="won"/>
+        <field name="cliente_id"/>
+        <field name="po"/>
+        <field name="planta_asignada"/>
+        <filter name="sample" string="Sample" domain="[('sample', '=', True)]"/>
+        <filter name="master" string="Master" domain="[('master', '=', True)]"/>
+        <filter name="maquila" string="Maquila" domain="[('maquila', '=', 'si')]"/>
+        <group string="Agrupar por">
+          <filter name="group_cliente" string="Cliente" context="{'group_by': 'cliente_id'}"/>
+          </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_pedidos" model="ir.actions.act_window">
+    <field name="name">Pedidos</field>
+    <field name="res_model">pedidos.pedidos</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <record id="view_cliente_list" model="ir.ui.view">
+    <field name="name">customer_service.cliente.list</field>
+    <field name="model">customer_service.cliente</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="code"/>
+        <field name="pedido_count"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_cliente_form" model="ir.ui.view">
+    <field name="name">customer_service.cliente.form</field>
+    <field name="model">customer_service.cliente</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <div class="oe_button_box" name="button_box">
+            <button name="action_view_pedidos" type="object" class="oe_stat_button" icon="fa-list">
+              <field name="pedido_count" widget="statinfo" string="Pedidos"/>
+            </button>
+          </div>
+          <group>
+            <field name="name"/>
+            <field name="code"/>
+            <field name="active"/>
+            <field name="notes"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_cliente" model="ir.actions.act_window">
+    <field name="name">Clientes</field>
+    <field name="res_model">customer_service.cliente</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+<menuitem id="menu_customer_service_root" name="Customer Service" groups="group_customer_service"/>
+  <menuitem id="menu_pedidos" name="Pedidos" parent="menu_customer_service_root" action="action_pedidos" sequence="10"/>
+  <menuitem id="menu_config" name="Configuración" parent="menu_customer_service_root" sequence="90"/>
+  <menuitem id="menu_cliente" name="Clientes" parent="menu_config" action="action_cliente" sequence="10"/>
+</odoo>

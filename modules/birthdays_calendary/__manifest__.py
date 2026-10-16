@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Calendario de CumpleaÃ±os",
+    'name': "Calendario de Cumpleaños",
 
-    'summary': "Calendario de cumpleaÃ±os de empleados",
+    'summary': "Calendario de cumpleaños de empleados",
 
     'description': """
-        MÃ³dulo para visualizar los cumpleaÃ±os de los empleados en un calendario.
-        Muestra las fechas de cumpleaÃ±os ajustadas al aÃ±o actual.
+        Módulo para visualizar los cumpleaños de los empleados en un calendario.
+        Muestra las fechas de cumpleaños ajustadas al año actual.
     """,
 
     'author': "NeyiSoek",

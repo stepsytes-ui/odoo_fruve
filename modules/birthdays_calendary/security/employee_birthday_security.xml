@@ -4,7 +4,7 @@
     <record id="employee_birthday_company_rule" model="ir.rule">
         <field name="name">Employee Birthday - Allowed Companies</field>
         <field name="model_id" ref="model_employee_birthday"/>
-        <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         <field name="global" eval="True"/>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>

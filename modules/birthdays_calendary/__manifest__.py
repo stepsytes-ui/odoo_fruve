@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Calendario de Cumpleaños",
+    'name': "Calendario de CumpleaÃ±os",
 
-    'summary': "Calendario de cumpleaños de empleados",
+    'summary': "Calendario de cumpleaÃ±os de empleados",
 
     'description': """
-        Módulo para visualizar los cumpleaños de los empleados en un calendario.
-        Muestra las fechas de cumpleaños ajustadas al año actual.
+        MÃ³dulo para visualizar los cumpleaÃ±os de los empleados en un calendario.
+        Muestra las fechas de cumpleaÃ±os ajustadas al aÃ±o actual.
     """,
 
     'author': "NeyiSoek",
@@ -16,7 +16,7 @@
     'version': '18.0.1.0',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'hr', 'calendar'],
+    'depends': ['base', 'hr', 'calendar', 'zkteco_realtime_connector'],
 
     # always loaded
     'data': [

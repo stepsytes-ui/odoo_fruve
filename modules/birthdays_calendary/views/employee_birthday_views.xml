@@ -118,6 +118,7 @@
               name="Cumpleaños"
               parent="calendar.mail_menu_calendar"
               action="action_employee_birthday_calendar"
+              groups="hr.group_hr_user,hr.group_hr_manager,zkteco_realtime_connector.group_hr_manager_custom"
               sequence="10"/>
 
 </odoo>

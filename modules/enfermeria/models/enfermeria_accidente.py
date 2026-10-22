@@ -56,6 +56,7 @@ class EnfermeriaAccidente(models.Model):
     area_id = fields.Many2one(
         'hr.area',
         string='Área del Incidente',
+        domain="['|', ('department_id.company_id', '=', company_id), ('name', '=', 'En trayecto')]",
     )
 
     tipo_causa = fields.Selection(

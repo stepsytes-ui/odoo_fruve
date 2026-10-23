@@ -29,7 +29,6 @@ Modulo de enfermeria para subir casos de accidentes y emergencias de los emplead
         'security/ir.model.access.csv',
         'security/enfermeria_security_rules.xml',
         'data/sequence.xml',
-        'data/area_data.xml',
         'views/accidentes_views.xml',
         'views/incidentes_views.xml',
         'views/menu.xml',

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
+    <data>
         <record id="department_en_trayecto" model="hr.department">
             <field name="name">En trayecto</field>
             <field name="company_id" eval="False"/>

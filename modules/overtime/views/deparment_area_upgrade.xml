@@ -5,7 +5,8 @@
             <field name="model">hr.department</field>
             <field name="inherit_id" ref="hr.view_department_form"/>
             <field name="arch" type="xml">
-                <xpath expr="//sheet" position="after">
+                <xpath expr="//sheet/group" position="after">
+                    <div class="w-100 d-block" style="clear: both;">
                     <notebook>
                         <page string="Áreas y Empleados" name="department_areas_employees">
                             <field name="area_ids">
@@ -31,6 +32,7 @@
                             </field>
                         </page>
                     </notebook>
+                    </div>
                 </xpath>
             </field>
         </record>

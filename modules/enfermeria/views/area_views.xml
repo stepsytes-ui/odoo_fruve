@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_area_form_enfermeria" model="ir.ui.view">
+        <field name="name">hr.area.form.enfermeria</field>
+        <field name="model">hr.area</field>
+        <field name="arch" type="xml">
+            <form string="Área">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="department_id"
+                               domain="[('company_id', 'in', allowed_company_ids)]"
+                               options="{'no_create': True}"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

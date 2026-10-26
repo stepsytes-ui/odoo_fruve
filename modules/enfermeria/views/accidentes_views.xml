@@ -23,7 +23,13 @@
                                 <field name="supervisor_id" options="{'no_create': True, 'no_create_edit': True}"/>
                             </group>
                             <group string="Información del Accidente">
-                                <field name="area_id" string="Área del Accidente" options="{'no_create': True}"/>
+                                <field name="area_id" string="Área del Accidente"
+                                       options="{'no_create': True}"
+                                       groups="!enfermeria.group_enfermeria_user,!enfermeria.group_enfermeria_manager"/>
+                                <field name="area_id" string="Área del Accidente"
+                                       options="{'no_quick_create': True}"
+                                       context="{'form_view_ref': 'enfermeria.view_hr_area_form_enfermeria'}"
+                                       groups="enfermeria.group_enfermeria_user,enfermeria.group_enfermeria_manager"/>
                                 <field name="tipo_causa"/>
                                 <field name="dia_accidente" string="Día del Accidente"/>
                                 <field name="descripcion_accidente" string="Descripción del Accidente"/>

@@ -6,6 +6,8 @@ class HrArea(models.Model):
 
     name = fields.Char(string='Nombre del Área', required=True)
     department_id = fields.Many2one('hr.department', string='Departamento', required=True)
+    company_id = fields.Many2one(
+        'res.company', string='Empresa', related='department_id.company_id', store=True, index=True)
     employee_ids = fields.One2many('hr.employee', 'area_id', string='Empleados')
     employee_count = fields.Integer(string='Número de Empleados', compute='_compute_employee_count')
 

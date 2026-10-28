@@ -317,20 +317,18 @@ class EmployeeExpedient(models.Model):
         expedientes_actualizados = 0
         
         for expediente in expedientes:
-            # Determinar desde qué fecha contar (última renovación o fecha de movimiento)
-            fecha_referencia = expediente.fecha_ultima_renovacion or expediente.fecha_movimiento
-            
-            if not fecha_referencia:
+            if not expediente.fecha_movimiento:
                 continue
-            
-            # Calcular tiempo transcurrido
-            diff = relativedelta(hoy, fecha_referencia)
-            
-            # Si ha cumplido al menos 1 año completo desde la última renovación
-            if diff.years >= 1:
-                # Calcular nueva antigüedad total desde la fecha de movimiento original
-                diff_total = relativedelta(hoy, expediente.fecha_movimiento)
-                years_total = diff_total.years
+
+            years_total = relativedelta(hoy, expediente.fecha_movimiento).years
+            if years_total < 1:
+                continue
+
+            # Último aniversario cumplido; se renueva si aún no se ha renovado desde entonces.
+            # (Comparar contra la fecha real de renovación causaba retrasos de meses.)
+            ultimo_aniversario = expediente.fecha_movimiento + relativedelta(years=years_total)
+            ultima_renovacion = expediente.fecha_ultima_renovacion
+            if not ultima_renovacion or ultima_renovacion < ultimo_aniversario:
                 
                 # Buscar días de vacaciones según la tabla
                 dias_vacaciones_nuevos = next(
@@ -346,7 +344,7 @@ class EmployeeExpedient(models.Model):
                 expediente.write({
                     'dias_vacaciones_utilizados': dias_a_descontar_en_renovacion,
                     'dias_vacaciones_adelantados_pendientes': -saldo_adelantado_restante,
-                    'fecha_ultima_renovacion': hoy,
+                    'fecha_ultima_renovacion': ultimo_aniversario,
                 })
 
                 expediente._compute_vacaciones_ley()

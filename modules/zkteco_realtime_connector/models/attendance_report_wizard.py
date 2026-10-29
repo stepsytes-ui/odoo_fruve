@@ -631,7 +631,14 @@ class AttendanceReportWizard(models.TransientModel):
                 cell = row['cells'].get(date_obj, {})
                 style = cell_style(cell.get('color'), cell.get('font_color'), cell.get('bold', False))
                 text = esc(cell.get('text', '') or '')
-                if cell.get('vacation_id'):
+                if cell.get('record_link'):
+                    link = cell['record_link']
+                    record_url = self._build_record_form_url(link['model'], link['id'], link.get('action'))
+                    text = (
+                        f'<a class="neto-link" style="color:inherit" href="{esc(record_url)}" '
+                        f'target="_blank">{text}</a>'
+                    )
+                elif cell.get('vacation_id'):
                     vacation_url = self._build_record_form_url(
                         'hr.vacation', cell['vacation_id'],
                         'employee_modifications.action_hr_vacation',
@@ -1190,6 +1197,18 @@ class AttendanceReportWizard(models.TransientModel):
         }
         return bool(getattr(shift, day_map[target_date.weekday()], False))
 
+    def _get_incapacity_link(self, leave):
+        """Datos del registro a abrir al hacer click en una celda de Incapacidad."""
+        if not leave:
+            return {}
+        if 'incapacity_id' in leave._fields and leave.incapacity_id:
+            return {'record_link': {
+                'model': 'hr.incapacity',
+                'id': leave.incapacity_id.id,
+                'action': 'employee_modifications.action_hr_incapacity',
+            }}
+        return {'record_link': {'model': 'hr.leave', 'id': leave.id, 'action': None}}
+
     def _get_leave_vacation_link(self, leave):
         """Si la ausencia fue generada por un hr.vacation, devuelve su id para enlazarlo."""
         if 'hr.vacation' not in self.env:
@@ -1412,7 +1431,8 @@ class AttendanceReportWizard(models.TransientModel):
                     'text': 'Incapacidad',
                     'color': 'FFC000',  
                     'font_color': 'FFFFFF',  
-                    'bold': True
+                    'bold': True,
+                    **self._get_incapacity_link(sickness_leave),
                 }
 
             # Para Seguridad, respetar faltas capturadas manualmente por RH.
@@ -1566,7 +1586,8 @@ class AttendanceReportWizard(models.TransientModel):
                 'text': 'Incapacidad',
                 'color': 'FFC000',  # Amarillo/Oro
                 'font_color': 'FFFFFF',  # Blanco
-                'bold': True
+                'bold': True,
+                **self._get_incapacity_link(sickness_leave),
             }
 
         # 3. Verificar Descanso en hr.attendance (si existe, marcar descanso)

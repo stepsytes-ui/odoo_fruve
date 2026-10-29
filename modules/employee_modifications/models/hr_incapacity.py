@@ -50,6 +50,14 @@ class HrIncapacity(models.Model):
         readonly=True
     )
     
+    supervisor_employee_id = fields.Many2one(
+        'hr.employee',
+        string='Supervisor',
+        tracking=True,
+        domain=lambda self: self._domain_supervisor_employee(),
+        help='Supervisor asignado desde el catalogo de Supervisores por compania.'
+    )
+
     supervisor_id = fields.Many2one(
         'res.users',
         string='Supervisor',
@@ -91,6 +99,12 @@ class HrIncapacity(models.Model):
         ('maternidad', 'Maternidad')
     ], string='Motivo', required=True, tracking=True)
     
+    incapacity_folio = fields.Char(
+        string='Folio',
+        tracking=True,
+        help='Folio de la incapacidad capturado por el usuario'
+    )
+
     comments = fields.Text(
         string='Comentarios',
         tracking=True
@@ -121,6 +135,13 @@ class HrIncapacity(models.Model):
         default=True
     )
 
+    def _domain_supervisor_employee(self):
+        supervisors = self.env['employee.supervisor'].search([
+            ('company_id', '=', self.env.company.id),
+            ('active', '=', True),
+        ])
+        return [('id', 'in', supervisors.mapped('employee_id').ids)]
+
     @api.model_create_multi
     def create(self, vals_list):
         """Generar el folio automáticamente al crear una incapacidad"""
@@ -128,6 +149,15 @@ class HrIncapacity(models.Model):
             if vals.get('name', _('Nueva')) == _('Nueva'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('hr.incapacity') or _('Nueva')
         return super(HrIncapacity, self).create(vals_list)
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'incapacity_folio' in vals:
+            for incapacity in self:
+                leave = incapacity.leave_id.sudo()
+                if leave and (leave.incapacity_folio or False) != (incapacity.incapacity_folio or False):
+                    leave.write({'incapacity_folio': incapacity.incapacity_folio})
+        return res
 
     @api.constrains('date_from', 'date_to')
     def _check_dates_and_days(self):

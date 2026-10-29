@@ -126,6 +126,12 @@ class HrLeave(models.Model):
         ('enfermedad_general', 'Enfermedad General'),
         ('maternidad', 'Maternidad')
     ], string='Motivo Incapacidad', tracking=True)
+
+    incapacity_folio = fields.Char(
+        string='Folio',
+        tracking=True,
+        help='Folio de la incapacidad'
+    )
     
     is_incapacity = fields.Boolean(
         string='Es Incapacidad',
@@ -557,12 +563,15 @@ class HrLeave(models.Model):
             'date_to': leave.request_date_to or fields.Date.to_date(leave.date_to),
             'total_days': leave.total_days_incapacity,
             'incapacity_type': leave.incapacity_type,
+            'incapacity_folio': leave.incapacity_folio or False,
             'comments': leave.name or '',
             'leave_id': leave.id,
             'state': 'validate' if leave.state in ['validate', 'validate1'] else 'draft',
         }
         
         # Agregar supervisor si está disponible
+        if leave.supervisor_employee_id:
+            incapacity_vals['supervisor_employee_id'] = leave.supervisor_employee_id.id
         if leave.supervisor_id:
             incapacity_vals['supervisor_id'] = leave.supervisor_id.id
         
@@ -577,6 +586,7 @@ class HrLeave(models.Model):
                 'date_from': leave.request_date_from or fields.Date.to_date(leave.date_from),
                 'date_to': leave.request_date_to or fields.Date.to_date(leave.date_to),
                 'total_days': leave.total_days_incapacity or 0,
+                'incapacity_folio': leave.incapacity_folio or False,
                 'comments': leave.name or '',
             }
             
@@ -585,6 +595,8 @@ class HrLeave(models.Model):
                 update_vals['incapacity_type'] = leave.incapacity_type
             
             # Actualizar supervisor si está disponible
+            if leave.supervisor_employee_id:
+                update_vals['supervisor_employee_id'] = leave.supervisor_employee_id.id
             if leave.supervisor_id:
                 update_vals['supervisor_id'] = leave.supervisor_id.id
             

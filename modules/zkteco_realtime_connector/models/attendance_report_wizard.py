@@ -1190,6 +1190,13 @@ class AttendanceReportWizard(models.TransientModel):
         }
         return bool(getattr(shift, day_map[target_date.weekday()], False))
 
+    def _get_leave_vacation_link(self, leave):
+        """Si la ausencia fue generada por un hr.vacation, devuelve su id para enlazarlo."""
+        if 'hr.vacation' not in self.env:
+            return {}
+        vacation = self.env['hr.vacation'].sudo().search([('leave_id', '=', leave.id)], limit=1)
+        return {'vacation_id': vacation.id} if vacation else {}
+
     def _get_manual_vacation_cell_data(self, employee, target_date):
         if not self._is_workday_for_vacation(employee, target_date):
             return False
@@ -1470,7 +1477,8 @@ class AttendanceReportWizard(models.TransientModel):
                     'text': leave_name,
                     'color': 'FFC7CE',  # Rosa claro
                     'font_color': 'FF6600',  # Naranja oscuro
-                    'bold': True
+                    'bold': True,
+                    **self._get_leave_vacation_link(approved_leave),
                 }
 
             manual_vacation_cell = self._get_manual_vacation_cell_data(employee, target_date)
@@ -1609,7 +1617,8 @@ class AttendanceReportWizard(models.TransientModel):
                 'text': leave_name,
                 'color': 'FFC7CE',  # Rosa claro
                 'font_color': 'FF6600',  # Naranja oscuro
-                'bold': True
+                'bold': True,
+                **self._get_leave_vacation_link(approved_leave),
             }
 
         manual_vacation_cell = self._get_manual_vacation_cell_data(employee, target_date)

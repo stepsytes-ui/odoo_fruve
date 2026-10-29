@@ -175,6 +175,12 @@ class AttendanceReportWizard(models.TransientModel):
         action_part = f"&action={action.id}" if action else ""
         return f"{base_url}/web#id={report_id}&model=attendance.late.weekly.report&view_type=form{action_part}"
 
+    def _build_record_form_url(self, model, record_id, action_xmlid=None):
+        base_url = self.env.company.get_attendance_reports_base_url()
+        action = self.env.ref(action_xmlid, raise_if_not_found=False) if action_xmlid else False
+        action_part = f"&action={action.id}" if action else ""
+        return f"{base_url}/web#id={record_id}&model={model}&view_type=form{action_part}"
+
     @api.model
     def _cron_send_weekly_attendance_email(self):
         """Envia correo semanal (viernes) con Excel de asistencia por empresa."""
@@ -602,7 +608,11 @@ class AttendanceReportWizard(models.TransientModel):
         for row in rows:
             parts.append('<tr>\n')
             parts.append(f'  <td class="s0">{esc(row["biometric_id"])}</td>\n')
-            parts.append(f'  <td class="s1">{esc(row["name"])}</td>\n')
+            employee_url = self._build_record_form_url('hr.employee', row['employee_id'])
+            parts.append(
+                f'  <td class="s1"><a class="neto-link" href="{esc(employee_url)}" target="_blank">'
+                f'{esc(row["name"])}</a></td>\n'
+            )
             parts.append(f'  <td class="s2">{esc(row["turno"])}</td>\n')
             if show_neto_total:
                 value = row.get('payable_days')
@@ -621,6 +631,15 @@ class AttendanceReportWizard(models.TransientModel):
                 cell = row['cells'].get(date_obj, {})
                 style = cell_style(cell.get('color'), cell.get('font_color'), cell.get('bold', False))
                 text = esc(cell.get('text', '') or '')
+                if cell.get('vacation_id'):
+                    vacation_url = self._build_record_form_url(
+                        'hr.vacation', cell['vacation_id'],
+                        'employee_modifications.action_hr_vacation',
+                    )
+                    text = (
+                        f'<a class="neto-link" style="color:inherit" href="{esc(vacation_url)}" '
+                        f'target="_blank">{text}</a>'
+                    )
                 parts.append(f'  <td class="day-cell" style="{style}">{text}</td>\n')
 
             if show_neto_total:
@@ -1213,12 +1232,14 @@ class AttendanceReportWizard(models.TransientModel):
                 ('date_to', '>=', target_date_str),
             ], limit=1)
 
-        if manual_day_vacation or manual_range_vacation:
+        vacation = manual_day_vacation or manual_range_vacation
+        if vacation:
             return {
                 'text': 'Vacaciones',
                 'color': 'FFC7CE',
                 'font_color': 'FF6600',
                 'bold': True,
+                'vacation_id': vacation.id,
             }
         return False
 

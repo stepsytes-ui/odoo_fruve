@@ -50,19 +50,12 @@ class HrIncapacity(models.Model):
         readonly=True
     )
     
-    supervisor_employee_id = fields.Many2one(
+    supervisor_id = fields.Many2one(
         'hr.employee',
         string='Supervisor',
         tracking=True,
         domain=lambda self: self._domain_supervisor_employee(),
         help='Supervisor asignado desde el catalogo de Supervisores por compania.'
-    )
-
-    supervisor_id = fields.Many2one(
-        'res.users',
-        string='Supervisor',
-        tracking=True,
-        help='Supervisor asignado (del grupo Supervisor Tiempo Extra)'
     )
     
     company_id = fields.Many2one(
@@ -134,6 +127,37 @@ class HrIncapacity(models.Model):
         string='Activo',
         default=True
     )
+
+    def _auto_init(self):
+        # supervisor_id pasó de res.users a hr.employee: convertir datos antes de recrear la FK.
+        cr = self.env.cr
+        cr.execute("""
+            SELECT 1 FROM pg_constraint c
+              JOIN pg_class t ON t.oid = c.confrelid
+             WHERE c.conrelid = to_regclass('hr_incapacity')
+               AND c.conname = 'hr_incapacity_supervisor_id_fkey'
+               AND t.relname = 'res_users'
+        """)
+        if cr.fetchone():
+            cr.execute('ALTER TABLE hr_incapacity DROP CONSTRAINT hr_incapacity_supervisor_id_fkey')
+            cr.execute("""
+                UPDATE hr_incapacity i
+                   SET supervisor_id = (
+                        SELECT he.id FROM hr_employee he
+                         WHERE he.user_id = i.supervisor_id AND he.company_id = i.company_id
+                         LIMIT 1)
+                 WHERE i.supervisor_id IS NOT NULL
+            """)
+            cr.execute("""
+                SELECT 1 FROM information_schema.columns
+                 WHERE table_name = 'hr_incapacity' AND column_name = 'supervisor_employee_id'
+            """)
+            if cr.fetchone():
+                cr.execute("""
+                    UPDATE hr_incapacity SET supervisor_id = supervisor_employee_id
+                     WHERE supervisor_employee_id IS NOT NULL
+                """)
+        return super()._auto_init()
 
     def _domain_supervisor_employee(self):
         supervisors = self.env['employee.supervisor'].search([

@@ -571,9 +571,7 @@ class HrLeave(models.Model):
         
         # Agregar supervisor si está disponible
         if leave.supervisor_employee_id:
-            incapacity_vals['supervisor_employee_id'] = leave.supervisor_employee_id.id
-        if leave.supervisor_id:
-            incapacity_vals['supervisor_id'] = leave.supervisor_id.id
+            incapacity_vals['supervisor_id'] = leave.supervisor_employee_id.id
         
         incapacity = self.env['hr.incapacity'].create(incapacity_vals)
         leave.incapacity_id = incapacity.id
@@ -596,9 +594,7 @@ class HrLeave(models.Model):
             
             # Actualizar supervisor si está disponible
             if leave.supervisor_employee_id:
-                update_vals['supervisor_employee_id'] = leave.supervisor_employee_id.id
-            if leave.supervisor_id:
-                update_vals['supervisor_id'] = leave.supervisor_id.id
+                update_vals['supervisor_id'] = leave.supervisor_employee_id.id
             
             # Actualizar estado según el estado de la ausencia
             if leave.state in ['validate', 'validate1']:

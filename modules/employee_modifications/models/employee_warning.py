@@ -80,13 +80,12 @@ class EmployeeWarning(models.Model):
         readonly=True
     )
 
-    # Supervisor (usuarios del grupo supervisor de tiempo extra)
+    # Supervisor configurado en el modelo de supervisores
     supervisor_id = fields.Many2one(
-        'res.users',
+        'employee.supervisor',
         string='Supervisor',
-        required=True,
         tracking=True,
-        domain=lambda self: [('groups_id', 'in', [self.env.ref('overtime.group_overtime_supervisor').id])]
+        domain="[('active', '=', True)]",
     )
 
     # Causa de la amonestación
@@ -237,7 +236,7 @@ class EmployeeWarning(models.Model):
                 self.employee_name,
                 self.biometric_id or 'N/A',
                 self.department_id.name if self.department_id else 'N/A',
-                self.supervisor_id.name,
+                self.supervisor_id.employee_id.name or 'N/A',
                 self.warning_date.strftime('%d/%m/%Y') if self.warning_date else 'N/A',
                 self.causa[:100] + '...' if len(self.causa) > 100 else self.causa,
                 warning_url

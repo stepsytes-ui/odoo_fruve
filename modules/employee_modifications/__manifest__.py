@@ -11,7 +11,7 @@ Fruvemex requests for employee's module
     'author': "NeyiSoek",
     'website': "https://fruvemex.com/es/",
     'category': 'Human Resources',
-    'version': '18.0.0.2',
+    'version': '18.0.0.3',
 
     'depends': ['base','hr','hr_attendance', 'hr_holidays_attendance', 'web','zkteco_realtime_connector','overtime','security_view_time_off'],
 
@@ -61,4 +61,3 @@ Fruvemex requests for employee's module
     'license': 'LGPL-3',
 
 }
-

@@ -119,7 +119,7 @@ class EnfermeriaAccidente(models.Model):
         string='Registrado por',
         domain=lambda self: [
             ('groups_id', 'in', [
-                self.env.ref('maintenance_fruvemex.group_maintenance_seguridad_higiene').id,
+                self.env.ref('enfermeria.group_enfermeria_manager').id,
             ])
         ],
         ondelete='restrict',

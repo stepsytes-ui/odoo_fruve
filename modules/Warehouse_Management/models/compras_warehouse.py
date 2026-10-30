@@ -54,7 +54,7 @@ class ComprasWarehouse(models.Model):
 
     def action_open_inventory(self):
         self.ensure_one()
-        action = self.env.ref('Warehouse_Management.compras_warehouse_inventory_action').read()[0]
+        action = self.env.ref('Warehouse_Management.compras_warehouse_inventory_action').sudo().read()[0]
         action['domain'] = [('warehouse_id', '=', self.id)]
         action['context'] = dict(self.env.context, default_warehouse_id=self.id)
         return action

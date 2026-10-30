@@ -87,7 +87,7 @@ class ComprasProductArchiveWizard(models.TransientModel):
                 move.action_confirm()
 
         product.write({'active': False})
-        action = self.env.ref('Warehouse_Management.compras_product_action').read()[0]
+        action = self.env.ref('Warehouse_Management.compras_product_action').sudo().read()[0]
         action.update({
             'view_mode': 'list',
             'views': [(self.env.ref('Warehouse_Management.compras_product_view_list').id, 'list')],

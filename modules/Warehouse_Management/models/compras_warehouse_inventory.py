@@ -19,7 +19,7 @@ class ComprasWarehouseInventory(models.Model):
 
     def action_open_product_location_moves(self):
         self.ensure_one()
-        action = self.env.ref('Warehouse_Management.compras_inventory_move_action').read()[0]
+        action = self.env.ref('Warehouse_Management.compras_inventory_move_action').sudo().read()[0]
         domain = [
             ('product_id', '=', self.product_id.id),
             '|',

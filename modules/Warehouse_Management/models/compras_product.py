@@ -507,7 +507,7 @@ class ComprasProduct(models.Model):
             'new_qty': previous_qty + 1.0,
         })
 
-        action = self.env.ref('Warehouse_Management.compras_inventory_move_action').read()[0]
+        action = self.env.ref('Warehouse_Management.compras_inventory_move_action').sudo().read()[0]
         action.update({
             'res_id': move.id,
             'views': [(self.env.ref('Warehouse_Management.compras_inventory_move_view_form').id, 'form')],

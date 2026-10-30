@@ -44,6 +44,8 @@ Modulo para integración de ZKTeco en odoo
             'web.assets_backend': [
                 'zkteco_realtime_connector/static/src/css/attendance_dashboard.css',
                 'zkteco_realtime_connector/static/src/css/late_weekly_breakdown.css',
+                'zkteco_realtime_connector/static/src/optional/list_highlight/row_highlight.css',
+                'zkteco_realtime_connector/static/src/optional/list_highlight/row_highlight.js',
                 'zkteco_realtime_connector/static/src/components/kanban_dashboard/attendance_kanban_dashboard.js',
                 'zkteco_realtime_connector/static/src/components/kanban_dashboard/attendance_kanban_dashboard.xml',
                 'zkteco_realtime_connector/static/src/fields/late_weekly_breakdown/late_weekly_breakdown_field.xml',

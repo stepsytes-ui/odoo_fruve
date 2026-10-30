@@ -564,6 +564,14 @@ class AttendanceReportWizard(models.TransientModel):
     }}
     .col-menu button:hover {{ background: #eef3ff; }}
     .col-menu .sep {{ border-top: 1px solid #e2e7f0; margin: 6px 0; }}
+    .col-menu .menu-title {{ padding: 4px 10px; font-size: 11px; color: #777; }}
+    .col-menu .dot {{ display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.3); margin-right: 8px; vertical-align: middle; }}
+    tbody tr.hl-yellow td {{ background-color: #fff59d !important; color: #000 !important; }}
+    tbody tr.hl-blue td {{ background-color: #90caf9 !important; color: #000 !important; }}
+    tbody tr.hl-green td {{ background-color: #a5d6a7 !important; color: #000 !important; }}
+    tbody tr.hl-orange td {{ background-color: #ffcc80 !important; color: #000 !important; }}
+    tbody tr.hl-red td {{ background-color: #ef9a9a !important; color: #000 !important; }}
+    tbody tr.hl-pink td {{ background-color: #f8bbd0 !important; color: #000 !important; }}
 </style>
 </head>
 <body>
@@ -718,6 +726,65 @@ class AttendanceReportWizard(models.TransientModel):
         menu.innerHTML = actions.join('');
     }}
 
+    const HL_COLORS = [
+        ['yellow', 'Amarillo', '#fff59d'],
+        ['blue', 'Azul', '#90caf9'],
+        ['green', 'Verde', '#a5d6a7'],
+        ['orange', 'Naranja', '#ffcc80'],
+        ['red', 'Rojo', '#ef9a9a'],
+        ['pink', 'Rosa', '#f8bbd0'],
+    ];
+    const HL_STORAGE_KEY = 'attendance_preview_row_highlights';
+    let contextRow = null;
+
+    // La fila se identifica por el No. Emp. de la primera celda.
+    function getRowKey(row) {{
+        return row && row.children[0] ? row.children[0].textContent.trim() : '';
+    }}
+
+    function loadHighlights() {{
+        try {{
+            return JSON.parse(window.localStorage.getItem(HL_STORAGE_KEY)) || {{}};
+        }} catch (err) {{
+            return {{}};
+        }}
+    }}
+
+    function applyRowColor(row, color) {{
+        HL_COLORS.forEach(([key]) => row.classList.remove('hl-' + key));
+        if (color) row.classList.add('hl-' + color);
+    }}
+
+    function setRowColor(row, color) {{
+        const key = getRowKey(row);
+        if (!key) return;
+        const map = loadHighlights();
+        if (color) map[key] = color; else delete map[key];
+        try {{
+            window.localStorage.setItem(HL_STORAGE_KEY, JSON.stringify(map));
+        }} catch (err) {{}}
+        applyRowColor(row, color);
+    }}
+
+    function restoreHighlights() {{
+        const map = loadHighlights();
+        getBodyRows().forEach((row) => applyRowColor(row, map[getRowKey(row)]));
+    }}
+
+    function renderRowMenu() {{
+        const actions = ['<div class="menu-title">Subrayar fila</div>'];
+        HL_COLORS.forEach(([key, label, hex]) => {{
+            actions.push(
+                `<button type="button" data-action="highlight" data-color="${{key}}"><span class="dot" style="background:${{hex}}"></span>${{label}}</button>`
+            );
+        }});
+        if (contextRow && HL_COLORS.some(([key]) => contextRow.classList.contains('hl-' + key))) {{
+            actions.push('<div class="sep"></div>');
+            actions.push('<button type="button" data-action="highlight" data-color="">Quitar subrayado</button>');
+        }}
+        menu.innerHTML = actions.join('');
+    }}
+
     function setColumnHidden(index, hidden) {{
         if (!table || index < 0) return;
         const rows = table.querySelectorAll('tr');
@@ -857,6 +924,7 @@ class AttendanceReportWizard(models.TransientModel):
 
     if (table) {{
         updateStickyOffsets();
+        restoreHighlights();
 
         table.querySelectorAll('tbody td').forEach((td) => {{
             td.tabIndex = -1;
@@ -871,11 +939,18 @@ class AttendanceReportWizard(models.TransientModel):
 
         table.addEventListener('contextmenu', (ev) => {{
             const th = ev.target.closest('thead th[data-hideable="1"]');
-            if (!th || !table.contains(th)) return;
+            const bodyCell = ev.target.closest('tbody td');
+            if (th && table.contains(th)) {{
+                contextColumnIndex = th.cellIndex;
+                renderMenu();
+            }} else if (bodyCell && table.contains(bodyCell)) {{
+                contextRow = bodyCell.parentElement;
+                renderRowMenu();
+            }} else {{
+                return;
+            }}
             ev.preventDefault();
 
-            contextColumnIndex = th.cellIndex;
-            renderMenu();
             menu.style.left = `${{ev.clientX}}px`;
             menu.style.top = `${{ev.clientY}}px`;
             menu.style.display = 'block';
@@ -919,6 +994,9 @@ class AttendanceReportWizard(models.TransientModel):
         if (!button) return;
 
         const action = button.dataset.action;
+        if (action === 'highlight' && contextRow) {{
+            setRowColor(contextRow, button.dataset.color || '');
+        }}
         if (action === 'hide-current') {{
             setColumnHidden(contextColumnIndex, true);
         }}

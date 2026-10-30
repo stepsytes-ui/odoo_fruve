@@ -1,0 +1,37 @@
+.o_list_renderer .o_data_row.fruve_hl_yellow > td { background-color: #fff59d !important; }
+.o_list_renderer .o_data_row.fruve_hl_blue > td { background-color: #90caf9 !important; }
+.o_list_renderer .o_data_row.fruve_hl_green > td { background-color: #a5d6a7 !important; }
+.o_list_renderer .o_data_row.fruve_hl_orange > td { background-color: #ffcc80 !important; }
+.o_list_renderer .o_data_row.fruve_hl_red > td { background-color: #ef9a9a !important; }
+.o_list_renderer .o_data_row.fruve_hl_pink > td { background-color: #f8bbd0 !important; }
+
+.fruve_hl_menu {
+    position: fixed;
+    z-index: 100000;
+    min-width: 190px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .25);
+    padding: 4px 0;
+    font-size: 14px;
+}
+.fruve_hl_menu .fruve_hl_title {
+    padding: 4px 12px;
+    font-size: 12px;
+    color: #777;
+}
+.fruve_hl_menu .fruve_hl_item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    cursor: pointer;
+}
+.fruve_hl_menu .fruve_hl_item:hover { background: #f0f0f0; }
+.fruve_hl_menu .fruve_hl_dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, .3);
+}

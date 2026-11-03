@@ -2,6 +2,18 @@ from odoo import SUPERUSER_ID, api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
 
+class ComprasEquipmentNumber(models.Model):
+    _name = 'compras.equipment.number'
+    _description = '# de equipo'
+    _order = 'name'
+
+    name = fields.Char(string='# de equipo', required=True)
+
+    _sql_constraints = [
+        ('compras_equipment_number_name_unique', 'unique(name)', 'El # de equipo ya existe.'),
+    ]
+
+
 class ComprasInventoryMove(models.Model):
     _name = 'compras.inventory.move'
     _description = 'Bitácora de Movimientos de Almacén'
@@ -99,6 +111,7 @@ class ComprasInventoryMove(models.Model):
         string='# Orden de trabajo',
         domain="[('project_id', '=', project_id), ('company_id', '=', company_id)]",
     )
+    equipment_id = fields.Many2one('compras.equipment.number', string='# de equipo')
     location_id = fields.Many2one(
         'compras.warehouse.location',
         string='Locación',

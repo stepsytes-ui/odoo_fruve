@@ -1,4 +1,5 @@
 import json
+from datetime import timedelta
 
 from odoo import fields, models, tools
 from odoo.exceptions import ValidationError
@@ -40,6 +41,171 @@ class AttendanceLateWeeklyReport(models.Model):
     has_manual_override = fields.Boolean(string='Ajuste Manual', readonly=True)
 
     is_future = fields.Boolean(string='Semana Futura', readonly=True)
+
+    def _count_permission_days_in_week(self):
+        """
+        Cuenta los días con permisos (vacaciones e incapacidades) en la semana.
+        Retorna un diccionario con employee_id como clave y días con permisos como valor.
+        """
+        result = {}
+        Leave = self.env['hr.leave'].sudo()
+        Vacation = self.env['hr.vacation'].sudo()
+        Attendance = self.env['hr.attendance']
+        
+        incapacidad_statuses = ['leave_sickness', 'leave_sickness_paid', 'Incapacidad', 'incapacidad']
+        
+        for record in self:
+            if not record.employee_id or not record.week_start_date or not record.week_end_date:
+                result[record.employee_id.id] = 0
+                continue
+            
+            permission_day_count = 0
+            current_date = record.week_start_date
+            
+            while current_date <= record.week_end_date:
+                target_date_str = current_date.strftime('%Y-%m-%d')
+                
+                # Verificar incapacidad en hr.leave
+                sickness_leave = Leave.search([
+                    ('employee_id', '=', record.employee_id.id),
+                    ('state', '=', 'validate'),
+                    ('holiday_status_id.name', '=', 'Incapacidad'),
+                    ('date_from', '<=', f'{target_date_str} 23:59:59'),
+                    ('date_to', '>=', f'{target_date_str} 00:00:00')
+                ], limit=1)
+                
+                if sickness_leave:
+                    permission_day_count += 1
+                    current_date += timedelta(days=1)
+                    continue
+                
+                # Verificar incapacidad en hr.attendance
+                sickness_attendance = Attendance.search([
+                    ('employee_id', '=', record.employee_id.id),
+                    ('check_in', '>=', f'{target_date_str} 00:00:00'),
+                    ('check_in', '<=', f'{target_date_str} 23:59:59'),
+                    ('punctuality_status', 'in', incapacidad_statuses)
+                ], limit=1)
+                
+                if sickness_attendance:
+                    permission_day_count += 1
+                    current_date += timedelta(days=1)
+                    continue
+                
+                # Verificar vacaciones en hr.leave
+                vacation_leave = Leave.search([
+                    ('employee_id', '=', record.employee_id.id),
+                    ('state', '=', 'validate'),
+                    ('holiday_status_id.name', '!=', 'Incapacidad'),
+                    ('holiday_status_id.name', '!=', 'Descanso'),
+                    ('date_from', '<=', f'{target_date_str} 23:59:59'),
+                    ('date_to', '>=', f'{target_date_str} 00:00:00')
+                ], limit=1)
+                
+                if vacation_leave:
+                    permission_day_count += 1
+                    current_date += timedelta(days=1)
+                    continue
+                
+                # Verificar vacaciones manuales en hr.vacation
+                try:
+                    base_domain = [
+                        ('employee_id', '=', record.employee_id.id),
+                        ('state', '=', 'validate'),
+                        ('leave_id', '=', False),
+                    ]
+                    
+                    manual_day_vacation = Vacation.search(base_domain + [
+                        ('request_mode', '=', 'days'),
+                        ('requested_day_ids.requested_date', '=', target_date_str),
+                    ], limit=1)
+                    
+                    if manual_day_vacation:
+                        permission_day_count += 1
+                        current_date += timedelta(days=1)
+                        continue
+                    
+                    manual_range_vacation = Vacation.search(base_domain + [
+                        ('request_mode', '!=', 'days'),
+                        ('date_from', '<=', target_date_str),
+                        ('date_to', '>=', target_date_str),
+                    ], limit=1)
+                    
+                    if manual_range_vacation:
+                        permission_day_count += 1
+                        current_date += timedelta(days=1)
+                        continue
+                except Exception:
+                    # Compatibilidad con BD sin columnas nuevas en hr_vacation
+                    manual_range_vacation = Vacation.search(base_domain + [
+                        ('date_from', '<=', target_date_str),
+                        ('date_to', '>=', target_date_str),
+                    ], limit=1)
+                    
+                    if manual_range_vacation:
+                        permission_day_count += 1
+                        current_date += timedelta(days=1)
+                        continue
+                
+                current_date += timedelta(days=1)
+            
+            result[record.employee_id.id] = permission_day_count
+        
+        return result
+
+    def read(self, fields=None, load='_classic_read'):
+        """Sobrescribir read para ajustar payable_days considerando permisos"""
+        from datetime import timedelta
+        
+        records = super().read(fields, load)
+        
+        # Si no se solicitó payable_days, retornar sin modificar
+        if fields and 'payable_days' not in fields:
+            return records
+        
+        # Contar permisos para todos los registros
+        permission_counts = self._count_permission_days_in_week()
+        
+        for record in records:
+            employee_id = record.get('employee_id')
+            if not employee_id:
+                continue
+            
+            # employee_id puede ser una tupla (id, name) si se solicita la relación
+            if isinstance(employee_id, (list, tuple)):
+                emp_id = employee_id[0]
+            else:
+                emp_id = employee_id
+            
+            week_start = record.get('week_start_date')
+            week_end = record.get('week_end_date')
+            
+            if not week_start or not week_end:
+                continue
+            
+            # Contar días en la semana (aproximadamente 7 días, pero podría ser menos)
+            if isinstance(week_start, str):
+                from datetime import datetime as dt
+                week_start_date = dt.strptime(week_start, '%Y-%m-%d').date()
+                week_end_date = dt.strptime(week_end, '%Y-%m-%d').date()
+            else:
+                week_start_date = week_start
+                week_end_date = week_end
+            
+            total_days = (week_end_date - week_start_date).days + 1
+            permission_days = permission_counts.get(emp_id, 0)
+            
+            # Ajustar payable_days
+            payable_days = record.get('payable_days')
+            if payable_days is not None:
+                if permission_days >= total_days:
+                    # Todos los días tienen permisos
+                    record['payable_days'] = 0.0
+                elif permission_days > 0:
+                    # Solo algunos días tienen permisos
+                    record['payable_days'] = max(0.0, payable_days - permission_days)
+        
+        return records
 
     def action_reset_weekly_adjustment(self):
         adjustment_model = self.env['attendance.late.weekly.adjustment']

@@ -400,6 +400,10 @@ class AttendanceReportWizard(models.TransientModel):
             payable_days_url = ''
             observation = ''
             if show_neto_total:
+                # Contar días con permisos (vacaciones e incapacidades)
+                permission_days = self._count_permission_days(employee, date_from, date_to, COMPANY_TZ)
+                total_period_days = len(date_list)
+                
                 weekly_record = late_weekly_map.get(employee.id)
                 if weekly_record:
                     payable_days = float(weekly_record.payable_days or 0.0)
@@ -407,6 +411,17 @@ class AttendanceReportWizard(models.TransientModel):
                 else:
                     # Sin retardos/faltas en la semana: neto completo de 6 dias.
                     payable_days = 6.0
+                
+                # Si todos los días tienen permisos, establecer neto total a 0.00
+                # Si hay días con permisos pero no todos, restar esos días del neto total
+                if permission_days > 0:
+                    if permission_days >= total_period_days:
+                        # Todos los días tienen permisos: neto total = 0.00
+                        payable_days = 0.0
+                    else:
+                        # Solo algunos días tienen permisos: restar esos días del neto total
+                        payable_days = max(0.0, payable_days - permission_days)
+                
                 observation = observations_map.get(employee.id, '')
 
             rows.append({
@@ -1802,6 +1817,118 @@ class AttendanceReportWizard(models.TransientModel):
                 'bold': True
             }
         return {'text': '', 'color': None, 'font_color': None, 'bold': False}
+
+    def _count_permission_days(self, employee, date_from, date_to, company_tz):
+        """
+        Cuenta los días con permisos (vacaciones e incapacidades) en el rango de fechas.
+        Retorna el número de días con permisos (vacaciones o incapacidades).
+        """
+        permission_day_count = 0
+        current_date = date_from
+        
+        Leave = self.env['hr.leave'].sudo()
+        Vacation = self.env['hr.vacation'].sudo()
+        Attendance = self.env['hr.attendance']
+        
+        incapacidad_statuses = ['leave_sickness', 'leave_sickness_paid', 'Incapacidad', 'incapacidad']
+        
+        while current_date <= date_to:
+            # Crear rango UTC para la fecha
+            start_of_day_local = company_tz.localize(datetime.combine(current_date, time.min))
+            end_of_day_local = company_tz.localize(datetime.combine(current_date, time.max))
+
+            start_of_day_utc = start_of_day_local.astimezone(pytz.utc)
+            end_of_day_utc = end_of_day_local.astimezone(pytz.utc)
+
+            start_utc_str = fields.Datetime.to_string(start_of_day_utc)
+            end_utc_str = fields.Datetime.to_string(end_of_day_utc)
+            target_date_str = fields.Date.to_string(current_date)
+            
+            # Verificar incapacidad en hr.leave
+            sickness_leave = Leave.search([
+                ('employee_id', '=', employee.id),
+                ('state', '=', 'validate'),
+                ('holiday_status_id.name', '=', 'Incapacidad'),
+                ('date_from', '<=', end_utc_str),
+                ('date_to', '>=', start_utc_str)
+            ], limit=1)
+            
+            if sickness_leave:
+                permission_day_count += 1
+                current_date += timedelta(days=1)
+                continue
+            
+            # Verificar incapacidad en hr.attendance
+            sickness_attendance = Attendance.search([
+                ('employee_id', '=', employee.id),
+                ('check_in', '>=', start_utc_str),
+                ('check_in', '<=', end_utc_str),
+                ('punctuality_status', 'in', incapacidad_statuses)
+            ], limit=1)
+            
+            if sickness_attendance:
+                permission_day_count += 1
+                current_date += timedelta(days=1)
+                continue
+            
+            # Verificar vacaciones en hr.leave
+            vacation_leave = Leave.search([
+                ('employee_id', '=', employee.id),
+                ('state', '=', 'validate'),
+                ('holiday_status_id.name', '!=', 'Incapacidad'),
+                ('holiday_status_id.name', '!=', 'Descanso'),
+                ('date_from', '<=', end_utc_str),
+                ('date_to', '>=', start_utc_str)
+            ], limit=1)
+            
+            if vacation_leave:
+                permission_day_count += 1
+                current_date += timedelta(days=1)
+                continue
+            
+            # Verificar vacaciones manuales en hr.vacation
+            try:
+                base_domain = [
+                    ('employee_id', '=', employee.id),
+                    ('state', '=', 'validate'),
+                    ('leave_id', '=', False),
+                ]
+                
+                manual_day_vacation = Vacation.search(base_domain + [
+                    ('request_mode', '=', 'days'),
+                    ('requested_day_ids.requested_date', '=', target_date_str),
+                ], limit=1)
+                
+                if manual_day_vacation:
+                    permission_day_count += 1
+                    current_date += timedelta(days=1)
+                    continue
+                
+                manual_range_vacation = Vacation.search(base_domain + [
+                    ('request_mode', '!=', 'days'),
+                    ('date_from', '<=', target_date_str),
+                    ('date_to', '>=', target_date_str),
+                ], limit=1)
+                
+                if manual_range_vacation:
+                    permission_day_count += 1
+                    current_date += timedelta(days=1)
+                    continue
+            except Exception:
+                # Compatibilidad con BD sin columnas nuevas en hr_vacation
+                manual_range_vacation = Vacation.search(base_domain + [
+                    ('date_from', '<=', target_date_str),
+                    ('date_to', '>=', target_date_str),
+                ], limit=1)
+                
+                if manual_range_vacation:
+                    permission_day_count += 1
+                    current_date += timedelta(days=1)
+                    continue
+            
+            current_date += timedelta(days=1)
+        
+        return permission_day_count
 
     def _get_check_ins_for_employee_date(self, employee, target_date, company_tz, Attendance):
         """Obtiene todos los check-in times para un empleado en una fecha específica"""

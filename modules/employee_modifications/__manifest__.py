@@ -17,6 +17,7 @@ Fruvemex requests for employee's module
 
     'data': [
             'security/hr_read_employees_security.xml',
+            'security/hr_holidays_multicompany_rule.xml',
             'security/ir.model.access.csv',
             'data/employee_warning_sequence.xml',
             'data/hr_suspension_sequence.xml',

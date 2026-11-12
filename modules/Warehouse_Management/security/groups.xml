@@ -13,10 +13,10 @@
             <field name="comment">Puede aprobar o rechazar solicitudes de compra y crearlas en nombre de otros</field>
         </record>
 
-        <!-- Grupo Almacenista Compras: marca órdenes como recibidas -->
+        <!-- Grupo Almacenista Compras: opera el almacén y recibe órdenes -->
         <record id="group_compras_almacenista" model="res.groups">
             <field name="name">Almacenista Compras</field>
-            <field name="comment">Puede marcar las órdenes de compra autorizadas como recibidas</field>
+            <field name="comment">Puede operar el almacén y marcar las órdenes de compra autorizadas como recibidas</field>
             <field name="implied_ids" eval="[(4, ref('base.group_user')), (4, ref('project.group_project_user'))]"/>
         </record>
 

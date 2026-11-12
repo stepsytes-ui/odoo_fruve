@@ -211,6 +211,7 @@
                     <field name="source_warehouse_id" optional="show"/>
                     <field name="destination_company_id" optional="show"/>
                     <field name="destination_warehouse_id" optional="show"/>
+                    <field name="product_to_process_id" optional="hide"/>
                     <field name="area_id" optional="show"/>
                     <field name="location_id" optional="show"/>
                     <field
@@ -272,6 +273,7 @@
                                 <field name="project_id" context="{'default_company_id': company_id}"/>
                                 <field name="work_order_id"/>
                                 <field name="equipment_id" options="{'no_open': True}"/>
+                                <field name="product_to_process_id"/>
                             </group>
                             <group string="Origen y Registro" invisible="not (move_type == 'entrada' and origin_company_id)">
                                 <field name="origin_company_id"/>

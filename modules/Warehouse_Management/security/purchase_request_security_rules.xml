@@ -64,4 +64,27 @@
             <field name="perm_unlink" eval="False"/>
         </record>
     </data>
+    <data>
+        <record id="purchase_request_warehouse_read_write_rule" model="ir.rule">
+            <field name="name">Purchase Request Warehouse Read and Write Rule</field>
+            <field name="model_id" ref="model_purchase_request"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('Warehouse_Management.group_compras_almacenista')), (4, ref('Warehouse_Management.group_compras_encargado'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="purchase_request_admin_read_rule" model="ir.rule">
+            <field name="name">Purchase Request Administrator Read Rule</field>
+            <field name="model_id" ref="model_purchase_request"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+    </data>
 </odoo>

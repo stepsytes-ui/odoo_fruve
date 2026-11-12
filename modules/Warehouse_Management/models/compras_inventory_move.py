@@ -14,6 +14,18 @@ class ComprasEquipmentNumber(models.Model):
     ]
 
 
+class ComprasProcessProduct(models.Model):
+    _name = 'compras.process.product'
+    _description = 'Producto a procesar'
+    _order = 'name'
+
+    name = fields.Char(string='Producto a procesar', required=True)
+
+    _sql_constraints = [
+        ('compras_process_product_name_unique', 'unique(name)', 'El producto a procesar ya existe.'),
+    ]
+
+
 class ComprasInventoryMove(models.Model):
     _name = 'compras.inventory.move'
     _description = 'Bitácora de Movimientos de Almacén'
@@ -112,6 +124,10 @@ class ComprasInventoryMove(models.Model):
         domain="[('project_id', '=', project_id), ('company_id', '=', company_id)]",
     )
     equipment_id = fields.Many2one('compras.equipment.number', string='# de equipo')
+    product_to_process_id = fields.Many2one(
+        'compras.process.product',
+        string='Producto a procesar',
+    )
     location_id = fields.Many2one(
         'compras.warehouse.location',
         string='Locación',

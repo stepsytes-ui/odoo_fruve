@@ -169,5 +169,34 @@
             sequence="40"
             groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
         />
+        <menuitem
+            id="menu_almacen_reports"
+            name="Reportes"
+            parent="menu_almacen_root"
+            action="warehouse_report_wizard_action"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista,Warehouse_Management.group_almacen_solo_visualizacion"
+            sequence="65"
+        />
+        <menuitem
+            id="menu_almacen_generate_data"
+            name="Generar Datos Ejemplo"
+            parent="menu_almacen_tools"
+            action="warehouse_generate_sample_data_action"
+            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista,Warehouse_Management.group_almacen_solo_visualizacion"
+            sequence="100"
+        />
+        <record id="menu_almacen_root" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
+        <record id="menu_almacen_por_recibir" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
+        <record id="menu_almacen_recibidas" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
+        <record id="menu_almacen_productos" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
+        <record id="menu_almacen_salidas" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
+        <record id="menu_almacen_faltantes" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
+        <record id="menu_almacen_warehouses" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
+        <record id="menu_almacen_tools" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
+        <record id="menu_almacen_import_excel" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
+        <record id="menu_almacen_tools_catalog" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
+        <record id="menu_almacen_tools_suppliers" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
+        <record id="menu_almacen_tools_uom" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
+        <record id="menu_almacen_tools_packaging_material" model="ir.ui.menu"><field name="groups_id" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/></record>
     </data>
 </odoo>

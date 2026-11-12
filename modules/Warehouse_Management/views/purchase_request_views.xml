@@ -67,7 +67,7 @@
                                 <!-- Para usuario_compras el campo es readonly; encargado_compras puede cambiarlo -->
                                 <field name="solicitante_id"
                                     readonly="1"
-                                    groups="Warehouse_Management.group_compras_usuario"
+                                    groups="Warehouse_Management.group_compras_usuario,Warehouse_Management.group_almacen_solo_visualizacion"
                                     options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True}"
                                 />
                                 <field name="solicitante_id"
@@ -267,7 +267,7 @@
             <field name="res_model">purchase.request</field>
             <field name="view_mode">list,form</field>
             <field name="domain">[('state', '=', 'autorizada')]</field>
-            <field name="groups_id" eval="[(4, ref('Warehouse_Management.group_compras_encargado')), (4, ref('Warehouse_Management.group_compras_almacenista'))]"/>
+            <field name="groups_id" eval="[(4, ref('Warehouse_Management.group_compras_encargado')), (4, ref('Warehouse_Management.group_compras_almacenista')), (4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
                     No hay solicitudes de compra autorizadas pendientes de recibir.
@@ -281,7 +281,7 @@
             <field name="res_model">purchase.request</field>
             <field name="view_mode">list,form</field>
             <field name="domain">[('state', '=', 'recibida')]</field>
-            <field name="groups_id" eval="[(4, ref('Warehouse_Management.group_compras_encargado')), (4, ref('Warehouse_Management.group_compras_almacenista'))]"/>
+            <field name="groups_id" eval="[(4, ref('Warehouse_Management.group_compras_encargado')), (4, ref('Warehouse_Management.group_compras_almacenista')), (4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">
                     No hay solicitudes de compra recibidas.

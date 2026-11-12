@@ -49,6 +49,7 @@ class ComprasProductAlertWizard(models.TransientModel):
         if not (
             user.has_group('Warehouse_Management.group_compras_encargado')
             or user.has_group('Warehouse_Management.group_compras_almacenista')
+            or user.has_group('Warehouse_Management.group_almacen_solo_visualizacion')
         ):
             return False
 

@@ -5,7 +5,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class WarehouseGenerateSampleData(models.TransientModel):
@@ -84,6 +84,8 @@ class WarehouseGenerateSampleData(models.TransientModel):
     def action_generate_data(self):
         """Genera datos de ejemplo de movimientos de almacén"""
         self.ensure_one()
+        if self.env.user.has_group('Warehouse_Management.group_almacen_solo_visualizacion'):
+            raise AccessError(_('El grupo de solo visualización no puede generar movimientos de ejemplo.'))
 
         # Validar que existan almacenes y productos
         warehouses = self.env['compras.warehouse'].search([('company_id', '=', self.company_id.id)])

@@ -16,7 +16,8 @@ registry.category("services").add("compras_purchase_alert_service", {
 
                 const isEncargado = await user.hasGroup("Warehouse_Management.group_compras_encargado");
                 const isAlmacenista = await user.hasGroup("Warehouse_Management.group_compras_almacenista");
-                if (!isEncargado && !isAlmacenista) {
+                const isViewer = await user.hasGroup("Warehouse_Management.group_almacen_solo_visualizacion");
+                if (!isEncargado && !isAlmacenista && !isViewer) {
                     return;
                 }
 

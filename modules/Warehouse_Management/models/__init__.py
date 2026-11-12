@@ -16,4 +16,5 @@ from . import compras_product_alert_wizard
 from . import compras_product_archive_wizard
 from . import warehouse_report_wizard
 from . import warehouse_generate_sample_data
+from . import warehouse_readonly_views
 from . import res_partner_extension

@@ -7,7 +7,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 from odoo import _, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tools.float_utils import float_is_zero
 
 
@@ -54,6 +54,8 @@ class ComprasProductExcelImportWizard(models.TransientModel):
 
     def action_import_excel(self):
         self.ensure_one()
+        if self.env.user.has_group('Warehouse_Management.group_almacen_solo_visualizacion'):
+            raise AccessError(_('El grupo de solo visualización no puede importar cambios al almacén.'))
         if not self.file_data:
             raise ValidationError(_('Debes seleccionar un archivo Excel.'))
 
@@ -186,6 +188,8 @@ class ComprasProductExcelImportWizard(models.TransientModel):
 
     def action_update_inventory_excel(self):
         self.ensure_one()
+        if self.env.user.has_group('Warehouse_Management.group_almacen_solo_visualizacion'):
+            raise AccessError(_('El grupo de solo visualización no puede actualizar el inventario.'))
         if not self.file_data:
             raise ValidationError(_('Debes seleccionar un archivo Excel.'))
 

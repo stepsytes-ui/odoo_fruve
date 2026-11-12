@@ -34,6 +34,7 @@ Módulo para gestionar solicitudes de compra con flujo de aprobación:
         'security/groups.xml',
         'security/ir.model.access.csv',
         'security/purchase_request_security_rules.xml',
+        'security/warehouse_viewer_rules.xml',
         'data/purchase_request_sequence.xml',
         'data/compras_move_type_data.xml',
         'views/inventory_views.xml',

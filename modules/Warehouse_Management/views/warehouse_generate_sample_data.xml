@@ -65,14 +65,5 @@
             <field name="target">new</field>
         </record>
 
-        <!-- Menú para acceder al wizard -->
-        <menuitem
-            id="menu_almacen_generate_data"
-            name="Generar Datos Ejemplo"
-            parent="menu_almacen_tools"
-            action="warehouse_generate_sample_data_action"
-            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
-            sequence="100"
-        />
     </data>
 </odoo>

@@ -1,5 +1,9 @@
+from datetime import timedelta
+
+from odoo import fields
 from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, new_test_user
+from lxml import etree
 
 
 class TestWarehouseAccess(TransactionCase):
@@ -132,3 +136,75 @@ class TestWarehouseAccess(TransactionCase):
                 'warehouse_id': self.warehouse.id,
                 'solicitante_id': self.employee.id,
             })
+
+    def test_viewer_restrictions_override_warehouse_roles(self):
+        for groups in (
+            'Warehouse_Management.group_almacen_solo_visualizacion',
+            'Warehouse_Management.group_almacen_solo_visualizacion,Warehouse_Management.group_compras_encargado',
+        ):
+            user = new_test_user(
+                self.env,
+                login='viewer_' + str(len(groups)),
+                groups=groups,
+                company_id=self.company.id,
+            )
+            self.assertEqual(self.move.with_user(user).read(['name'])[0]['id'], self.move.id)
+            self.assertEqual(self.request.with_user(user).read(['name'])[0]['id'], self.request.id)
+            for operation in (
+                lambda: self.product.with_user(user).write({'name': 'Modificado'}),
+                lambda: self.move.with_user(user).unlink(),
+                lambda: self.env['compras.warehouse'].with_user(user).create({
+                    'name': 'No permitido', 'code': 'DENIED', 'company_id': self.company.id,
+                }),
+            ):
+                with self.assertRaises(AccessError):
+                    operation()
+
+            visible_menus = self.env['ir.ui.menu'].with_user(user)._visible_menu_ids()
+            for xmlid in ('menu_almacen_salidas', 'menu_almacen_import_excel',
+                          'menu_almacen_reports', 'menu_almacen_generate_data'):
+                self.assertIn(self.env.ref('Warehouse_Management.' + xmlid).id, visible_menus)
+
+            sample = self.env['warehouse.generate.sample.data'].with_user(user).create({})
+            excel = self.env['compras.product.excel.import.wizard'].with_user(user).create({})
+            with self.assertRaises(AccessError):
+                sample.action_generate_data()
+            with self.assertRaises(AccessError):
+                excel.action_import_excel()
+            with self.assertRaises(AccessError):
+                excel.action_update_inventory_excel()
+            self.assertEqual(excel.action_download_template()['type'], 'ir.actions.act_url')
+            report = self.env['warehouse.report.wizard'].with_user(user).create({})
+            self.assertEqual(report.action_view_report()['type'], 'ir.actions.act_url')
+
+    def test_viewer_can_read_product_alerts(self):
+        user = new_test_user(
+            self.env,
+            login='warehouse_alert_viewer',
+            groups='Warehouse_Management.group_almacen_solo_visualizacion',
+            company_id=self.company.id,
+        )
+        self.product.expiration_date = fields.Date.today() + timedelta(days=1)
+        action = self.env['compras.product.alert.wizard'].with_user(user).action_open_current_user_wizard()
+        wizard = self.env['compras.product.alert.wizard'].with_user(user).browse(action['res_id'])
+        self.assertIn(self.product.id, wizard.line_ids.mapped('product_id').ids)
+
+    def test_viewer_warehouse_views_are_readonly_but_purchase_access_is_preserved(self):
+        user = new_test_user(
+            self.env,
+            login='warehouse_viewer_manager',
+            groups='Warehouse_Management.group_almacen_solo_visualizacion,Warehouse_Management.group_compras_encargado',
+            company_id=self.company.id,
+        )
+        view = self.env.ref('Warehouse_Management.purchase_request_view_form')
+        model = self.env['purchase.request'].with_user(user)
+        warehouse_action = self.env.ref('Warehouse_Management.purchase_request_authorized_action')
+        purchase_action = self.env.ref('Warehouse_Management.purchase_request_action')
+        warehouse_view = model.get_views([(view.id, 'form')], {'action_id': warehouse_action.id})
+        purchase_view = model.get_views([(view.id, 'form')], {'action_id': purchase_action.id})
+        warehouse_arch = etree.fromstring(warehouse_view['views']['form']['arch'])
+        purchase_arch = etree.fromstring(purchase_view['views']['form']['arch'])
+        self.assertEqual(warehouse_arch.get('edit'), '0')
+        self.assertFalse(warehouse_arch.xpath('.//button[@type="object"]'))
+        self.assertNotEqual(purchase_arch.get('edit'), '0')
+        self.request.with_user(user).write({'comments': 'Edición desde compras'})

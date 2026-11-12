@@ -78,14 +78,5 @@
             <field name="context">{'default_report_type': 'movement_by_warehouse', 'default_grouping_period': 'month'}</field>
         </record>
 
-        <!-- Menú para acceder al wizard de reportes -->
-        <menuitem
-            id="menu_almacen_reports"
-            name="Reportes"
-            parent="menu_almacen_root"
-            action="warehouse_report_wizard_action"
-            groups="Warehouse_Management.group_compras_encargado,Warehouse_Management.group_compras_almacenista"
-            sequence="65"
-        />
     </data>
 </odoo>

@@ -1,0 +1,82 @@
+<odoo>
+    <data>
+        <record id="warehouse_viewer_warehouse_rule" model="ir.rule">
+            <field name="name">Solo visualización: almacenes</field>
+            <field name="model_id" ref="model_compras_warehouse"/>
+            <field name="domain_force">[(0, '=', 1)] if user.has_group('Warehouse_Management.group_almacen_solo_visualizacion') else [(1, '=', 1)]</field>
+            <field name="perm_read" eval="False"/>
+        </record>
+        <record id="warehouse_viewer_location_rule" model="ir.rule">
+            <field name="name">Solo visualización: locaciones</field>
+            <field name="model_id" ref="model_compras_warehouse_location"/>
+            <field name="domain_force">[(0, '=', 1)] if user.has_group('Warehouse_Management.group_almacen_solo_visualizacion') else [(1, '=', 1)]</field>
+            <field name="perm_read" eval="False"/>
+        </record>
+        <record id="warehouse_viewer_product_rule" model="ir.rule">
+            <field name="name">Solo visualización: productos</field>
+            <field name="model_id" ref="model_compras_product"/>
+            <field name="domain_force">[(0, '=', 1)] if user.has_group('Warehouse_Management.group_almacen_solo_visualizacion') else [(1, '=', 1)]</field>
+            <field name="perm_read" eval="False"/>
+        </record>
+        <record id="warehouse_viewer_move_rule" model="ir.rule">
+            <field name="name">Solo visualización: movimientos</field>
+            <field name="model_id" ref="model_compras_inventory_move"/>
+            <field name="domain_force">[(0, '=', 1)] if user.has_group('Warehouse_Management.group_almacen_solo_visualizacion') else [(1, '=', 1)]</field>
+            <field name="perm_read" eval="False"/>
+        </record>
+        <record id="warehouse_viewer_category_rule" model="ir.rule">
+            <field name="name">Solo visualización: categorías</field>
+            <field name="model_id" ref="model_compras_product_category"/>
+            <field name="domain_force">[(0, '=', 1)] if user.has_group('Warehouse_Management.group_almacen_solo_visualizacion') else [(1, '=', 1)]</field>
+            <field name="perm_read" eval="False"/>
+        </record>
+        <record id="warehouse_viewer_subcategory_rule" model="ir.rule">
+            <field name="name">Solo visualización: subcategorías</field>
+            <field name="model_id" ref="model_compras_product_subcategory"/>
+            <field name="domain_force">[(0, '=', 1)] if user.has_group('Warehouse_Management.group_almacen_solo_visualizacion') else [(1, '=', 1)]</field>
+            <field name="perm_read" eval="False"/>
+        </record>
+        <record id="warehouse_viewer_repair_line_rule" model="ir.rule">
+            <field name="name">Solo visualización: líneas a reparar</field>
+            <field name="model_id" ref="model_compras_repair_line"/>
+            <field name="domain_force">[(0, '=', 1)] if user.has_group('Warehouse_Management.group_almacen_solo_visualizacion') else [(1, '=', 1)]</field>
+            <field name="perm_read" eval="False"/>
+        </record>
+        <record id="warehouse_viewer_equipment_rule" model="ir.rule">
+            <field name="name">Solo visualización: equipos</field>
+            <field name="model_id" ref="model_compras_equipment_number"/>
+            <field name="domain_force">[(0, '=', 1)] if user.has_group('Warehouse_Management.group_almacen_solo_visualizacion') else [(1, '=', 1)]</field>
+            <field name="perm_read" eval="False"/>
+        </record>
+        <record id="warehouse_viewer_process_product_rule" model="ir.rule">
+            <field name="name">Solo visualización: productos a procesar</field>
+            <field name="model_id" ref="model_compras_process_product"/>
+            <field name="domain_force">[(0, '=', 1)] if user.has_group('Warehouse_Management.group_almacen_solo_visualizacion') else [(1, '=', 1)]</field>
+            <field name="perm_read" eval="False"/>
+        </record>
+        <record id="warehouse_viewer_packaging_rule" model="ir.rule">
+            <field name="name">Solo visualización: materiales de empaque</field>
+            <field name="model_id" ref="model_compras_packaging_material"/>
+            <field name="domain_force">[(0, '=', 1)] if user.has_group('Warehouse_Management.group_almacen_solo_visualizacion') else [(1, '=', 1)]</field>
+            <field name="perm_read" eval="False"/>
+        </record>
+        <record id="warehouse_viewer_move_type_rule" model="ir.rule">
+            <field name="name">Solo visualización: tipos de movimiento</field>
+            <field name="model_id" ref="model_compras_move_type"/>
+            <field name="domain_force">[(0, '=', 1)] if user.has_group('Warehouse_Management.group_almacen_solo_visualizacion') else [(1, '=', 1)]</field>
+            <field name="perm_read" eval="False"/>
+        </record>
+        <record id="warehouse_viewer_inventory_company_rule" model="ir.rule">
+            <field name="name">Solo visualización: inventario por empresa</field>
+            <field name="model_id" ref="model_compras_warehouse_inventory"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/>
+        </record>
+        <record id="warehouse_viewer_warehouse_company_rule" model="ir.rule">
+            <field name="name">Solo visualización: almacenes por empresa</field>
+            <field name="model_id" ref="model_compras_warehouse"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/>
+        </record>
+    </data>
+</odoo>

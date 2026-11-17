@@ -42,7 +42,7 @@ class PurchaseRequest(models.Model):
             ('active', '=', True),
         ]
     supervisor_id = fields.Many2one(
-        'hr.employee',
+        'employee.supervisor',
         string='Supervisor de Área',
         domain=lambda self: self._get_supervisor_domain(),
     )
@@ -53,12 +53,10 @@ class PurchaseRequest(models.Model):
     )
 
     def _get_supervisor_domain(self):
-        supervisors = self.env['employee.supervisor'].search([
+        return [
             ('company_id', '=', self.env.company.id),
             ('active', '=', True),
-            ('employee_id.active', '=', True),
-        ])
-        return [('id', 'in', supervisors.mapped('employee_id').ids)]
+        ]
 
     def _get_authorizer_domain(self):
         return [

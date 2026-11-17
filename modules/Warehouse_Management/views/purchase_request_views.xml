@@ -64,14 +64,7 @@
                                 <field name="origin_request_id" readonly="1" invisible="not origin_request_id"/>
                                 <field name="warehouse_id"/>
                                 <field name="department_id" domain="[('company_id', '=', company_id)]"/>
-                                <!-- Para usuario_compras el campo es readonly; encargado_compras puede cambiarlo -->
                                 <field name="solicitante_id"
-                                    readonly="1"
-                                    groups="Warehouse_Management.group_compras_usuario,Warehouse_Management.group_almacen_solo_visualizacion"
-                                    options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True}"
-                                />
-                                <field name="solicitante_id"
-                                    groups="Warehouse_Management.group_compras_encargado"
                                     options="{'no_create': True, 'no_create_edit': True, 'no_quick_create': True}"
                                 />
                                 <field name="supervisor_id"/>

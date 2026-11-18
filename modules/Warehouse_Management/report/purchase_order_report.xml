@@ -171,28 +171,28 @@
                     </div>
 
                     <table style="width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 12px 0; margin: 16px 0 12px;">
-                        <tr>
-                            <td style="height: 145px; padding: 0 4px; text-align: center; vertical-align: bottom;">
-                                <div style="height: 105px;"></div>
-                                <div style="border-top: 1px solid #555; padding-top: 5px;">
-                                    <strong>Solicitante</strong>
-                                    <div style="min-height: 26px; padding-top: 3px;"
+                        <tr style="height: 170px;">
+                            <td style="height: 170px; padding: 0 4px; text-align: center; vertical-align: top;">
+                                <div style="height: 110px;"></div>
+                                <div style="border-top: 1px solid #555; padding-top: 5px; height: 55px;">
+                                    <strong style="display: block; height: 16px; line-height: 16px;">Solicitante</strong>
+                                    <div style="height: 34px; line-height: 14px; padding-top: 3px; overflow: hidden;"
                                          t-out="request.get_purchase_order_report_text(request.solicitante_id.name)"/>
                                 </div>
                             </td>
-                            <td style="height: 145px; padding: 0 4px; text-align: center; vertical-align: bottom;">
-                                <div style="height: 105px;"></div>
-                                <div style="border-top: 1px solid #555; padding-top: 5px;">
-                                    <strong>Supervisor de Area</strong>
-                                    <div style="min-height: 26px; padding-top: 3px;"
+                            <td style="height: 170px; padding: 0 4px; text-align: center; vertical-align: top;">
+                                <div style="height: 110px;"></div>
+                                <div style="border-top: 1px solid #555; padding-top: 5px; height: 55px;">
+                                    <strong style="display: block; height: 16px; line-height: 16px;">Supervisor de Area</strong>
+                                    <div style="height: 34px; line-height: 14px; padding-top: 3px; overflow: hidden;"
                                          t-out="request.get_purchase_order_report_text(request.supervisor_id.display_name)"/>
                                 </div>
                             </td>
-                            <td style="height: 145px; padding: 0 4px; text-align: center; vertical-align: bottom;">
-                                <div style="height: 105px;"></div>
-                                <div style="border-top: 1px solid #555; padding-top: 5px;">
-                                    <strong>Autoriza</strong>
-                                    <div style="min-height: 26px; padding-top: 3px;"
+                            <td style="height: 170px; padding: 0 4px; text-align: center; vertical-align: top;">
+                                <div style="height: 110px;"></div>
+                                <div style="border-top: 1px solid #555; padding-top: 5px; height: 55px;">
+                                    <strong style="display: block; height: 16px; line-height: 16px;">Autoriza</strong>
+                                    <div style="height: 34px; line-height: 14px; padding-top: 3px; overflow: hidden;"
                                          t-out="request.get_purchase_order_report_text(request.authorizer_id.name)"/>
                                 </div>
                             </td>

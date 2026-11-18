@@ -54,6 +54,23 @@ class TestWarehouseAccess(TransactionCase):
             groups='Warehouse_Management.group_compras_usuario',
             company_id=cls.company.id,
         )
+        cls.purchase_manager = new_test_user(
+            cls.env,
+            login='warehouse_access_manager',
+            groups='Warehouse_Management.group_compras_usuario,Warehouse_Management.group_compras_encargado',
+            company_id=cls.company.id,
+        )
+
+    def test_purchase_manager_can_create_request_for_another_employee(self):
+        request = self.env['purchase.request'].with_user(
+            self.purchase_manager
+        ).create({
+            'company_id': self.company.id,
+            'warehouse_id': self.warehouse.id,
+            'solicitante_id': self.employee.id,
+        })
+        self.assertNotEqual(request.solicitante_id.user_id.id, self.purchase_manager.id)
+        self.assertEqual(request.company_id, self.company)
 
     def test_movements_can_read_other_users_request(self):
         for user in (self.admin, self.warehouse_user):
@@ -205,6 +222,109 @@ class TestWarehouseAccess(TransactionCase):
         warehouse_arch = etree.fromstring(warehouse_view['views']['form']['arch'])
         purchase_arch = etree.fromstring(purchase_view['views']['form']['arch'])
         self.assertEqual(warehouse_arch.get('edit'), '0')
-        self.assertFalse(warehouse_arch.xpath('.//button[@type="object"]'))
+        warehouse_buttons = warehouse_arch.xpath('.//button[@type="object"]')
+        self.assertEqual(
+            [button.get('name') for button in warehouse_buttons],
+            ['action_print_purchase_order'],
+        )
         self.assertNotEqual(purchase_arch.get('edit'), '0')
         self.request.with_user(user).write({'comments': 'Edición desde compras'})
+
+    def test_purchase_order_approval_records_optional_comments(self):
+        self.request.write({
+            'line_ids': [(0, 0, {
+                'warehouse_product_id': self.product.id,
+                'quantity': 2,
+                'unit_id': self.env.ref('uom.product_uom_unit').id,
+                'description': 'Producto de prueba para aprobación',
+                'unit_price': 10,
+            })],
+        })
+        action = self.request.action_approve()
+        self.assertEqual(action['res_model'], 'purchase.approval.wizard')
+
+        wizard = self.env['purchase.approval.wizard'].create({
+            'request_id': self.request.id,
+            'add_comment': True,
+            'decision_comments': '  Autorizar con entrega urgente  ',
+        })
+        wizard.action_confirm_approval()
+
+        self.assertEqual(self.request.state, 'autorizada')
+        self.assertEqual(self.request.decision_comments, 'Autorizar con entrega urgente')
+        self.assertEqual(self.request.decision_comment_user_id, self.env.user)
+        self.assertTrue(self.request.decision_comment_date)
+        report_action = self.request.action_print_purchase_order()
+        self.assertEqual(report_action['report_type'], 'qweb-pdf')
+        report = self.env.ref('Warehouse_Management.action_report_purchase_order')
+        self.assertEqual(report.paperformat_id.orientation, 'Portrait')
+        report_html = self.env['ir.actions.report']._render_qweb_html(
+            'Warehouse_Management.purchase_order_report',
+            self.request.ids,
+        )[0]
+        self.assertIn(b'ORDEN DE COMPRA', report_html)
+        self.assertIn(b'REVISION', report_html)
+        self.assertIn(b'Autorizar con entrega urgente', report_html)
+        self.assertIn(self.env.user.name.encode(), report_html)
+        self.assertIn(b'$ 20.00', report_html)
+        self.assertNotIn(b'A$', report_html)
+        barcode_uri = self.request.get_purchase_order_barcode_uri()
+        self.assertTrue(barcode_uri.startswith('data:image/png;base64,'))
+        self.assertIn(b'data:image/png;base64,', report_html)
+        self.assertIn(b'font-size: 14px', report_html)
+
+    def test_purchase_order_rejection_records_optional_comments(self):
+        wizard = self.env['purchase.rejection.wizard'].create({
+            'request_id': self.request.id,
+            'rejection_reason': '  Presupuesto no disponible  ',
+            'add_comment': True,
+            'decision_comments': '  Revisar en el siguiente periodo  ',
+        })
+        wizard.action_confirm_rejection()
+
+        self.assertEqual(self.request.state, 'inactiva')
+        self.assertEqual(self.request.rejection_reason, 'Presupuesto no disponible')
+        self.assertEqual(
+            self.request.decision_comments,
+            'Revisar en el siguiente periodo',
+        )
+        self.assertEqual(self.request.decision_comment_user_id, self.env.user)
+        self.assertTrue(self.request.decision_comment_date)
+
+    def test_purchase_order_invoice_email_is_configurable(self):
+        self.env['ir.config_parameter'].sudo().set_param(
+            'Warehouse_Management.purchase_order_invoice_email',
+            False,
+        )
+        default_email = self.request.get_purchase_order_invoice_email()
+        self.assertEqual(default_email, 'cuentasporpagarmxl@fruvemex.com')
+
+        wizard = self.env['purchase.order.config.wizard'].create({
+            'invoice_email': 'Facturas@Fruvemex.com',
+        })
+        wizard.action_save()
+
+        self.assertEqual(
+            self.request.get_purchase_order_invoice_email(),
+            'facturas@fruvemex.com',
+        )
+        admin_menus = self.env['ir.ui.menu'].with_user(
+            self.admin
+        )._visible_menu_ids()
+        self.assertIn(
+            self.env.ref('Warehouse_Management.menu_purchase_order_email_config').id,
+            admin_menus,
+        )
+        user_menus = self.env['ir.ui.menu'].with_user(
+            self.purchase_user
+        )._visible_menu_ids()
+        self.assertNotIn(
+            self.env.ref('Warehouse_Management.menu_purchase_order_email_config').id,
+            user_menus,
+        )
+
+    def test_purchase_order_report_text_removes_accents(self):
+        text = self.request.get_purchase_order_report_text(
+            'México, Bogotá, Supervisión y Núm.'
+        )
+        self.assertEqual(text, 'Mexico, Bogota, Supervision y Num.')

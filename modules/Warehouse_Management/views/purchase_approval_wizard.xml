@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_approval_wizard_form" model="ir.ui.view">
+        <field name="name">purchase.approval.wizard.form</field>
+        <field name="model">purchase.approval.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Aprobar Orden de Compra">
+                <group>
+                    <field name="request_id" readonly="1"/>
+                    <field name="add_comment"/>
+                    <field
+                        name="decision_comments"
+                        widget="text"
+                        placeholder="Escribe un comentario adicional para la orden de compra..."
+                        invisible="not add_comment"
+                    />
+                </group>
+                <footer>
+                    <button
+                        string="Aprobar"
+                        type="object"
+                        name="action_confirm_approval"
+                        class="btn-primary"
+                    />
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

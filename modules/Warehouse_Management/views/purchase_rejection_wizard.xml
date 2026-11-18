@@ -8,6 +8,13 @@
                 <group>
                     <field name="request_id" readonly="1"/>
                     <field name="rejection_reason" widget="text" placeholder="Escribe el motivo del rechazo..."/>
+                    <field name="add_comment"/>
+                    <field
+                        name="decision_comments"
+                        widget="text"
+                        placeholder="Escribe un comentario adicional para la orden de compra..."
+                        invisible="not add_comment"
+                    />
                 </group>
                 <footer>
                     <button string="Confirmar Rechazo" type="object" name="action_confirm_rejection" class="btn-primary"/>

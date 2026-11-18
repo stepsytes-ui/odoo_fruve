@@ -5,7 +5,7 @@
             name="Compras"
             web_icon="Warehouse_Management,static/description/icon.png"
             sequence="20"
-            groups="Warehouse_Management.group_compras_usuario,Warehouse_Management.group_compras_encargado"
+            groups="Warehouse_Management.group_compras_usuario,Warehouse_Management.group_compras_encargado,base.group_system"
         />
 
         <menuitem
@@ -33,6 +33,23 @@
             action="purchase_request_returned_action"
             sequence="30"
             groups="Warehouse_Management.group_compras_usuario,Warehouse_Management.group_compras_encargado"
+        />
+
+        <menuitem
+            id="menu_compras_tools"
+            name="Herramientas"
+            parent="menu_compras_root"
+            sequence="90"
+            groups="base.group_system"
+        />
+
+        <menuitem
+            id="menu_purchase_order_email_config"
+            name="Configurar Correo OC"
+            parent="menu_compras_tools"
+            action="purchase_order_config_wizard_action"
+            sequence="10"
+            groups="base.group_system"
         />
 
         <menuitem

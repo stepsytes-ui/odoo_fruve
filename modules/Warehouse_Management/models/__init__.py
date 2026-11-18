@@ -10,6 +10,8 @@ from . import compras_move_type
 from . import purchase_request_line
 from . import purchase_request
 from . import purchase_rejection_wizard
+from . import purchase_approval_wizard
+from . import purchase_order_config_wizard
 from . import purchase_receipt_wizard
 from . import compras_product_excel_import_wizard
 from . import compras_product_alert_wizard

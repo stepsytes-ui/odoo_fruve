@@ -32,7 +32,7 @@ class WarehouseReadonlyViews(models.AbstractModel):
 
         navigation_buttons = {
             'action_open_inventory', 'action_open_location_inventory',
-            'action_open_product_location_moves',
+            'action_open_product_location_moves', 'action_print_purchase_order',
         }
         for view_type, view in result['views'].items():
             if view_type not in ('form', 'list', 'kanban'):

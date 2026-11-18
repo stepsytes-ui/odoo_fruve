@@ -1,5 +1,9 @@
+import base64
+import unicodedata
+
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, ValidationError
+from odoo.tools.image import image_data_uri
 from odoo.tools.sql import column_exists
 
 
@@ -64,6 +68,23 @@ class PurchaseRequest(models.Model):
             ('active', '=', True),
         ]
     comments = fields.Text(string='Comentarios')
+    decision_comments = fields.Text(
+        string='Otros Comentarios',
+        help='Comentarios registrados al aprobar o rechazar la orden de compra.',
+        readonly=True,
+        copy=False,
+    )
+    decision_comment_user_id = fields.Many2one(
+        'res.users',
+        string='Comentario registrado por',
+        readonly=True,
+        copy=False,
+    )
+    decision_comment_date = fields.Datetime(
+        string='Fecha del comentario',
+        readonly=True,
+        copy=False,
+    )
     payment_type = fields.Selection(
         [
             ('contado', 'Contado'),
@@ -227,13 +248,32 @@ class PurchaseRequest(models.Model):
             raise ValidationError(_('Solo se pueden aprobar solicitudes en estado Activa.'))
         if not self.line_ids:
             raise ValidationError(_('Debes agregar al menos un producto o servicio a la solicitud.'))
+        return {
+            'name': _('Aprobar Orden de Compra'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'purchase.approval.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_request_id': self.id},
+        }
+
+    def _approve_with_comments(self, decision_comments=False):
+        self.ensure_one()
+        if self.state != 'activa':
+            raise ValidationError(_('Solo se pueden aprobar solicitudes en estado Activa.'))
+        if not self.line_ids:
+            raise ValidationError(_('Debes agregar al menos un producto o servicio a la solicitud.'))
 
         for line in self.line_ids:
             self._get_or_create_product_from_line(line)
 
+        cleaned_comments = decision_comments.strip() if decision_comments else False
         self.write({
             'state': 'autorizada',
             'approved_by_id': self.env.user.id,
+            'decision_comments': cleaned_comments,
+            'decision_comment_user_id': self.env.user.id if cleaned_comments else False,
+            'decision_comment_date': fields.Datetime.now() if cleaned_comments else False,
         })
 
     def action_reject(self):
@@ -264,6 +304,44 @@ class PurchaseRequest(models.Model):
             },
         }
 
+    def action_print_purchase_order(self):
+        self.ensure_one()
+        return self.env.ref(
+            'Warehouse_Management.action_report_purchase_order'
+        ).report_action(self)
+
+    @api.model
+    def get_purchase_order_report_text(self, value):
+        if not value:
+            return ''
+        normalized = unicodedata.normalize('NFKD', str(value))
+        return ''.join(char for char in normalized if not unicodedata.combining(char))
+
+    def get_purchase_order_barcode_uri(self):
+        self.ensure_one()
+        barcode = self.env['ir.actions.report'].barcode(
+            'Code128',
+            self.name or '',
+            width=600,
+            height=90,
+            humanreadable=False,
+            quiet=True,
+        )
+        return image_data_uri(base64.b64encode(barcode))
+
+    def get_purchase_order_invoice_email(self):
+        self.ensure_one()
+        return self.env['ir.config_parameter'].sudo().get_param(
+            'Warehouse_Management.purchase_order_invoice_email',
+            'cuentasporpagarmxl@fruvemex.com',
+        )
+
+    def get_purchase_order_currency(self):
+        self.ensure_one()
+        currency_code = 'USD' if self.currency_type == 'usd' else 'MXN'
+        currency = self.env['res.currency'].search([('name', '=', currency_code)], limit=1)
+        return currency or self.company_id.currency_id
+
     def action_cancel_for_edit(self):
         for request in self:
             if request.state not in ('autorizada', 'recibida'):
@@ -285,6 +363,9 @@ class PurchaseRequest(models.Model):
                 'state': 'activa',
                 'received_by_id': False,
                 'approved_by_id': False,
+                'decision_comments': False,
+                'decision_comment_user_id': False,
+                'decision_comment_date': False,
             })
 
     def action_process_receipt_from_checklist(self, receiver_user=False, warehouse=False, location=False):

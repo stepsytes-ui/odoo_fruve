@@ -8,6 +8,13 @@
             <field name="arch" type="xml">
                 <form string="Solicitud de Compra">
                     <header>
+                        <button
+                            name="action_print_purchase_order"
+                            string="Imprimir OC"
+                            type="object"
+                            icon="fa-print"
+                            class="btn-secondary"
+                        />
                         <!-- Botón Aprobar: visible solo para encargado_compras cuando está activa -->
                         <button
                             name="action_approve"
@@ -81,6 +88,11 @@
 
                         <group string="Comentarios">
                             <field name="comments" nolabel="1" placeholder="Escribe los comentarios o justificación de la solicitud..."/>
+                        </group>
+                        <group string="Otros Comentarios" invisible="not decision_comments">
+                            <field name="decision_comments" nolabel="1" readonly="1"/>
+                            <field name="decision_comment_user_id" readonly="1"/>
+                            <field name="decision_comment_date" readonly="1"/>
                         </group>
 
                         <!-- Tabla de productos/servicios -->

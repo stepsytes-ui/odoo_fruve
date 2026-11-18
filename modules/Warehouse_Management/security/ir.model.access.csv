@@ -49,6 +49,8 @@ access_account_tax_compras_usuario,account.tax.compras.usuario,account.model_acc
 access_account_tax_compras_encargado,account.tax.compras.encargado,account.model_account_tax,Warehouse_Management.group_compras_encargado,1,0,0,0
 access_account_tax_compras_almacenista,account.tax.compras.almacenista,account.model_account_tax,Warehouse_Management.group_compras_almacenista,1,0,0,0
 access_purchase_rejection_wizard,purchase.rejection.wizard,model_purchase_rejection_wizard,base.group_user,1,1,1,1
+access_purchase_approval_wizard,purchase.approval.wizard,model_purchase_approval_wizard,Warehouse_Management.group_compras_encargado,1,1,1,1
+access_purchase_order_config_wizard,purchase.order.config.wizard,model_purchase_order_config_wizard,base.group_system,1,1,1,1
 access_purchase_receipt_wizard,purchase.receipt.wizard,model_purchase_receipt_wizard,base.group_user,1,1,1,1
 access_purchase_receipt_wizard_line,purchase.receipt.wizard.line,model_purchase_receipt_wizard_line,base.group_user,1,1,1,1
 access_compras_product_excel_import_wizard,compras.product.excel.import.wizard,model_compras_product_excel_import_wizard,Warehouse_Management.group_compras_encargado,1,1,1,1

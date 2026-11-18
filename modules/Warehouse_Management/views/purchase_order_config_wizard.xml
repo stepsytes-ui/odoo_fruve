@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_order_config_wizard_form" model="ir.ui.view">
+        <field name="name">purchase.order.config.wizard.form</field>
+        <field name="model">purchase.order.config.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Configurar Correo OC">
+                <group>
+                    <field name="invoice_email" placeholder="cuentasporpagarmxl@fruvemex.com"/>
+                </group>
+                <footer>
+                    <button string="Guardar" type="object" name="action_save" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="purchase_order_config_wizard_action" model="ir.actions.act_window">
+        <field name="name">Configurar Correo OC</field>
+        <field name="res_model">purchase.order.config.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="purchase_order_config_wizard_form"/>
+        <field name="groups_id" eval="[(4, ref('base.group_system'))]"/>
+    </record>
+</odoo>

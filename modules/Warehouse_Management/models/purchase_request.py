@@ -82,6 +82,16 @@ class PurchaseRequest(models.Model):
         required=True,
         default='mxn',
     )
+    project_id = fields.Many2one(
+        'project.project',
+        string='Proyecto',
+        domain="[('company_id', '=', company_id)]",
+    )
+    work_order_id = fields.Many2one(
+        'project.task',
+        string='# Orden de trabajo',
+        domain="[('project_id', '=', project_id), ('company_id', '=', company_id)]",
+    )
     line_ids = fields.One2many(
         'purchase.request.line',
         'request_id',

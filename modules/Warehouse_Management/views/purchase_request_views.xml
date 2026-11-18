@@ -73,6 +73,8 @@
                             <group string="Detalles de Compra">
                                 <field name="payment_type" widget="radio"/>
                                 <field name="currency_type" widget="radio"/>
+                                <field name="project_id" context="{'default_company_id': company_id}"/>
+                                <field name="work_order_id" context="{'default_project_id': project_id, 'default_company_id': company_id}"/>
                                 <field name="create_date"/>
                             </group>
                         </group>
@@ -162,6 +164,8 @@
                     <field name="supervisor_id"/>
                     <field name="payment_type"/>
                     <field name="currency_type"/>
+                    <field name="project_id" optional="show"/>
+                    <field name="work_order_id" optional="show"/>
                     <field name="total_amount" sum="Total"/>
                     <field name="state" widget="badge"
                         decoration-success="state == 'autorizada' or state == 'recibida'"

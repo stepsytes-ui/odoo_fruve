@@ -56,7 +56,7 @@
                             </td>
                             <td style="width: 53%; text-align: right; vertical-align: top;">
                                 <strong style="font-size: 13px;"
-                                        t-out="request.get_purchase_order_report_text(company.name)"/>
+                                        t-out="request.get_purchase_order_company_name()"/>
                                 <div style="font-size: 8px; margin-top: 3px; white-space: pre-line;"
                                      t-out="request.get_purchase_order_report_text(company.partner_id._display_address(without_company=True))"/>
                             </td>
@@ -89,7 +89,7 @@
                                 <strong>Empresa:</strong>
                             </td>
                             <td style="width: 82%; padding: 5px; border: 1px solid #bbb;"
-                                t-out="request.get_purchase_order_report_text(company.name)"/>
+                                t-out="request.get_purchase_order_company_name()"/>
                         </tr>
                         <tr>
                             <td style="padding: 5px; border: 1px solid #b8c9ba; background: #eaf4ec;">

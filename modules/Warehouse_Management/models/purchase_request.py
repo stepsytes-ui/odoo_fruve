@@ -317,6 +317,11 @@ class PurchaseRequest(models.Model):
         normalized = unicodedata.normalize('NFKD', str(value))
         return ''.join(char for char in normalized if not unicodedata.combining(char))
 
+    def get_purchase_order_company_name(self):
+        self.ensure_one()
+        company_name = self.company_id.get_carta_laboral_name()
+        return self.get_purchase_order_report_text(company_name)
+
     def get_purchase_order_barcode_uri(self):
         self.ensure_one()
         barcode = self.env['ir.actions.report'].barcode(

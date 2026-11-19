@@ -328,3 +328,12 @@ class TestWarehouseAccess(TransactionCase):
             'México, Bogotá, Supervisión y Núm.'
         )
         self.assertEqual(text, 'Mexico, Bogota, Supervision y Num.')
+
+    def test_purchase_order_uses_company_plant_name(self):
+        self.company.carta_laboral_name = (
+            'FRUVEMEX MEXICALI S.A DE C.V., PLANTA MEXICALI'
+        )
+        self.assertEqual(
+            self.request.get_purchase_order_company_name(),
+            'FRUVEMEX MEXICALI S.A DE C.V., PLANTA MEXICALI',
+        )

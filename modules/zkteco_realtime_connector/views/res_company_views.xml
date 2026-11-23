@@ -18,6 +18,9 @@
                             <field name="name" required="1"/>
                             <field name="serial_number" required="1"/>
                             <field name="location"/>
+                            <field name="time_adjustment_enabled"/>
+                            <field name="time_adjustment_direction"
+                                   invisible="not time_adjustment_enabled"/>
                             </list>
                     </field>
                 </page>

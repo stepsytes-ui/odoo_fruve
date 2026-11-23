@@ -14,6 +14,9 @@
                         <group>
                             <field name="company_id" groups="base.group_multi_company" required="1"/>
                             <field name="location"/>
+                            <field name="time_adjustment_enabled"/>
+                            <field name="time_adjustment_direction"
+                                   invisible="not time_adjustment_enabled"/>
                         </group>
                     </group>
                 </sheet>
@@ -30,6 +33,9 @@
                 <field name="serial_number"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="location"/>
+                <field name="time_adjustment_enabled"/>
+                <field name="time_adjustment_direction"
+                       invisible="not time_adjustment_enabled"/>
             </list>
         </field>
     </record>

@@ -11,7 +11,7 @@ _logger = logging.getLogger(__name__)
 FIXED_DEVICE_TIMEZONE_NAME = 'America/Tijuana'
 TIME_OFFSET_MINUTES = 5
 SECOND_DIFFERENCE = 1
-RECOVERY_LOOKBACK_DAYS = 30
+RECOVERY_LOOKBACK_DAYS = 7
 BACKLOG_RECENT_WINDOW_MINUTES = 10
 BACKLOG_ON_TIME_WINDOW_HOURS = 4
 DUPLICATE_END_PUNCH_WINDOW_SECONDS = 120
@@ -37,6 +37,14 @@ class ZkTecoAttendanceLog(models.Model):
         day_start_local = device_timezone.localize(datetime.combine(target_date, time.min))
         day_end_local = device_timezone.localize(datetime.combine(target_date, time.max))
         return day_start_local.astimezone(pytz.utc), day_end_local.astimezone(pytz.utc)
+
+    def _get_adjusted_device_datetime(self, device, device_datetime):
+        """Aplica al timestamp local la corrección configurada en el dispositivo."""
+        if not device.time_adjustment_enabled:
+            return device_datetime
+
+        offset = 1 if device.time_adjustment_direction == 'forward' else -1
+        return device_datetime + timedelta(hours=offset)
 
     def _has_workday_shift(self, employee, target_date):
         shift = employee.turno_id
@@ -314,132 +322,46 @@ class ZkTecoAttendanceLog(models.Model):
             is_historical = False
 
             try:
-                naive_datetime = fields.Datetime.from_string(log.timestamp)
+                raw_naive_datetime = fields.Datetime.from_string(log.timestamp)
+                naive_datetime = self._get_adjusted_device_datetime(
+                    device, raw_naive_datetime
+                )
                 
                 # Convertir la fecha del dispositivo (en zona local) a UTC para comparación correcta
                 device_datetime_local = DEVICE_TIMEZONE.localize(naive_datetime, is_dst=None)
                 device_datetime_utc = device_datetime_local.astimezone(UTC_TIMEZONE)
                 
-                # Validar si la fecha tiene más de 10 minutos de diferencia
+                # Solo se sustituye el timestamp del dispositivo si la diferencia
+                # supera el máximo de recuperación permitido.
                 now_utc = UTC_TIMEZONE.localize(datetime.utcnow())
                 time_diff_seconds = abs((device_datetime_utc - now_utc).total_seconds())
-                time_diff_minutes = time_diff_seconds / 60
+                time_diff_days = time_diff_seconds / 86400
 
-                reported_date_local = device_datetime_local.date()
                 today_local = now_utc.astimezone(DEVICE_TIMEZONE).date()
 
-                # Regla principal: si la fecha del dispositivo es HOY (desfasado o exacto),
-                # siempre usar la hora actual de la empresa para el registro.
-                # Solo respetamos el timestamp original cuando la fecha es un día PASADO.
-                if reported_date_local >= today_local:
-                    # Hoy o futuro → siempre hora actual
-                    if time_diff_minutes > 10:
-                        if device_datetime_utc > now_utc:
-                            _logger.warning(
-                                "⚠️ Fecha FUTURA para log %s (Employee: %s, Device: %s). "
-                                "Hora dispositivo: %s, Diferencia: %.1f min. Usando hora actual.",
-                                log.id, employee.name, device_serial, naive_datetime, time_diff_minutes
-                            )
-                        else:
-                            _logger.warning(
-                                "⚠️ Reloj desfasado (mismo día) para log %s (Employee: %s, Device: %s). "
-                                "Hora dispositivo: %s, Diferencia: %.1f min. Usando hora actual.",
-                                log.id, employee.name, device_serial, naive_datetime, time_diff_minutes
-                            )
-                    check_datetime_local = datetime.now(DEVICE_TIMEZONE)
-                    # Si había falta generada para hoy, eliminarla
-                    reported_day_ctx = self._get_day_attendance_context(
-                        employee, Attendance, DEVICE_TIMEZONE, reported_date_local
+                if time_diff_days > RECOVERY_LOOKBACK_DAYS:
+                    _logger.warning(
+                        "Fecha fuera del rango permitido para log %s (Employee: %s, Device: %s). "
+                        "Hora del dispositivo: %s, Diferencia: %.1f días. Usando hora actual.",
+                        log.id, employee.name, device_serial, naive_datetime, time_diff_days
                     )
-                    if reported_day_ctx['has_absence']:
-                        self._delete_absence_for_day(employee, Attendance, DEVICE_TIMEZONE, reported_date_local)
-                    _logger.info("✅ Usando hora actual (%s): %s", company_tz_name, check_datetime_local)
-
+                    check_datetime_local = datetime.now(DEVICE_TIMEZONE)
                 else:
-                    # Fecha PASADA — intentar recuperación histórica
-                    days_in_past = (now_utc - device_datetime_utc).total_seconds() / 86400
-                    if days_in_past > RECOVERY_LOOKBACK_DAYS:
-                        # Fuera del rango histórico permitido — tratar como desfase
-                        _logger.warning(
-                            "⚠️ Fecha pasada mayor a %s días para log %s (Employee: %s, Device: %s). "
-                            "Fecha dispositivo: %s, Días de diferencia: %.1f. Usando hora actual.",
-                            RECOVERY_LOOKBACK_DAYS, log.id, employee.name, device_serial, naive_datetime, days_in_past
+                    check_datetime_local = device_datetime_local
+                    is_historical = check_datetime_local.date() != today_local
+
+                    if naive_datetime != raw_naive_datetime:
+                        _logger.info(
+                            "Hora del dispositivo corregida para log %s (Employee: %s, Device: %s): "
+                            "%s -> %s (%s una hora).",
+                            log.id, employee.name, device_serial, raw_naive_datetime,
+                            naive_datetime, device.time_adjustment_direction
                         )
-                        check_datetime_local = datetime.now(DEVICE_TIMEZONE)
-                        _logger.info("✅ Usando hora actual (%s): %s", company_tz_name, check_datetime_local)
-                    else:
-                        # Dentro de los últimos días permitidos — checada histórica válida
-                        original_date = device_datetime_local.date()
-                        orig_day_start = DEVICE_TIMEZONE.localize(
-                            datetime.combine(original_date, time.min)
-                        ).astimezone(UTC_TIMEZONE)
-                        orig_day_end = DEVICE_TIMEZONE.localize(
-                            datetime.combine(original_date, time.max)
-                        ).astimezone(UTC_TIMEZONE)
-                        orig_start_str = fields.Datetime.to_string(orig_day_start)
-                        orig_end_str = fields.Datetime.to_string(orig_day_end)
 
-                        # Check 1: falta auto-generada para esa fecha
-                        absence_on_orig_date = Attendance.search([
-                            ('employee_id', '=', employee.id),
-                            ('punctuality_status', '=', 'absence'),
-                            ('check_in', '>=', orig_start_str),
-                            ('check_in', '<=', orig_end_str),
-                        ], limit=1)
-
-                        # Check 2: asistencia real ABIERTA en esa fecha (2da+ checada del mismo día,
-                        # creada en este mismo batch — nunca una asistencia ya cerrada/completa)
-                        checkin_on_orig_date = Attendance.search([
-                            ('employee_id', '=', employee.id),
-                            ('punctuality_status', '!=', 'absence'),
-                            ('check_in', '>=', orig_start_str),
-                            ('check_in', '<=', orig_end_str),
-                            ('check_out', '=', False),
-                        ], limit=1)
-
-                        if absence_on_orig_date:
-                            _logger.info(
-                                "📋 Checada histórica detectada para %s (Log %s). Fecha: %s — "
-                                "falta auto-generada encontrada, eliminando y usando timestamp original.",
-                                employee.name, log.id, original_date
-                            )
-                            absence_on_orig_date.unlink()
-                            check_datetime_local = device_datetime_local
-                            is_historical = True
-                        elif checkin_on_orig_date:
-                            _logger.info(
-                                "📋 Checada histórica (2da+ del día) para %s (Log %s). Fecha: %s — "
-                                "asistencia abierta encontrada, usando timestamp original.",
-                                employee.name, log.id, original_date
-                            )
-                            check_datetime_local = device_datetime_local
-                            is_historical = True
-                        else:
-                            # Sin falta ni asistencia abierta en esa fecha
-                            reported_day_ctx = self._get_day_attendance_context(
-                                employee, Attendance, DEVICE_TIMEZONE, original_date
-                            )
-                            if reported_day_ctx['is_workday'] and not reported_day_ctx['has_real_attendance']:
-                                check_datetime_local = device_datetime_local
-                                if reported_day_ctx['has_absence']:
-                                    self._delete_absence_for_day(
-                                        employee, Attendance, DEVICE_TIMEZONE, original_date
-                                    )
-                                is_historical = True
-                                _logger.info(
-                                    "📋 Checada histórica sin falta previa para %s (Log %s). "
-                                    "Fecha: %s — usando timestamp original.",
-                                    employee.name, log.id, original_date
-                                )
-                            else:
-                                # Día no laborable o ya tiene asistencia cerrada — usar hora actual
-                                _logger.warning(
-                                    "⚠️ Fecha pasada sin contexto válido para log %s (Employee: %s, Device: %s). "
-                                    "Fecha dispositivo: %s. Usando hora actual.",
-                                    log.id, employee.name, device_serial, naive_datetime
-                                )
-                                check_datetime_local = datetime.now(DEVICE_TIMEZONE)
-                                _logger.info("✅ Usando hora actual (%s): %s", company_tz_name, check_datetime_local)
+                # Una checada real elimina la falta correspondiente al día efectivo.
+                self._delete_absence_for_day(
+                    employee, Attendance, DEVICE_TIMEZONE, check_datetime_local.date()
+                )
                 
                 check_datetime_utc_dt = check_datetime_local.astimezone(UTC_TIMEZONE) 
                 check_datetime_utc = fields.Datetime.to_string(check_datetime_utc_dt)

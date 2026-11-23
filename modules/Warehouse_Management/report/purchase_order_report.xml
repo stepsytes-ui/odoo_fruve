@@ -118,15 +118,16 @@
                     <table style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 6px;">
                         <thead>
                             <tr style="background: #287a3d; color: #fff;">
-                                <th style="width: 6%; padding: 4px; border: 1px solid #1f5f30;">Cant.</th>
+                                <th style="width: 5%; padding: 4px; border: 1px solid #1f5f30;">Cant.</th>
                                 <th style="width: 7%; padding: 4px; border: 1px solid #1f5f30;">Unidad</th>
-                                <th style="width: 20%; padding: 4px; border: 1px solid #1f5f30;">Descripcion</th>
-                                <th style="width: 10%; padding: 4px; border: 1px solid #1f5f30;">Marca</th>
-                                <th style="width: 9%; padding: 4px; border: 1px solid #1f5f30;">Modelo</th>
-                                <th style="width: 15%; padding: 4px; border: 1px solid #1f5f30;">Proveedor</th>
-                                <th style="width: 11%; padding: 4px; border: 1px solid #1f5f30;">Precio unitario</th>
-                                <th style="width: 11%; padding: 4px; border: 1px solid #1f5f30;">Subtotal</th>
-                                <th style="width: 11%; padding: 4px; border: 1px solid #1f5f30;">Recibido</th>
+                                <th style="width: 17%; padding: 4px; border: 1px solid #1f5f30;">Descripcion</th>
+                                <th style="width: 9%; padding: 4px; border: 1px solid #1f5f30;">Marca</th>
+                                <th style="width: 8%; padding: 4px; border: 1px solid #1f5f30;">Modelo</th>
+                                <th style="width: 14%; padding: 4px; border: 1px solid #1f5f30;">Proveedor</th>
+                                <th style="width: 10%; padding: 4px; border: 1px solid #1f5f30;">Precio unitario</th>
+                                <th style="width: 10%; padding: 4px; border: 1px solid #1f5f30;">Subtotal</th>
+                                <th style="width: 10%; padding: 4px; border: 1px solid #1f5f30;">Impuestos</th>
+                                <th style="width: 10%; padding: 4px; border: 1px solid #1f5f30;">Recibido</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -147,6 +148,8 @@
                                     t-out="'$ {:,.2f}'.format(line.unit_price)"/>
                                 <td style="padding: 4px; border: 1px solid #bbb; text-align: right;"
                                     t-out="'$ {:,.2f}'.format(line.subtotal)"/>
+                                <td style="padding: 4px; border: 1px solid #bbb; text-align: right;"
+                                    t-out="'$ {:,.2f}'.format(line.tax_amount)"/>
                                 <td style="padding: 4px; border: 1px solid #bbb; text-align: center;">
                                     <span style="display: inline-block; width: 12px; height: 12px; border: 1px solid #333; vertical-align: middle;">
                                         <svg t-if="request.state == 'recibida' and line.received_qty &gt; 0 and line.receipt_status not in ('defectuoso', 'faltante')"
@@ -160,6 +163,24 @@
                                 </td>
                             </tr>
                         </tbody>
+                    </table>
+
+                    <table style="width: 35%; margin-left: auto; border-collapse: collapse; margin-bottom: 6px;">
+                        <tr>
+                            <td style="padding: 4px; border: 1px solid #bbb;"><strong>Subtotal</strong></td>
+                            <td style="padding: 4px; border: 1px solid #bbb; text-align: right;"
+                                t-out="'$ {:,.2f}'.format(request.amount_untaxed)"/>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px; border: 1px solid #bbb;"><strong>Impuestos</strong></td>
+                            <td style="padding: 4px; border: 1px solid #bbb; text-align: right;"
+                                t-out="'$ {:,.2f}'.format(request.amount_tax)"/>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px; border: 1px solid #287a3d; background: #eaf4ec;"><strong>Total</strong></td>
+                            <td style="padding: 4px; border: 1px solid #287a3d; background: #eaf4ec; text-align: right; font-weight: bold;"
+                                t-out="'$ {:,.2f}'.format(request.total_amount)"/>
+                        </tr>
                     </table>
 
                     <div style="border: 1px solid #bbb; padding: 5px; margin-top: 4px; font-weight: bold;">

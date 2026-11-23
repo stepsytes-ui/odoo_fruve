@@ -109,13 +109,16 @@
                                         <field name="vendor_id" optional="show"/>
                                         <field name="unit_price"/>
                                         <field name="tax_ids" widget="many2many_tags" optional="show"/>
-                                        <field name="subtotal" readonly="1"/>
+                                        <field name="subtotal" string="Subtotal" readonly="1"/>
+                                        <field name="tax_amount" string="Impuestos" readonly="1"/>
                                         <field name="received_qty" string="Cantidad Recibida" readonly="1" optional="show"/>
                                         <field name="receipt_status" string="Estado de Recepción" readonly="1" optional="show"/>
                                         <field name="receipt_notes" string="Observaciones de Recepción" readonly="1" optional="show"/>
                                     </list>
                                 </field>
                                 <group class="oe_subtotal_footer">
+                                    <field name="amount_untaxed" readonly="1" string="Subtotal"/>
+                                    <field name="amount_tax" readonly="1" string="Impuestos"/>
                                     <field name="total_amount" readonly="1" string="Total"/>
                                 </group>
                             </page>
@@ -178,6 +181,7 @@
                     <field name="currency_type"/>
                     <field name="project_id" optional="show"/>
                     <field name="work_order_id" optional="show"/>
+                    <field name="amount_tax" optional="hide" sum="Impuestos"/>
                     <field name="total_amount" sum="Total"/>
                     <field name="state" widget="badge"
                         decoration-success="state == 'autorizada' or state == 'recibida'"

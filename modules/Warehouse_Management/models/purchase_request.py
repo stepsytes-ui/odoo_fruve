@@ -135,6 +135,18 @@ class PurchaseRequest(models.Model):
         readonly=True,
         copy=False,
     )
+    amount_untaxed = fields.Float(
+        string='Subtotal',
+        compute='_compute_total_amount',
+        store=True,
+        digits=(16, 2),
+    )
+    amount_tax = fields.Float(
+        string='Impuestos',
+        compute='_compute_total_amount',
+        store=True,
+        digits=(16, 2),
+    )
     total_amount = fields.Float(
         string='Total',
         compute='_compute_total_amount',
@@ -176,10 +188,12 @@ class PurchaseRequest(models.Model):
             })
         return warehouse.id
 
-    @api.depends('line_ids.subtotal')
+    @api.depends('line_ids.subtotal', 'line_ids.tax_amount')
     def _compute_total_amount(self):
         for record in self:
-            record.total_amount = sum(record.line_ids.mapped('subtotal'))
+            record.amount_untaxed = sum(record.line_ids.mapped('subtotal'))
+            record.amount_tax = sum(record.line_ids.mapped('tax_amount'))
+            record.total_amount = record.amount_untaxed + record.amount_tax
 
     def _prepare_product_vals_from_line(self, line):
         legacy_tmpl = line.product_id.product_tmpl_id if line.product_id else False

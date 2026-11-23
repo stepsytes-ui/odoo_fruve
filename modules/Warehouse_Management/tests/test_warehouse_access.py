@@ -273,6 +273,32 @@ class TestWarehouseAccess(TransactionCase):
         self.assertIn(b'data:image/png;base64,', report_html)
         self.assertIn(b'font-size: 14px', report_html)
 
+    def test_purchase_request_separates_tax_from_subtotal(self):
+        tax = self.env['account.tax'].create({
+            'name': 'IVA 8% prueba',
+            'amount': 8.0,
+            'amount_type': 'percent',
+            'type_tax_use': 'purchase',
+            'company_id': self.company.id,
+        })
+        self.request.write({
+            'line_ids': [(0, 0, {
+                'warehouse_product_id': self.product.id,
+                'quantity': 2,
+                'unit_id': self.env.ref('uom.product_uom_unit').id,
+                'description': 'Producto gravado de prueba',
+                'unit_price': 100,
+                'tax_ids': [(6, 0, tax.ids)],
+            })],
+        })
+
+        line = self.request.line_ids
+        self.assertAlmostEqual(line.subtotal, 200.0)
+        self.assertAlmostEqual(line.tax_amount, 16.0)
+        self.assertAlmostEqual(self.request.amount_untaxed, 200.0)
+        self.assertAlmostEqual(self.request.amount_tax, 16.0)
+        self.assertAlmostEqual(self.request.total_amount, 216.0)
+
     def test_purchase_order_rejection_records_optional_comments(self):
         wizard = self.env['purchase.rejection.wizard'].create({
             'request_id': self.request.id,

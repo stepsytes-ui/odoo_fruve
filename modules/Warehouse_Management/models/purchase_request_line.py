@@ -52,7 +52,13 @@ class PurchaseRequestLine(models.Model):
     receipt_notes = fields.Text(string='Observaciones de Recepción')
     subtotal = fields.Float(
         string='Subtotal',
-        compute='_compute_subtotal',
+        compute='_compute_amounts',
+        store=True,
+        digits=(16, 2),
+    )
+    tax_amount = fields.Float(
+        string='Impuestos',
+        compute='_compute_amounts',
         store=True,
         digits=(16, 2),
     )
@@ -96,21 +102,24 @@ class PurchaseRequestLine(models.Model):
                 raise ValidationError(_('La cantidad recibida no puede ser mayor a la cantidad solicitada.'))
 
     @api.depends('quantity', 'unit_price', 'tax_ids', 'request_id.company_id', 'vendor_id')
-    def _compute_subtotal(self):
+    def _compute_amounts(self):
         for line in self:
-            if not line.tax_ids:
-                line.subtotal = line.quantity * line.unit_price
-                continue
+            base_amount = line.quantity * line.unit_price
+            line.subtotal = base_amount
+            line.tax_amount = 0.0
 
-            company = line.request_id.company_id or self.env.company
-            currency = company.currency_id
-            tax_result = line.tax_ids.with_company(company).compute_all(
-                line.unit_price,
-                currency=currency,
-                quantity=line.quantity,
-                partner=line.vendor_id,
-            )
-            line.subtotal = tax_result.get('total_included', line.quantity * line.unit_price)
+            if line.tax_ids:
+                company = line.request_id.company_id or self.env.company
+                tax_result = line.tax_ids.with_company(company).compute_all(
+                    line.unit_price,
+                    currency=company.currency_id,
+                    quantity=line.quantity,
+                    partner=line.vendor_id,
+                )
+                line.subtotal = tax_result.get('total_excluded', base_amount)
+                line.tax_amount = (
+                    tax_result.get('total_included', line.subtotal) - line.subtotal
+                )
 
     def _is_warehouse_only_user(self):
         user = self.env.user

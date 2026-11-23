@@ -35,10 +35,12 @@
                 <field name="check_in" position="after">
                     <field name="show_company_tz_display" invisible="1"/>
                     <field name="check_in_time_only" string="Hora Entrada (TZ Empresa)" readonly="1" invisible="show_company_tz_display == False"/>
+                    <field name="check_in_device_id" options="{'no_open': True}"/>
                     <field name="punctuality_status" widget="selection"/>
                 </field>
                 <field name="check_out" position="after">
                     <field name="check_out_time_only" string="Hora Salida (TZ Empresa)" readonly="1" invisible="show_company_tz_display == False"/>
+                    <field name="check_out_device_id" options="{'no_open': True}"/>
                     <field name="punctuality_status_out" widget="selection"/>
                 </field>
             </field>

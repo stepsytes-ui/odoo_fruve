@@ -188,18 +188,22 @@ class ZkTecoAttendanceLog(models.Model):
         
         return shift_in_datetime_local.astimezone(pytz.utc), shift_out_datetime_local.astimezone(pytz.utc)
 
-    def _create_attendance(self, employee, check_in_utc, status_in):
+    def _create_attendance(self, employee, check_in_utc, status_in, device=None):
         """Función auxiliar para crear un registro de hr.attendance."""
         Attendance = self.env['hr.attendance'].sudo().with_context(skip_attendance_sync=True)
         return Attendance.create({
             'employee_id': employee.id,
             'check_in': check_in_utc,
             'punctuality_status': status_in,
+            'check_in_device_id': device.id if device else False,
         })
 
-    def _close_attendance(self, attendance_record, check_out_utc, status_out=None):
+    def _close_attendance(self, attendance_record, check_out_utc, status_out=None, device=None):
         """Función auxiliar para cerrar un registro de hr.attendance y opcionalmente asignar su estatus de salida."""
-        vals = {'check_out': check_out_utc}
+        vals = {
+            'check_out': check_out_utc,
+            'check_out_device_id': device.id if device else False,
+        }
         if status_out:
             vals['punctuality_status_out'] = status_out
         attendance_record.with_context(skip_attendance_sync=True).write(vals)
@@ -415,11 +419,15 @@ class ZkTecoAttendanceLog(models.Model):
                     else:
                         status = 'late'
 
-                attendance_record = self._create_attendance(employee, check_datetime_utc, status)
+                attendance_record = self._create_attendance(
+                    employee, check_datetime_utc, status, device
+                )
                 _logger.info("CHECK-IN (Primera Checada) processed for %s at %s. Status: %s", employee.name, log.timestamp, status)
 
             else:
-                self._close_attendance(last_attendance, check_datetime_utc)
+                self._close_attendance(
+                    last_attendance, check_datetime_utc, device=device
+                )
 
                 is_end_of_shift = False
                 if shift_out_utc_dt and check_datetime_utc_dt >= (shift_out_utc_dt - timedelta(minutes=10)):
@@ -434,7 +442,9 @@ class ZkTecoAttendanceLog(models.Model):
                     else:
                         new_status = 'LunchE'
 
-                    attendance_record = self._create_attendance(employee, check_datetime_utc, new_status)
+                    attendance_record = self._create_attendance(
+                        employee, check_datetime_utc, new_status, device
+                    )
                     _logger.info("CHECK-OUT y Nuevo CHECK-IN Intermedio processed for %s at %s. Status: %s", employee.name, log.timestamp, new_status)
 
                 else:

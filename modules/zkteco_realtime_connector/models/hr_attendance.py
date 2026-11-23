@@ -106,6 +106,21 @@ class HrAttendance(models.Model):
         store=True, 
         readonly=True
     )
+
+    check_in_device_id = fields.Many2one(
+        comodel_name='zkteco.device',
+        string='Checador de entrada',
+        readonly=True,
+        index=True,
+    )
+
+    check_out_device_id = fields.Many2one(
+        comodel_name='zkteco.device',
+        string='Checador de salida',
+        readonly=True,
+        index=True,
+    )
+
     @api.depends('biometric_id')
     def _compute_biometric_id_display(self):
         """Mostrar biometric_id como entero para ordenamiento numérico"""

@@ -118,6 +118,17 @@ class PurchaseRequest(models.Model):
         'request_id',
         string='Productos / Servicios',
     )
+    first_line_description = fields.Char(
+        string='Descripción',
+        compute='_compute_first_line_info',
+        store=True,
+    )
+    first_line_vendor_id = fields.Many2one(
+        'res.partner',
+        string='Proveedor',
+        compute='_compute_first_line_info',
+        store=True,
+    )
     warehouse_id = fields.Many2one(
         'compras.warehouse',
         string='Almacén de Recepción',
@@ -187,6 +198,13 @@ class PurchaseRequest(models.Model):
                 'is_main': True,
             })
         return warehouse.id
+
+    @api.depends('line_ids.description', 'line_ids.vendor_id')
+    def _compute_first_line_info(self):
+        for record in self:
+            first_line = record.line_ids[:1]
+            record.first_line_description = first_line.description if first_line else False
+            record.first_line_vendor_id = first_line.vendor_id if first_line else False
 
     @api.depends('line_ids.subtotal', 'line_ids.tax_amount')
     def _compute_total_amount(self):

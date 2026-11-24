@@ -82,6 +82,7 @@
                                 <field name="currency_type" widget="radio"/>
                                 <field name="project_id" context="{'default_company_id': company_id}"/>
                                 <field name="work_order_id" context="{'default_project_id': project_id, 'default_company_id': company_id}"/>
+                                <field name="invoice_folio"/>
                                 <field name="create_date"/>
                             </group>
                         </group>

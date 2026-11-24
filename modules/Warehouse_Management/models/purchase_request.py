@@ -113,6 +113,7 @@ class PurchaseRequest(models.Model):
         string='# Orden de trabajo',
         domain="[('project_id', '=', project_id), ('company_id', '=', company_id)]",
     )
+    invoice_folio = fields.Char(string='Folio de factura')
     line_ids = fields.One2many(
         'purchase.request.line',
         'request_id',

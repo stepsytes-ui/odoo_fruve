@@ -175,7 +175,7 @@
                     <field name="company_id" column_invisible="True"/>
                     <field name="name"/>
                     <field name="create_date" width="140"/>
-                    <field name="department_id"/>
+                    <field name="invoice_folio"/>
                     <field name="first_line_description" string="Descripción"/>
                     <field name="first_line_vendor_id" string="Proveedor"/>
                     <field name="payment_type"/>

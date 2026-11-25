@@ -77,9 +77,10 @@
                         <tr>
                             <td style="border-bottom: 2px solid #287a3d;"> </td>
                             <td style="border: 1px solid #777; border-top: 0; padding: 4px;">
-                                <strong>REVISION</strong>
+                                <strong>FACTURA</strong>
                             </td>
-                            <td style="border: 1px solid #777; border-top: 0; padding: 4px;">00</td>
+                            <td style="border: 1px solid #777; border-top: 0; padding: 4px;"
+                                t-out="request.get_purchase_order_report_text(request.invoice_folio)"/>
                         </tr>
                     </table>
 

@@ -38,8 +38,8 @@
 
                         <group>
                             <group string="Documentación INTERNA">
-                                <field name="inicia_st7"/>
-                                <field name="cierre_st2"/>
+                                <field name="inicia_st7" string="Fecha del Incidente"/>
+                                <field name="cierre_st2" string="Cierre del Incidente"/>
                                 <field name="riesgo_trabajo_imss"/>
                                 <field name="dias_incapacidad"/>
                                 <!-- <field name="incapacidad"/> -->
@@ -68,8 +68,8 @@
                     <field name="area_id" string="Área del Incidente"/>
                     <field name="tipo_causa" string="Tipo de Causa"/>
                     <field name="dia_accidente" string="Día del Incidente"/>
-                    <field name="inicia_st7" string="Inicia con S-T7"/>
-                    <field name="cierre_st2" string="Cierre con ST-2"/>
+                    <field name="inicia_st7" string="Fecha del Incidente"/>
+                    <field name="cierre_st2" string="Cierre del Incidente"/>
                     <field name="atencion" string="Atención"/>
                     <field name="riesgo_trabajo_imss" string="Riesgo de Trabajo por IMSS"/>
                     <field name="dias_incapacidad" string="Días de Incapacidad"/>

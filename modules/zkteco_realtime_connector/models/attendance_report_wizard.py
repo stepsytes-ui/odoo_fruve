@@ -57,6 +57,16 @@ class AttendanceReportWizard(models.TransientModel):
         default=False,
         help='Activa esta opción para ver la asistencia de empleados que ya fueron dados de baja (finiquitados)'
     )
+    time_format = fields.Selection(
+        [
+            ('24h', '24 horas (HH:MM:SS)'),
+            ('12h', '12 horas (AM/PM)'),
+        ],
+        string='Formato de Hora',
+        required=True,
+        default='24h',
+        help='Elige cómo mostrar las horas en la vista previa y en el Excel descargado'
+    )
 
     def _get_employee_attendance_bounds(self, employee):
         """Retorna (fecha_primera, fecha_ultima) de asistencia para un empleado."""
@@ -1213,8 +1223,19 @@ class AttendanceReportWizard(models.TransientModel):
         filename = f'Reporte_Asistencia_{safe_company_name}_{date_from}_{date_to}.xlsx'
         return output.getvalue(), filename
 
+    def _format_local_time(self, local_dt, include_seconds=True):
+        """Formatea un datetime local según el formato seleccionado (24h o 12h AM/PM)."""
+        if self.time_format == '12h':
+            period = 'AM' if local_dt.hour < 12 else 'PM'
+            hour_12 = local_dt.hour % 12 or 12
+            if include_seconds:
+                return f"{hour_12:02d}:{local_dt.minute:02d}:{local_dt.second:02d} {period}"
+            return f"{hour_12:02d}:{local_dt.minute:02d} {period}"
+        fmt = '%H:%M:%S' if include_seconds else '%H:%M'
+        return local_dt.strftime(fmt)
+
     def _format_hour_from_float(self, hour_value):
-        """Convierte hora float (ej. 14.5) a HH:MM."""
+        """Convierte hora float (ej. 14.5) a HH:MM o hh:mm AM/PM."""
         if hour_value is False or hour_value is None:
             return None
         hours = int(hour_value)
@@ -1223,6 +1244,10 @@ class AttendanceReportWizard(models.TransientModel):
             hours += 1
             minutes = 0
         hours = hours % 24
+        if self.time_format == '12h':
+            period = 'AM' if hours < 12 else 'PM'
+            hour_12 = hours % 12 or 12
+            return f"{hour_12:02d}:{minutes:02d} {period}"
         return f"{hours:02d}:{minutes:02d}"
 
     def _get_attendance_punches_text(self, employee, start_utc_str, end_utc_str, company_tz, Attendance):
@@ -1240,7 +1265,7 @@ class AttendanceReportWizard(models.TransientModel):
             if check_in_dt.tzinfo is None:
                 check_in_dt = pytz.utc.localize(check_in_dt)
             local_dt = check_in_dt.astimezone(company_tz)
-            time_list.append(local_dt.strftime('%H:%M:%S'))
+            time_list.append(self._format_local_time(local_dt, include_seconds=True))
 
         return ' - '.join(time_list)
 
@@ -1255,11 +1280,11 @@ class AttendanceReportWizard(models.TransientModel):
             if date_from:
                 if date_from.tzinfo is None:
                     date_from = pytz.utc.localize(date_from)
-                hour_from = date_from.astimezone(company_tz).strftime('%H:%M')
+                hour_from = self._format_local_time(date_from.astimezone(company_tz), include_seconds=False)
             if date_to:
                 if date_to.tzinfo is None:
                     date_to = pytz.utc.localize(date_to)
-                hour_to = date_to.astimezone(company_tz).strftime('%H:%M')
+                hour_to = self._format_local_time(date_to.astimezone(company_tz), include_seconds=False)
 
         leave_title = f"Permiso por horas {hour_from or '--:--'} - {hour_to or '--:--'}"
         punches_text = self._get_attendance_punches_text(
@@ -1470,14 +1495,14 @@ class AttendanceReportWizard(models.TransientModel):
                 for att in valid_attendances:
                     utc_datetime = pytz.utc.localize(att.check_in)
                     local_datetime = utc_datetime.astimezone(COMPANY_TZ)
-                    time_str = local_datetime.strftime("%H:%M:%S")
+                    time_str = self._format_local_time(local_datetime)
                     
                     # Solo mostrar checkout si es cierre real de turno/manual, no un corte intermedio
                     # (el corte intermedio ya aparece como check_in del siguiente registro LunchS/LunchE)
                     if att.check_out and (att.punctuality_status_out == 'end' or att.punctuality_status == 'n/a'):
                         utc_checkout = pytz.utc.localize(att.check_out)
                         local_checkout = utc_checkout.astimezone(COMPANY_TZ)
-                        checkout_str = local_checkout.strftime("%H:%M:%S")
+                        checkout_str = self._format_local_time(local_checkout)
                         time_str = f"{time_str} - {checkout_str}"
                     
                     check_in_times.append(time_str)
@@ -1611,14 +1636,14 @@ class AttendanceReportWizard(models.TransientModel):
                 for att in valid_attendances:
                     utc_datetime = pytz.utc.localize(att.check_in)
                     local_datetime = utc_datetime.astimezone(COMPANY_TZ)
-                    time_str = local_datetime.strftime("%H:%M:%S")
+                    time_str = self._format_local_time(local_datetime)
                     
                     # Solo mostrar checkout si es cierre real de turno/manual, no un corte intermedio
                     # (el corte intermedio ya aparece como check_in del siguiente registro LunchS/LunchE)
                     if att.check_out and (att.punctuality_status_out == 'end' or att.punctuality_status == 'n/a'):
                         utc_checkout = pytz.utc.localize(att.check_out)
                         local_checkout = utc_checkout.astimezone(COMPANY_TZ)
-                        checkout_str = local_checkout.strftime("%H:%M:%S")
+                        checkout_str = self._format_local_time(local_checkout)
                         time_str = f"{time_str} / {checkout_str}"
                     
                     check_in_times.append(time_str)
@@ -1775,14 +1800,14 @@ class AttendanceReportWizard(models.TransientModel):
             for att in valid_attendances:
                 utc_datetime = pytz.utc.localize(att.check_in)
                 local_datetime = utc_datetime.astimezone(COMPANY_TZ)
-                time_str = local_datetime.strftime("%H:%M:%S")
+                time_str = self._format_local_time(local_datetime)
                 
                 # Solo mostrar checkout si es cierre real de turno/manual, no un corte intermedio
                 # (el corte intermedio ya aparece como check_in del siguiente registro LunchS/LunchE)
                 if att.check_out and (att.punctuality_status_out == 'end' or att.punctuality_status == 'n/a'):
                     utc_checkout = pytz.utc.localize(att.check_out)
                     local_checkout = utc_checkout.astimezone(COMPANY_TZ)
-                    checkout_str = local_checkout.strftime("%H:%M:%S")
+                    checkout_str = self._format_local_time(local_checkout)
                     time_str = f"{time_str} - {checkout_str}"
                 
                 check_in_times.append(time_str)
@@ -1956,7 +1981,7 @@ class AttendanceReportWizard(models.TransientModel):
             # Convertir a hora local
             utc_datetime = pytz.utc.localize(att.check_in)
             local_datetime = utc_datetime.astimezone(company_tz)
-            time_str = local_datetime.strftime("%H:%M:%S")
+            time_str = self._format_local_time(local_datetime)
             check_in_times.append(time_str)
 
         return check_in_times

@@ -14,6 +14,7 @@
                             <field name="period_mode" widget="radio" invisible="not open_from_employee" />
                             <field name="date_from" invisible="open_from_employee and period_mode == 'full'" />
                             <field name="date_to" invisible="open_from_employee and period_mode == 'full'" />
+                            <field name="time_format" widget="radio" />
                         </group>
                         <group>
                             <field name="show_archived" invisible="open_from_employee" />
@@ -21,6 +22,7 @@
                                 invisible="open_from_employee"
                                 domain="[('company_id', '=', company_id), ('active', '=', False)] if show_archived else [('company_id', '=', company_id)]"
                                 context="{'active_test': False}" />
+                            
                         </group>
                     </group>
                     <footer>

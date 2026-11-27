@@ -11,6 +11,7 @@ class PurchaseRequest(models.Model):
     _name = 'purchase.request'
     _description = 'Solicitud de Compra'
     _inherit = ['mail.thread', 'mail.activity.mixin']
+    _order = 'create_date desc, id desc'
 
     name = fields.Char(
         string='Folio',

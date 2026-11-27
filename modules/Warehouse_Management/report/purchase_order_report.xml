@@ -166,21 +166,29 @@
                         </tbody>
                     </table>
 
-                    <table style="width: 35%; margin-left: auto; border-collapse: collapse; margin-bottom: 6px;">
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
                         <tr>
-                            <td style="padding: 4px; border: 1px solid #bbb;"><strong>Subtotal</strong></td>
-                            <td style="padding: 4px; border: 1px solid #bbb; text-align: right;"
-                                t-out="'$ {:,.2f}'.format(request.amount_untaxed)"/>
-                        </tr>
-                        <tr>
-                            <td style="padding: 4px; border: 1px solid #bbb;"><strong>Impuestos</strong></td>
-                            <td style="padding: 4px; border: 1px solid #bbb; text-align: right;"
-                                t-out="'$ {:,.2f}'.format(request.amount_tax)"/>
-                        </tr>
-                        <tr>
-                            <td style="padding: 4px; border: 1px solid #287a3d; background: #eaf4ec;"><strong>Total</strong></td>
-                            <td style="padding: 4px; border: 1px solid #287a3d; background: #eaf4ec; text-align: right; font-weight: bold;"
-                                t-out="'$ {:,.2f}'.format(request.total_amount)"/>
+                            <td style="width: 65%; vertical-align: middle; padding: 4px 10px 4px 0; font-weight: bold;"
+                                t-out="request.get_purchase_order_amount_in_words()"/>
+                            <td style="width: 35%; vertical-align: top; padding: 0;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="padding: 4px; border: 1px solid #bbb;"><strong>Subtotal</strong></td>
+                                        <td style="padding: 4px; border: 1px solid #bbb; text-align: right;"
+                                            t-out="'$ {:,.2f}'.format(request.amount_untaxed)"/>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 4px; border: 1px solid #bbb;"><strong>Impuestos</strong></td>
+                                        <td style="padding: 4px; border: 1px solid #bbb; text-align: right;"
+                                            t-out="'$ {:,.2f}'.format(request.amount_tax)"/>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 4px; border: 1px solid #287a3d; background: #eaf4ec;"><strong>Total</strong></td>
+                                        <td style="padding: 4px; border: 1px solid #287a3d; background: #eaf4ec; text-align: right; font-weight: bold;"
+                                            t-out="'$ {:,.2f}'.format(request.total_amount)"/>
+                                    </tr>
+                                </table>
+                            </td>
                         </tr>
                     </table>
 

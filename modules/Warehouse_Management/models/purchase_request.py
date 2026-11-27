@@ -380,6 +380,35 @@ class PurchaseRequest(models.Model):
         currency = self.env['res.currency'].search([('name', '=', currency_code)], limit=1)
         return currency or self.company_id.currency_id
 
+    def get_purchase_order_amount_in_words(self):
+        self.ensure_one()
+        amount = round(self.total_amount or 0.0, 2)
+        enteros = int(amount)
+        centavos = int(round((amount - enteros) * 100))
+        if centavos == 100:
+            enteros += 1
+            centavos = 0
+
+        try:
+            from num2words import num2words
+            words = num2words(enteros, lang='es')
+            if enteros % 10 == 1 and enteros % 100 != 11 and words.endswith('uno'):
+                words = f"{words[:-3]}un"
+            words = self.get_purchase_order_report_text(words).upper()
+            if self.currency_type == 'usd':
+                unit = 'DOLAR' if enteros == 1 else 'DOLARES'
+                suffix = 'USD'
+            else:
+                unit = 'PESO' if enteros == 1 else 'PESOS'
+                suffix = 'M.N.'
+            return f"({words} {unit} {centavos:02d}/100 {suffix})"
+        except ImportError:
+            currency = self.get_purchase_order_currency()
+            amount_text = self.get_purchase_order_report_text(
+                currency.with_context(lang='es_MX').amount_to_text(amount)
+            ).upper()
+            return f"({amount_text})"
+
     def action_cancel_for_edit(self):
         for request in self:
             if request.state not in ('autorizada', 'recibida'):

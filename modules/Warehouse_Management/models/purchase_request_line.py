@@ -18,6 +18,15 @@ class PurchaseRequestLine(models.Model):
         store=True,
         readonly=True,
     )
+    line_type = fields.Selection(
+        [
+            ('producto', 'Producto'),
+            ('servicio', 'Servicio'),
+        ],
+        string='Tipo',
+        required=True,
+        default='producto',
+    )
     product_id = fields.Many2one('product.product', string='Producto Odoo')
     warehouse_product_id = fields.Many2one('compras.product', string='Producto')
     quantity = fields.Float(string='Cantidad', required=True, default=1.0)
@@ -62,6 +71,12 @@ class PurchaseRequestLine(models.Model):
         store=True,
         digits=(16, 2),
     )
+
+    @api.onchange('line_type')
+    def _onchange_line_type(self):
+        if self.line_type == 'servicio':
+            self.warehouse_product_id = False
+            self.product_id = False
 
     @api.onchange('warehouse_product_id')
     def _onchange_warehouse_product_id(self):

@@ -36,7 +36,7 @@ class PurchaseReceiptWizard(models.TransientModel):
                 'quantity_received': line.quantity,
                 'receipt_check': 'completo',
                 'notes': line.receipt_notes or '',
-            }) for line in request.line_ids]
+            }) for line in request.line_ids.filtered(lambda line: line.line_type != 'servicio')]
         return res
 
     @api.onchange('warehouse_id')

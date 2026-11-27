@@ -39,7 +39,7 @@
                             string="Marcar como Recibida"
                             type="object"
                             class="btn-primary"
-                            invisible="state != 'autorizada'"
+                            invisible="state != 'autorizada' or not has_product_lines"
                             groups="Warehouse_Management.group_compras_almacenista"
                         />
                         <button
@@ -67,6 +67,7 @@
 
                         <group>
                             <group string="Información General">
+                                <field name="has_product_lines" invisible="1"/>
                                 <field name="company_id" options="{'no_create': True}"/>
                                 <field name="origin_request_id" readonly="1" invisible="not origin_request_id"/>
                                 <field name="warehouse_id"/>
@@ -101,8 +102,9 @@
                             <page string="Productos / Servicios">
                                 <field name="line_ids" widget="one2many_list">
                                     <list editable="bottom">
+                                        <field name="line_type"/>
                                         <field name="quantity"/>
-                                        <field name="warehouse_product_id"/>
+                                        <field name="warehouse_product_id" readonly="line_type == 'servicio'"/>
                                         <field name="unit_id"/>
                                         <field name="description"/>
                                         <field name="brand_id" optional="show"/>
@@ -280,7 +282,7 @@
             <field name="name">Compras Autorizadas</field>
             <field name="res_model">purchase.request</field>
             <field name="view_mode">list,form</field>
-            <field name="domain">[('state', '=', 'autorizada')]</field>
+            <field name="domain">[('state', '=', 'autorizada'), ('has_product_lines', '=', True)]</field>
             <field name="groups_id" eval="[(4, ref('Warehouse_Management.group_compras_encargado')), (4, ref('Warehouse_Management.group_compras_almacenista')), (4, ref('Warehouse_Management.group_almacen_solo_visualizacion'))]"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face" style="margin-top: 60px;">

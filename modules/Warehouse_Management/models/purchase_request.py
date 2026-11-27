@@ -131,6 +131,11 @@ class PurchaseRequest(models.Model):
         compute='_compute_first_line_info',
         store=True,
     )
+    has_product_lines = fields.Boolean(
+        string='Tiene Productos',
+        compute='_compute_has_product_lines',
+        store=True,
+    )
     warehouse_id = fields.Many2one(
         'compras.warehouse',
         string='Almacén de Recepción',
@@ -200,6 +205,13 @@ class PurchaseRequest(models.Model):
                 'is_main': True,
             })
         return warehouse.id
+
+    @api.depends('line_ids.line_type')
+    def _compute_has_product_lines(self):
+        for record in self:
+            record.has_product_lines = any(
+                line.line_type != 'servicio' for line in record.line_ids
+            )
 
     @api.depends('line_ids.description', 'line_ids.vendor_id')
     def _compute_first_line_info(self):
@@ -298,7 +310,7 @@ class PurchaseRequest(models.Model):
         if not self.line_ids:
             raise ValidationError(_('Debes agregar al menos un producto o servicio a la solicitud.'))
 
-        for line in self.line_ids:
+        for line in self.line_ids.filtered(lambda l: l.line_type != 'servicio'):
             self._get_or_create_product_from_line(line)
 
         cleaned_comments = decision_comments.strip() if decision_comments else False
@@ -327,6 +339,8 @@ class PurchaseRequest(models.Model):
         self.ensure_one()
         if self.state != 'autorizada':
             raise ValidationError(_('Solo se pueden marcar como recibidas las solicitudes Autorizadas.'))
+        if not self.has_product_lines:
+            raise ValidationError(_('Las solicitudes que solo contienen servicios no se reciben en almacén.'))
         return {
             'name': _('Checklist de Recepción'),
             'type': 'ir.actions.act_window',
@@ -438,15 +452,16 @@ class PurchaseRequest(models.Model):
 
     def action_process_receipt_from_checklist(self, receiver_user=False, warehouse=False, location=False):
         self.ensure_one()
-        if not self.line_ids:
-            raise ValidationError(_('No hay líneas para recibir en esta solicitud.'))
+        product_lines = self.line_ids.filtered(lambda l: l.line_type != 'servicio')
+        if not product_lines:
+            raise ValidationError(_('No hay líneas de producto para recibir en esta solicitud.'))
 
         receiver = receiver_user or self.env.user
         warehouse = warehouse or self.warehouse_id
         if location and location.warehouse_id != warehouse:
             raise ValidationError(_('La locación seleccionada no pertenece al almacén de recepción.'))
 
-        for line in self.line_ids:
+        for line in product_lines:
             product = self._get_or_create_product_from_line(line)
             received_qty = line.received_qty or 0
             if received_qty > line.quantity:
@@ -498,12 +513,13 @@ class PurchaseRequest(models.Model):
     def _create_missing_purchase_request(self):
         self.ensure_one()
         missing_lines = []
-        for line in self.line_ids:
+        for line in self.line_ids.filtered(lambda l: l.line_type != 'servicio'):
             received_qty = 0 if line.receipt_status in ('defectuoso', 'faltante') else (line.received_qty or 0)
             missing_qty = line.quantity - received_qty
             if missing_qty <= 0:
                 continue
             missing_lines.append((0, 0, {
+                'line_type': line.line_type,
                 'product_id': line.product_id.id,
                 'warehouse_product_id': line.warehouse_product_id.id,
                 'quantity': missing_qty,
